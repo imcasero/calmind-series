@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+@theme{
+
+  /* Primary purple color  */
+  --color-jacksons-purple-50: #f3f3ff;
+  --color-jacksons-purple-100: #eaeafd;
+  --color-jacksons-purple-200: #d7d7fd;
+  --color-jacksons-purple-300: #b9b7fb;
+  --color-jacksons-purple-400: #968ef7;
+  --color-jacksons-purple-500: #7361f1;
+  --color-jacksons-purple-600: #5f3fe8;
+  --color-jacksons-purple-700: #502dd4;
+  --color-jacksons-purple-800: #4325b2;
+  --color-jacksons-purple-900: #341e86;
+  --color-jacksons-purple-950: #211362;
+
+  /* Seconday pink color  */
+  --color-snuff-50: #fbf7fc;
+  --color-snuff-100: #f5eef9;
+  --color-snuff-200: #ebdbf1;
+  --color-snuff-300: #dec1e6;
+  --color-snuff-400: #cb9cd6;
+  --color-snuff-500: #b174c1;
+  --color-snuff-600: #9555a4;
+  --color-snuff-700: #7c4487;
+  --color-snuff-800: #67396f;
+  --color-snuff-900: #57335c;
+  --color-snuff-950: #35183a;
+
+
+
+}

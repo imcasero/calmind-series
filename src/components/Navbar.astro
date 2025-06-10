@@ -1,5 +1,13 @@
 ---
+import Button from "./shared/buttons/Button.tsx";
+
+const handleClick = () => {
+  alert('¡Hola Mundo!');
+};
+
 
 ---
 
 <nav>esto es un navbar basico</nav>
+
+<Button client:load onClick={handleClick}/>

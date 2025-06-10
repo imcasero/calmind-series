@@ -1,4 +1,5 @@
 ---
+import Navbar from "../components/Navbar.astro";
 import "../styles/global.css";
 ---
 
@@ -12,27 +13,28 @@ import "../styles/global.css";
     <title>Astro Basics</title>
   </head>
   <body>
+    <Navbar />
     <div>
       <slot />
     </div>
   </body>
+
+  <style is:global>
+    :root {
+      --color-jacksons-purple-500: #5d3fd3;
+    }
+    html {
+      font-family: system-ui, sans-serif;
+      background: var(--color-jacksons-purple-500);
+      color: #fff;
+    }
+
+    body {
+      @apply grid place-content-center;
+    }
+
+    body > div {
+      @apply container;
+    }
+  </style>
 </html>
-
-<style is:global>
-  :root {
-    --color-jacksons-purple-500: #5d3fd3;
-  }
-  html {
-    font-family: system-ui, sans-serif;
-    background: var(--color-jacksons-purple-500);
-    color: #fff;
-  }
-
-  body {
-    @apply grid place-content-center;
-  }
-
-  body > div {
-    @apply container;
-  }
-</style>

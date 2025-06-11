@@ -1,0 +1,84 @@
+---
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  text?: string;
+  href?: string;
+  variant?: "primary" | "secondary" | "blue" | "red" | "green";
+  icon?: string | ImageMetadata;
+  iconPosition?: "left" | "right" | "top" | "bottom";
+}
+
+const {
+  text = "",
+  href = "",
+  variant = "primary",
+  icon,
+  iconPosition = "left",
+} = Astro.props;
+
+
+---
+
+<a
+  href={href}
+  class={`link-button link-button--${variant} ${iconPosition ? `icon-${iconPosition}` : ""}`}
+  rel="noopener noreferrer"
+  target="_blank"
+>
+  {icon && iconPosition === "left" && (
+    <img src={typeof icon === "string" ? icon : icon?.src} alt="" class="icon" style={{ height: "1.5em" }} />
+  )}
+
+  <span>{text}</span>
+
+  {icon && iconPosition === "right" && (
+    <img src={typeof icon === "string" ? icon : icon?.src} alt="" class="icon" style={{ height: "1.5em" }} />
+  )}
+</a>
+
+<style>
+  .link-button {
+  display: inline-flex;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  padding: 0rem 2rem;
+  text-align: center;
+  border-top: 3px solid black;
+  border-bottom: 3px solid black;
+  border-radius: 5px;
+  clip-path: polygon(0 100%, 10% 0, 100% 0, 100% 0, 90% 100%, 0 100%);
+  cursor: pointer;
+  }
+
+  .link-button--primary {
+    background-color: var(--color-jacksons-purple-500);
+  }
+
+  .link-button--secondary {
+    background-color: var(--color-snuff-500);
+  }
+
+  .link-button--blue {
+    background-color: var(--color-blue-500);
+  }
+
+  .link-button--red {
+    background-color: var(--color-red-500);
+  }
+
+  .link-button--green {
+    background-color: var(--color-green-500);
+  }
+  
+  .icon {
+    height: 1em;
+  }
+
+.icon-top,
+.icon-bottom {
+  flex-direction: column;
+}
+
+</style>

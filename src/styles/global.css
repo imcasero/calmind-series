@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-@theme{
-
+@theme {
   /* Primary purple color  */
   --color-jacksons-purple-50: #f3f3ff;
   --color-jacksons-purple-100: #eaeafd;
@@ -27,7 +26,4 @@
   --color-snuff-800: #67396f;
   --color-snuff-900: #57335c;
   --color-snuff-950: #35183a;
-
-
-
 }

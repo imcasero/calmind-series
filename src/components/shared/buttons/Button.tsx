@@ -1,28 +1,41 @@
 import type { JSX } from "preact";
 
-interface ButtonProps {
+interface ButtonProps extends JSX.HTMLAttributes<HTMLButtonElement> {
+  id?: string;
   text?: string;
   variant?: "primary" | "secondary" | "blue" | "red" | "green";
   icon?: string;
   iconPosition?: "left" | "top" | "right" | "bottom";
-  onClick?: () => void;
+  props?: JSX.HTMLAttributes<HTMLButtonElement>;
 }
 
-const Button = ({ text = "Click me", variant = "primary", onClick }: ButtonProps): JSX.Element => {
+const Button = ({
+  id,
+  text = "Click me",
+  variant = "primary",
+  icon,
+  iconPosition,
+  ...props
+}: ButtonProps): JSX.Element => {
   const colors = {
-    primary: "#3a2e6c", // Jackson's Purple
-    secondary: "#b8b8b8", // Snuff
-    blue: "#007bff", // Blue
-    red: "#dc3545", // Red
-    green: "#28a745", // Green
+    primary: "var(--color-jacksons-purple-500)",
+    secondary: "var(--color-snuff-500)",
+    blue: "var(--color-blue-500)",
+    red: "var(--color-red-500)",
+    green: "var(--color-green-500)",
   };
-
   const backgroundColor = colors[variant] || colors.primary;
+
+  // Manejo de eventos por ID
+  const handleClick = () => {
+    if (id === "boton-uno") {
+      console.log(`On click del boton 1`);
+    }
+  };
 
   return (
     <button
       class={`btn btn-${variant}`}
-      onClick={onClick}
       style={{
         cursor: "pointer",
         clipPath: "polygon(0 100%, 10% 0, 100% 0, 100% 0, 90% 100%, 0 100%)",
@@ -32,10 +45,11 @@ const Button = ({ text = "Click me", variant = "primary", onClick }: ButtonProps
         backgroundColor,
         color: "white",
       }}
+      onClick={handleClick}
+      {...props}
     >
       {text}
     </button>
   );
 };
-
 export default Button;

@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@astrojs/renderer-preact':
+        specifier: ^0.5.0
+        version: 0.5.0(@babel/core@7.27.4)
       '@tailwindcss/vite':
         specifier: ^4.1.8
         version: 4.1.8(vite@6.3.5(@types/node@22.15.30)(jiti@2.4.2)(lightningcss@1.30.1))
@@ -49,6 +52,10 @@ packages:
   '@astrojs/prism@3.3.0':
     resolution: {integrity: sha512-q8VwfU/fDZNoDOf+r7jUnMC2//H2l0TuQ6FkGJL8vD8nw/q5KiL3DS1KKBI3QhI9UQhpJ5dc7AtqfbXWuOgLCQ==}
     engines: {node: 18.20.8 || ^20.3.0 || >=22.0.0}
+
+  '@astrojs/renderer-preact@0.5.0':
+    resolution: {integrity: sha512-83De5FdGzCt7lqsHWx1Oc+pLgSM6G1xkdlZyV2pU0pyuV/NaTek9qaGNAmh96G28lufeyWKw1m1dVx8UGCSBnw==}
+    engines: {node: ^14.15.0 || >=16.0.0}
 
   '@astrojs/telemetry@3.3.0':
     resolution: {integrity: sha512-UFBgfeldP06qu6khs/yY+q1cDAaArM2/7AEIqQ9Cuvf7B1hNLq0xDrZkct+QoIGyjq56y8IaE2I3CTvG99mlhQ==}
@@ -1478,6 +1485,11 @@ packages:
     resolution: {integrity: sha512-QSa9EBe+uwlGTFmHsPKokv3B/oEMQZxfqW0QqNCyhpa6mB1afzulwn8hihglqAb2pOw+BJgNlmXQ8la2VeHB7w==}
     engines: {node: ^10 || ^12 || >=14}
 
+  preact-render-to-string@5.2.6:
+    resolution: {integrity: sha512-JyhErpYOvBV1hEPwIxc/fHWXPfnEGdRKxc8gFdAZ7XV4tlzyzG847XAyEZqoDnynP88akM4eaHcSOzNcLWFguw==}
+    peerDependencies:
+      preact: '>=10'
+
   preact-render-to-string@6.5.13:
     resolution: {integrity: sha512-iGPd+hKPMFKsfpR2vL4kJ6ZPcFIoWZEcBf0Dpm3zOpdVvj77aY8RlLiQji5OMrngEyaxGogeakTb54uS2FvA6w==}
     peerDependencies:
@@ -1485,6 +1497,9 @@ packages:
 
   preact@10.26.8:
     resolution: {integrity: sha512-1nMfdFjucm5hKvq0IClqZwK4FJkGXhRrQstOQ3P4vp8HxKrJEMFcY6RdBRVTdfQS/UlnX6gfbPuTvaqx/bDoeQ==}
+
+  pretty-format@3.8.0:
+    resolution: {integrity: sha512-WuxUnVtlWL1OfZFQFuqvnvs6MiAGk9UNsBostyBOB0Is9wb5uRESevA6rnl/rkksXaGX3GzZhPup5d6Vp1nFew==}
 
   prismjs@1.30.0:
     resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}
@@ -1983,6 +1998,15 @@ snapshots:
   '@astrojs/prism@3.3.0':
     dependencies:
       prismjs: 1.30.0
+
+  '@astrojs/renderer-preact@0.5.0(@babel/core@7.27.4)':
+    dependencies:
+      '@babel/plugin-transform-react-jsx': 7.27.1(@babel/core@7.27.4)
+      preact: 10.26.8
+      preact-render-to-string: 5.2.6(preact@10.26.8)
+    transitivePeerDependencies:
+      - '@babel/core'
+      - supports-color
 
   '@astrojs/telemetry@3.3.0':
     dependencies:
@@ -3583,11 +3607,18 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  preact-render-to-string@5.2.6(preact@10.26.8):
+    dependencies:
+      preact: 10.26.8
+      pretty-format: 3.8.0
+
   preact-render-to-string@6.5.13(preact@10.26.8):
     dependencies:
       preact: 10.26.8
 
   preact@10.26.8: {}
+
+  pretty-format@3.8.0: {}
 
   prismjs@1.30.0: {}
 

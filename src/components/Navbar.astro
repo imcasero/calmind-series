@@ -1,5 +1,32 @@
 ---
-
+import CalmindLogo from "../assets/CalmindSeriesLogo.png";
+import Button from "./shared/button/Button";
+import LinkButton from "./shared/LinkButton/LinkButton.astro";
 ---
 
-<nav>esto es un navbar basico</nav>
+<nav class="flex flex-col items-center justify-center gap-4 p-8">
+  <Button
+    client:load
+    text="BUTTON"
+    id="button1"
+    variant="primary"
+    icon={CalmindLogo.src}
+    iconPosition="left"
+  />
+
+  <LinkButton
+    text="LINK BUTTON"
+    href="https://example.com"
+    variant="secondary"
+    icon={CalmindLogo.src}
+    iconPosition="left"
+  />
+
+  <LinkButton
+    text="LINK BUTTON"
+    href="https://example.com"
+    variant="secondary"
+    icon={CalmindLogo.src}
+    iconPosition="right"
+  />
+</nav>

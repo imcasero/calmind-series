@@ -4,9 +4,10 @@ import type { ImageMetadata } from "astro";
 interface Props {
   text?: string;
   href?: string;
-  variant?: "primary" | "secondary" | "blue" | "red" | "green";
+  variant?: "primary" | "secondary" | "blue" | "red" | "green" | "yellow";
   icon?: string | ImageMetadata;
   iconPosition?: "left" | "right" | "top" | "bottom";
+  newTab?: boolean; // Nueva prop
 }
 
 const {
@@ -15,14 +16,15 @@ const {
   variant = "primary",
   icon,
   iconPosition = "left",
+  newTab = true,
 } = Astro.props;
 ---
 
 <a
   href={href}
   class={`link-button link-button--${variant} ${iconPosition ? `icon-${iconPosition}` : ""}`}
-  rel="noopener noreferrer"
-  target="_blank"
+  rel={newTab ? "noopener noreferrer" : undefined}
+  target={newTab ? "_blank" : undefined}
 >
   {
     icon && iconPosition === "left" && (
@@ -83,6 +85,10 @@ const {
 
   .link-button--green {
     @apply bg-green-500;
+  }
+  .link-button--yellow {
+    @apply bg-yellow-500;
+    @apply text-black;
   }
   .icon {
     height: 1em;

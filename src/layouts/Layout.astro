@@ -14,7 +14,7 @@ import "../styles/global.css";
   </head>
   <body>
     <Navbar />
-    <div>
+    <div class="max-w-4xl mx-auto px-4">
       <slot />
     </div>
   </body>
@@ -25,12 +25,12 @@ import "../styles/global.css";
     }
     html {
       font-family: system-ui, sans-serif;
-      background: var(--color-jacksons-purple-300);
+      background: var(--color-jacksons-purple-900);
       color: #fff;
     }
 
     body {
-      @apply grid place-content-center;
+      @apply flex flex-col items-center justify-center min-h-screen;
     }
 
     body > div {

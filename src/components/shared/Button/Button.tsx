@@ -10,7 +10,29 @@ interface ButtonProps extends JSX.HTMLAttributes<HTMLButtonElement> {
   props?: JSX.HTMLAttributes<HTMLButtonElement>;
 }
 
-const Button = ({ id, text, variant = "primary", icon, iconPosition = "left", ...props }: ButtonProps): JSX.Element => {
+const renderIcon = (
+  icon: string | ImageMetadata | undefined,
+  position: "left" | "top" | "right" | "bottom",
+  currentPosition: "left" | "right"
+) => {
+  if (!icon || position !== currentPosition) return null;
+  return (
+    <img
+      src={typeof icon === "string" ? icon : icon?.src}
+      alt=""
+      style={{ height: "1.5em" }}
+    />
+  );
+};
+
+const Button = ({
+  id,
+  text,
+  variant = "primary",
+  icon,
+  iconPosition = "left",
+  ...props
+}: ButtonProps): JSX.Element => {
   const colors = {
     primary: "var(--color-jacksons-purple-500)",
     secondary: "var(--color-snuff-500)",
@@ -20,7 +42,6 @@ const Button = ({ id, text, variant = "primary", icon, iconPosition = "left", ..
   };
   const backgroundColor = colors[variant] || colors.primary;
 
-  // Manejo de eventos por ID
   const handleClick = () => {};
 
   return (
@@ -44,13 +65,9 @@ const Button = ({ id, text, variant = "primary", icon, iconPosition = "left", ..
       onClick={handleClick}
       {...props}
     >
-      {icon && iconPosition === "left" && (
-        <img src={typeof icon === "string" ? icon : icon?.src} alt="" style={{ height: "1.5em" }} />
-      )}
+      {renderIcon(icon, iconPosition, "left")}
       <span>{text}</span>
-      {icon && iconPosition === "right" && (
-        <img src={typeof icon === "string" ? icon : icon?.src} alt="" style={{ height: "1.5em" }} />
-      )}
+      {renderIcon(icon, iconPosition, "right")}
     </button>
   );
 };

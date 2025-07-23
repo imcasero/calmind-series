@@ -1,32 +1,39 @@
 ---
+import { Image } from "astro:assets";
 import CalmindLogo from "../assets/CalmindSeriesLogo.png";
-import Button from "./shared/button/Button";
 import LinkButton from "./shared/LinkButton/LinkButton.astro";
 ---
 
-<nav class="flex flex-col items-center justify-center gap-4 p-8">
-  <Button
-    client:load
-    text="BUTTON"
-    id="button1"
-    variant="primary"
-    icon={CalmindLogo.src}
-    iconPosition="left"
-  />
+<nav
+  class="flex items-center justify-between gap-4 p-8 max-w-7xl mx-auto bg-jacksons-purple-900"
+>
+  <div class="flex items-center justify-center gap-1">
+    <Image src={CalmindLogo} alt="Calmind Series Logo" class="h-22 w-22" />
+    <h1 class="text-3xl font-bold text-yellow-500">
+      Pokemon<br />
+      Calmind<br />
+      <span class="text-xl font-semibold text-snuff-500">Series</span>
+    </h1>
+  </div>
 
-  <LinkButton
-    text="LINK BUTTON"
-    href="https://example.com"
-    variant="secondary"
-    icon={CalmindLogo.src}
-    iconPosition="left"
-  />
-
-  <LinkButton
-    text="LINK BUTTON"
-    href="https://example.com"
-    variant="secondary"
-    icon={CalmindLogo.src}
-    iconPosition="right"
-  />
+  <div class="flex items-center justify-end gap-2 flex-wrap">
+    <LinkButton text="Inicio" href="#home" variant="primary" newTab={false} />
+    <LinkButton text="Info" href="#info" variant="primary" newTab={false} />
+    <LinkButton text="Primera" href="#first" variant="primary" newTab={false} />
+    <LinkButton
+      text="Segunda"
+      href="#second"
+      variant="primary"
+      newTab={false}
+    />
+    <LinkButton
+      text="Torneo"
+      href="#championship"
+      variant="primary"
+      newTab={false}
+    />
+    <LinkButton text="Hall" href="#Hall" variant="primary" newTab={false} />
+    <!-- TODO: this button should be a link to the Discord server -->
+    <LinkButton text="Unete" href="#first" variant="yellow" />
+  </div>
 </nav>

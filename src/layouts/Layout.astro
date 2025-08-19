@@ -25,16 +25,17 @@ import "../styles/global.css";
     }
     html {
       font-family: system-ui, sans-serif;
-      background: var(--color-jacksons-purple-900);
       color: #fff;
     }
 
     body {
-      @apply flex flex-col items-center justify-center min-h-screen;
-    }
-
-    body > div {
-      @apply container;
+      @apply flex flex-col items-center justify-start min-h-screen;
+      /* Unified background (gradient + dotted pattern) */
+      background-image:
+        radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--color-jacksons-purple-950), var(--color-jacksons-purple-800));
+      background-size: 18px 18px, auto;
+      background-attachment: fixed, fixed;
     }
   </style>
 </html>

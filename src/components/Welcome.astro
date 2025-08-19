@@ -1,18 +1,41 @@
 ---
-import CalmindSeriesLogo from "../assets/CalmindSeriesLogo.png";
-import { Image } from "astro:assets";
+import LinkButton from "./shared/LinkButton/LinkButton.astro";
 ---
 
-<div
-  id="container"
-  class="min-h-screen min-w-full flex flex-col items-center justify-center"
->
-  <h1 class="text-3xl font-bold text-white">Hellou</h1>
-  <Image
-    src={CalmindSeriesLogo}
-    alt="Calmind Series Logo"
-    width={200}
-    height={200}
-  />
-</div>
-˜
+
+<section id="home" class="relative w-full">
+  <div class="mx-auto max-w-5xl px-4 pt-16 pb-20 md:pt-24 md:pb-28 text-center">
+
+    <h1 class="text-yellow-300 drop-shadow-md font-black tracking-wide text-5xl sm:text-6xl md:text-7xl leading-tight">
+      POKEMON
+    </h1>
+    <p class="text-white/95 drop-shadow font-extrabold text-2xl sm:text-3xl md:text-4xl mt-1">
+      CALMIND SERIES
+    </p>
+
+    <p class="text-white/90 mt-6 text-sm sm:text-base">
+      Competición Amateur de Pokemon
+    </p>
+    <p class="text-white/85 mt-2 text-sm sm:text-base">
+      Combates estratégicos · Accesible para todos · Demuestra tu habilidad
+    </p>
+
+    <div class="mt-8 flex items-center justify-center gap-4 sm:gap-5 flex-wrap">
+      <div class="scale-110">
+        <LinkButton text="Participar" href="#participar" variant="red" newTab={false} />
+      </div>
+      <div class="scale-110">
+        <LinkButton text="Normativa" href="#normativa" variant="blue" newTab={false} />
+      </div>
+    </div>
+
+
+  </div>
+
+  <div class="border-t-4 border-yellow-400 max-w-5xl mx-auto"></div>
+</section>
+
+<style>
+  @reference "../styles/global.css";
+
+</style>

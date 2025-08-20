@@ -1,0 +1,130 @@
+---
+import LinkButton from "../LinkButton/LinkButton.astro";
+
+interface Props {
+  title: string;
+  subtitle: string;
+  description: string;
+  variant: "gold" | "purple";
+  icon: string;
+  buttonText?: string;
+  buttonHref?: string;
+}
+
+const {
+  title,
+  subtitle,
+  description,
+  variant = "gold",
+  icon,
+  buttonText = "Ver clasificación",
+  buttonHref = "#clasificacion"
+} = Astro.props;
+
+// Configuración de colores y estilos por variante
+const cardConfig = {
+  gold: {
+    bgGradient: "from-yellow-400 to-yellow-500",
+    borderColor: "border-yellow-600",
+    shadowColor: "shadow-yellow-400/30",
+    hoverShadow: "hover:shadow-yellow-400/40",
+    cornerColor: "bg-red-600 border-red-800",
+    iconBg: "bg-[color:var(--color-jacksons-purple-700)]",
+    iconBorder: "border-[color:var(--color-jacksons-purple-600)]",
+    iconColor: "text-yellow-400",
+    iconShadow: "shadow-yellow-400/40",
+    titleColor: "text-gray-900",
+    subtitleColor: "text-gray-700",
+    descriptionColor: "text-gray-900",
+    buttonVariant: "primary" as const
+  },
+  purple: {
+    bgGradient: "from-[color:var(--color-jacksons-purple-500)] to-[color:var(--color-jacksons-purple-600)]",
+    borderColor: "border-[color:var(--color-jacksons-purple-700)]",
+    shadowColor: "shadow-jacksons-purple-500/30",
+    hoverShadow: "hover:shadow-jacksons-purple-500/40",
+    cornerColor: "bg-blue-600 border-blue-800",
+    iconBg: "bg-emerald-600",
+    iconBorder: "border-emerald-700",
+    iconColor: "text-white",
+    iconShadow: "shadow-emerald-500/40",
+    titleColor: "text-white",
+    subtitleColor: "text-gray-200",
+    descriptionColor: "text-gray-200",
+    buttonVariant: "green" as const
+  }
+};
+
+const config = cardConfig[variant];
+---
+
+<div class={`
+  relative p-6 md:p-8 text-center 
+  min-h-96 flex items-center justify-center 
+  bg-gradient-to-br ${config.bgGradient}
+  border-4 ${config.borderColor}
+  shadow-lg ${config.shadowColor}
+  transition-all duration-300 ease-in-out
+  hover:shadow-xl ${config.hoverShadow}
+  hover:-translate-y-2 hover:scale-[1.02]
+  group
+`}>
+  <!-- Esquinas decorativas -->
+  <div class={`absolute -top-2.5 -left-2.5 w-5 h-5 ${config.cornerColor}`}></div>
+  <div class={`absolute -top-2.5 -right-2.5 w-5 h-5 ${config.cornerColor}`}></div>
+  <div class={`absolute -bottom-2.5 -left-2.5 w-5 h-5 ${config.cornerColor}`}></div>
+  <div class={`absolute -bottom-2.5 -right-2.5 w-5 h-5 ${config.cornerColor}`}></div>
+  
+  <div class="relative z-10 w-full">
+    <!-- Icono -->
+    <div class={`
+      w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 
+      flex items-center justify-center 
+      border-4 ${config.iconBorder}
+      ${config.iconBg} ${config.iconColor}
+      shadow-lg ${config.iconShadow}
+      transition-transform duration-300 
+      group-hover:scale-110 group-hover:rotate-6
+    `}>
+      <svg class="w-6 h-6 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 24 24">
+        <path d={icon}></path>
+      </svg>
+    </div>
+
+    <!-- Título -->
+    <h3 class={`
+      text-xl md:text-2xl font-black uppercase tracking-wider mb-2 
+      ${config.titleColor} drop-shadow-sm
+      transition-all duration-300
+      group-hover:scale-105
+    `}>
+      {title}
+    </h3>
+    
+    <!-- Subtítulo -->
+    <p class={`
+      text-sm md:text-base font-semibold mb-6 
+      ${config.subtitleColor} opacity-90
+    `}>
+      {subtitle}
+    </p>
+    
+    <!-- Descripción -->
+    <p class={`
+      text-xs md:text-sm leading-relaxed mb-8 
+      ${config.descriptionColor} opacity-85
+    `}>
+      {description}
+    </p>
+    
+    <!-- Botón usando LinkButton -->
+    <div class="mt-auto transform transition-transform duration-300 group-hover:scale-105">
+      <LinkButton 
+        text={buttonText}
+        href={buttonHref}
+        variant={config.buttonVariant}
+        newTab={false}
+      />
+    </div>
+  </div>
+</div>

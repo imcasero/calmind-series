@@ -1,0 +1,146 @@
+{
+  "primera": [
+    {
+      "id": 1,
+      "name": "Entrenador1",
+      "avatar": "1",
+      "pj": 8,
+      "pg": 7,
+      "pp": 1,
+      "points": 21,
+      "isPromoted": true,
+      "isChampion": true
+    },
+    {
+      "id": 2,
+      "name": "Entrenador2",
+      "avatar": "2",
+      "pj": 8,
+      "pg": 6,
+      "pp": 2,
+      "points": 18,
+      "isPromoted": true
+    },
+    {
+      "id": 3,
+      "name": "Entrenador3",
+      "avatar": "3",
+      "pj": 8,
+      "pg": 5,
+      "pp": 3,
+      "points": 15
+    },
+    {
+      "id": 4,
+      "name": "Entrenador4",
+      "avatar": "4",
+      "pj": 8,
+      "pg": 4,
+      "pp": 4,
+      "points": 12
+    },
+    {
+      "id": 5,
+      "name": "Entrenador5",
+      "avatar": "5",
+      "pj": 8,
+      "pg": 3,
+      "pp": 5,
+      "points": 9
+    },
+    {
+      "id": 6,
+      "name": "Entrenador6",
+      "avatar": "6",
+      "pj": 8,
+      "pg": 2,
+      "pp": 6,
+      "points": 6
+    },
+    {
+      "id": 7,
+      "name": "Entrenador7",
+      "avatar": "7",
+      "pj": 8,
+      "pg": 1,
+      "pp": 7,
+      "points": 3
+    },
+    {
+      "id": 8,
+      "name": "Entrenador8",
+      "avatar": "8",
+      "pj": 8,
+      "pg": 0,
+      "pp": 8,
+      "points": 0
+    }
+  ],
+  "segunda": [
+    {
+      "id": 1,
+      "name": "Entrenador S1",
+      "avatar": "1",
+      "pj": 8,
+      "pg": 7,
+      "pp": 1,
+      "points": 21,
+      "isPromoted": true
+    },
+    {
+      "id": 2,
+      "name": "Entrenador S2",
+      "avatar": "2",
+      "pj": 8,
+      "pg": 6,
+      "pp": 2,
+      "points": 18,
+      "isPromoted": true
+    },
+    {
+      "id": 3,
+      "name": "Entrenador S3",
+      "avatar": "3",
+      "pj": 8,
+      "pg": 5,
+      "pp": 3,
+      "points": 15
+    },
+    {
+      "id": 4,
+      "name": "Entrenador S4",
+      "avatar": "4",
+      "pj": 8,
+      "pg": 4,
+      "pp": 4,
+      "points": 12
+    },
+    {
+      "id": 5,
+      "name": "Entrenador S5",
+      "avatar": "5",
+      "pj": 8,
+      "pg": 3,
+      "pp": 5,
+      "points": 9
+    },
+    {
+      "id": 6,
+      "name": "Entrenador S6",
+      "avatar": "6",
+      "pj": 8,
+      "pg": 2,
+      "pp": 6,
+      "points": 6
+    },
+    {
+      "id": 7,
+      "name": "Entrenador S7",
+      "avatar": "7",
+      "pj": 8,
+      "pg": 1,
+      "pp": 7,
+      "points": 3
+    }
+  ]
+}

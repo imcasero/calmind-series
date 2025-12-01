@@ -30,27 +30,57 @@ import "../styles/global.css";
     html {
       font-family: system-ui, sans-serif;
       color: #fff;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
     }
 
     body {
       @apply flex flex-col items-center justify-start min-h-screen;
-      /* Unified background (gradient + dotted pattern) */
+      /* Retro Nintendo Background - pixelated grid pattern */
+      background-color: #2d2660;
       background-image:
-        radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--color-jacksons-purple-950), var(--color-jacksons-purple-800));
-      background-size: 18px 18px, auto;
-      background-attachment: fixed, fixed;
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, transparent 1px, transparent 2px, rgba(255,255,255,0.03) 3px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0px, transparent 1px, transparent 2px, rgba(255,255,255,0.03) 3px),
+        radial-gradient(circle at 20% 50%, rgba(107, 91, 208, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(247, 42, 155, 0.2) 0%, transparent 50%),
+        linear-gradient(180deg, #1f1a45 0%, #2d2660 50%, #1f1a45 100%);
+      background-attachment: fixed;
     }
 
     /* Clase para títulos estilo Pokémon */
     .pokemon-title {
       font-family: var(--font-pokemon);
       letter-spacing: 0.05em;
+      text-shadow:
+        3px 3px 0px rgba(0,0,0,0.5),
+        -1px -1px 0px rgba(255,255,255,0.1);
     }
 
     /* Ajustes de tamaño para títulos con fuente Pokémon */
     h1.pokemon-title {
       line-height: 1.3;
+    }
+
+    /* Retro pixelated borders */
+    .retro-border {
+      border-style: solid;
+      box-shadow:
+        inset -2px -2px 0px rgba(0,0,0,0.3),
+        inset 2px 2px 0px rgba(255,255,255,0.2);
+    }
+
+    /* Retro button effect - simplified */
+    .retro-button {
+      transition: all 0.2s ease;
+    }
+
+    .retro-button:hover {
+      transform: translateY(-2px);
+    }
+
+    .retro-button:active {
+      transform: translateY(0px);
     }
   </style>
 </html>

@@ -19,21 +19,21 @@ export interface Props {
 const { players, showPromotionZones = false } = Astro.props;
 ---
 
-<div class="bg-jacksons-purple-800/80 rounded-lg border-4 border-yellow-400 overflow-hidden shadow-2xl">
-  <div class="bg-jacksons-purple-900/90 p-4 border-b-4 border-yellow-400">
-    <h3 class="text-yellow-300 drop-shadow-md font-black tracking-wide text-xl">Clasificación actual</h3>
+<div class="retro-border bg-jacksons-purple-800 border-4 border-retro-gold-600 rounded-lg overflow-hidden shadow-2xl">
+  <div class="bg-jacksons-purple-900 p-4 border-b-4 border-retro-gold-500">
+    <h3 class="pokemon-title text-retro-gold-400 drop-shadow-md font-black tracking-wide text-xl">Clasificación actual</h3>
   </div>
   
   <div class="overflow-x-auto">
     <table class="w-full">
-      <thead class="bg-jacksons-purple-700/80">
-        <tr class="text-left border-b-2 border-yellow-400">
-          <th class="px-4 py-3 text-yellow-300 drop-shadow font-bold">Pos.</th>
-          <th class="px-4 py-3 text-yellow-300 drop-shadow font-bold">Entrenador</th>
-          <th class="px-4 py-3 text-yellow-300 drop-shadow font-bold text-center">PJ</th>
-          <th class="px-4 py-3 text-yellow-300 drop-shadow font-bold text-center">PG</th>
-          <th class="px-4 py-3 text-yellow-300 drop-shadow font-bold text-center">PP</th>
-          <th class="px-4 py-3 text-yellow-300 drop-shadow font-bold text-center">Puntos</th>
+      <thead class="bg-jacksons-purple-700">
+        <tr class="text-left border-b-4 border-retro-gold-500">
+          <th class="px-4 py-3 text-retro-gold-300 drop-shadow font-bold">Pos.</th>
+          <th class="px-4 py-3 text-retro-gold-300 drop-shadow font-bold">Entrenador</th>
+          <th class="px-4 py-3 text-retro-gold-300 drop-shadow font-bold text-center">PJ</th>
+          <th class="px-4 py-3 text-retro-gold-300 drop-shadow font-bold text-center">PG</th>
+          <th class="px-4 py-3 text-retro-gold-300 drop-shadow font-bold text-center">PP</th>
+          <th class="px-4 py-3 text-retro-gold-300 drop-shadow font-bold text-center">Puntos</th>
         </tr>
       </thead>
       <tbody>
@@ -43,14 +43,14 @@ const { players, showPromotionZones = false } = Astro.props;
           const isPromoted = player.isPromoted && !isChampion;
           const isRelegation = showPromotionZones && position > players.length - 2;
           
-          let rowClass = "border-b-2 border-jacksons-purple-600/70 hover:bg-jacksons-purple-700/50 transition-colors";
-          
+          let rowClass = "border-b-2 border-jacksons-purple-600 hover:bg-jacksons-purple-700 transition-colors";
+
           if (isChampion) {
-            rowClass += " bg-yellow-900/40 border-yellow-400";
+            rowClass += " bg-retro-gold-900/60 border-retro-gold-600";
           } else if (isPromoted) {
-            rowClass += " bg-green-900/40 border-green-400";
+            rowClass += " bg-retro-cyan-900/60 border-retro-cyan-600";
           } else if (isRelegation) {
-            rowClass += " bg-red-900/40 border-red-400";
+            rowClass += " bg-snuff-900/60 border-snuff-600";
           }
           
           return (
@@ -73,7 +73,7 @@ const { players, showPromotionZones = false } = Astro.props;
               <td class="px-4 py-3 text-center text-white drop-shadow font-bold">{player.pj}</td>
               <td class="px-4 py-3 text-center text-green-400 drop-shadow font-bold">{player.pg}</td>
               <td class="px-4 py-3 text-center text-red-400 drop-shadow font-bold">{player.pp}</td>
-              <td class="px-4 py-3 text-center text-yellow-300 drop-shadow font-black text-lg">{player.points}</td>
+              <td class="px-4 py-3 text-center text-retro-gold-400 drop-shadow font-black text-lg">{player.points}</td>
             </tr>
           );
         })}
@@ -81,7 +81,7 @@ const { players, showPromotionZones = false } = Astro.props;
     </table>
   </div>
   
-  <div class="bg-jacksons-purple-900/90 p-4 text-sm text-white/90 border-t-4 border-yellow-400">
+  <div class="bg-jacksons-purple-900 p-4 text-sm text-white/90 border-t-4 border-retro-gold-500">
     <div class="flex flex-wrap gap-4 justify-center">
       <span class="drop-shadow font-semibold"><strong>PJ:</strong> Partidos jugados</span>
       <span class="drop-shadow font-semibold"><strong>PG:</strong> Partidos ganados</span>

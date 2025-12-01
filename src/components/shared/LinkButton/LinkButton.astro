@@ -58,38 +58,64 @@ const {
     gap: 0.5rem;
     justify-content: center;
     align-items: center;
-    padding: 0rem 2rem;
+    padding: 0.75rem 2rem;
     text-align: center;
-    border-top: 3px solid black;
-    border-bottom: 3px solid black;
-    border-radius: 5px;
-    clip-path: polygon(0 100%, 10% 0, 100% 0, 100% 0, 90% 100%, 0 100%);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 3px solid rgba(0, 0, 0, 0.3);
+    box-shadow:
+      inset -2px -2px 0px rgba(0, 0, 0, 0.2),
+      inset 2px 2px 0px rgba(255, 255, 255, 0.2);
     cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .link-button:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0px 4px 8px rgba(0, 0, 0, 0.3),
+      inset -2px -2px 0px rgba(0, 0, 0, 0.2),
+      inset 2px 2px 0px rgba(255, 255, 255, 0.2);
+  }
+
+  .link-button:active {
+    transform: translateY(0px);
+    box-shadow:
+      inset -2px -2px 0px rgba(0, 0, 0, 0.3),
+      inset 2px 2px 0px rgba(255, 255, 255, 0.1);
   }
 
   .link-button--primary {
-    @apply bg-[color:var(--color-jacksons-purple-500)];
+    @apply bg-[color:var(--color-jacksons-purple-600)];
+    @apply text-white;
   }
 
   .link-button--secondary {
-    @apply bg-[color:var(--color-snuff-500)];
+    @apply bg-[color:var(--color-snuff-600)];
+    @apply text-white;
   }
 
   .link-button--blue {
-    @apply bg-blue-500;
+    @apply bg-blue-600;
+    @apply text-white;
   }
 
   .link-button--red {
-    @apply bg-red-500;
+    @apply bg-red-600;
+    @apply text-white;
   }
 
   .link-button--green {
-    @apply bg-green-500;
+    @apply bg-green-600;
+    @apply text-white;
   }
+
   .link-button--yellow {
-    @apply bg-yellow-500;
-    @apply text-black;
+    @apply bg-[color:var(--color-retro-gold-500)];
+    @apply text-jacksons-purple-900;
   }
+
   .icon {
     height: 1em;
   }

@@ -21,105 +21,166 @@ const {
   buttonHref = "#clasificacion"
 } = Astro.props;
 
-// Configuración de colores y estilos por variante
+// Configuración de colores y estilos por variante - Pokédex Style
 const cardConfig = {
   gold: {
-    bgGradient: "from-yellow-400 to-yellow-500",
-    borderColor: "border-yellow-600",
-    shadowColor: "shadow-yellow-400/30",
-    hoverShadow: "hover:shadow-yellow-400/40",
-    cornerColor: "bg-red-600 border-red-800",
-    iconBg: "bg-[color:var(--color-jacksons-purple-700)]",
-    iconBorder: "border-[color:var(--color-jacksons-purple-600)]",
-    iconColor: "text-yellow-400",
-    iconShadow: "shadow-yellow-400/40",
-    titleColor: "text-gray-900",
-    subtitleColor: "text-gray-700",
-    descriptionColor: "text-gray-900",
-    buttonVariant: "primary" as const
+    bgMain: "bg-jacksons-purple-900",
+    headerBg: "bg-retro-gold-500",
+    headerText: "text-jacksons-purple-950",
+    borderColor: "border-retro-gold-500",
+    accentBorder: "border-retro-gold-400",
+    iconBg: "bg-retro-gold-600",
+    iconBorder: "border-retro-gold-700",
+    iconColor: "text-retro-gold-100",
+    numberBg: "bg-retro-gold-700",
+    numberText: "text-retro-gold-50",
+    titleColor: "text-retro-gold-300",
+    subtitleColor: "text-retro-gold-200",
+    descriptionColor: "text-gray-300",
+    statLabel: "text-retro-gold-300",
+    buttonVariant: "yellow" as const
   },
   purple: {
-    bgGradient: "from-[color:var(--color-jacksons-purple-500)] to-[color:var(--color-jacksons-purple-600)]",
-    borderColor: "border-[color:var(--color-jacksons-purple-700)]",
-    shadowColor: "shadow-jacksons-purple-500/30",
-    hoverShadow: "hover:shadow-jacksons-purple-500/40",
-    cornerColor: "bg-blue-600 border-blue-800",
-    iconBg: "bg-emerald-600",
-    iconBorder: "border-emerald-700",
-    iconColor: "text-white",
-    iconShadow: "shadow-emerald-500/40",
-    titleColor: "text-white",
-    subtitleColor: "text-gray-200",
-    descriptionColor: "text-gray-200",
-    buttonVariant: "green" as const
+    bgMain: "bg-jacksons-purple-900",
+    headerBg: "bg-retro-cyan-600",
+    headerText: "text-white",
+    borderColor: "border-retro-cyan-600",
+    accentBorder: "border-retro-cyan-500",
+    iconBg: "bg-retro-cyan-700",
+    iconBorder: "border-retro-cyan-800",
+    iconColor: "text-retro-cyan-200",
+    numberBg: "bg-retro-cyan-800",
+    numberText: "text-retro-cyan-100",
+    titleColor: "text-retro-cyan-300",
+    subtitleColor: "text-retro-cyan-200",
+    descriptionColor: "text-gray-300",
+    statLabel: "text-retro-cyan-300",
+    buttonVariant: "primary" as const
   }
 };
 
 const config = cardConfig[variant];
 ---
 
+<!-- Pokédex Entry Card -->
 <div class={`
-  relative p-6 md:p-8 text-center 
-  min-h-96 flex items-center justify-center 
-  bg-gradient-to-br ${config.bgGradient}
+  retro-border
+  relative overflow-hidden
+  ${config.bgMain}
   border-4 ${config.borderColor}
-  shadow-lg ${config.shadowColor}
+  shadow-2xl
   transition-all duration-300 ease-in-out
-  hover:shadow-xl ${config.hoverShadow}
-  hover:-translate-y-2 hover:scale-[1.02]
+  hover:shadow-2xl hover:-translate-y-2
   group
 `}>
-  <!-- Esquinas decorativas -->
-  <div class={`absolute -top-2.5 -left-2.5 w-5 h-5 ${config.cornerColor}`}></div>
-  <div class={`absolute -top-2.5 -right-2.5 w-5 h-5 ${config.cornerColor}`}></div>
-  <div class={`absolute -bottom-2.5 -left-2.5 w-5 h-5 ${config.cornerColor}`}></div>
-  <div class={`absolute -bottom-2.5 -right-2.5 w-5 h-5 ${config.cornerColor}`}></div>
-  
-  <div class="relative z-10 w-full">
-    <!-- Icono -->
-    <div class={`
-      w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 
-      flex items-center justify-center 
-      border-4 ${config.iconBorder}
-      ${config.iconBg} ${config.iconColor}
-      shadow-lg ${config.iconShadow}
-      transition-transform duration-300 
-      group-hover:scale-110 group-hover:rotate-6
-    `}>
-      <svg class="w-6 h-6 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 24 24">
-        <path d={icon}></path>
-      </svg>
+  <!-- Header Pokédex Style -->
+  <div class={`
+    ${config.headerBg}
+    p-4
+    border-b-4 ${config.accentBorder}
+    flex items-center justify-between
+  `}>
+    <div class="flex items-center gap-3">
+      <!-- Pokédex Number -->
+      <div class={`
+        ${config.numberBg}
+        ${config.numberText}
+        px-3 py-1
+        font-bold text-sm
+        border-2 border-black/30
+      `}>
+        #{variant === "gold" ? "001" : "002"}
+      </div>
+
+      <!-- Title -->
+      <h3 class={`
+        pokemon-title
+        ${config.headerText}
+        text-lg md:text-xl
+        drop-shadow-md
+      `}>
+        {title}
+      </h3>
     </div>
 
-    <!-- Título -->
-    <h3 class={`
-      text-xl md:text-2xl font-black uppercase tracking-wider mb-2 
-      ${config.titleColor} drop-shadow-sm
-      transition-all duration-300
-      group-hover:scale-105
+    <!-- Pokédex Icon Circle -->
+    <div class="flex gap-1">
+      <div class="w-3 h-3 rounded-full bg-red-500 border-2 border-red-700"></div>
+      <div class="w-3 h-3 rounded-full bg-yellow-400 border-2 border-yellow-600"></div>
+      <div class="w-3 h-3 rounded-full bg-green-400 border-2 border-green-600"></div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="p-6">
+    <!-- Icon Display -->
+    <div class="flex items-center gap-6 mb-6">
+      <div class={`
+        w-20 h-20
+        flex items-center justify-center
+        ${config.iconBg}
+        border-4 ${config.iconBorder}
+        ${config.iconColor}
+        transition-transform duration-300
+        group-hover:scale-110
+      `}>
+        <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+          <path d={icon}></path>
+        </svg>
+      </div>
+
+      <div class="flex-1">
+        <p class={`
+          ${config.subtitleColor}
+          font-bold text-sm mb-2
+          uppercase tracking-wide
+        `}>
+          {subtitle}
+        </p>
+        <div class={`
+          ${config.titleColor}
+          font-bold text-2xl
+          tracking-tight
+        `}>
+          DIVISIÓN
+        </div>
+      </div>
+    </div>
+
+    <!-- Description Box -->
+    <div class={`
+      border-2 ${config.accentBorder}
+      bg-black/20
+      p-4 mb-6
+      min-h-24
     `}>
-      {title}
-    </h3>
-    
-    <!-- Subtítulo -->
-    <p class={`
-      text-sm md:text-base font-semibold mb-6 
-      ${config.subtitleColor} opacity-90
+      <p class={`
+        ${config.descriptionColor}
+        text-sm leading-relaxed
+      `}>
+        {description}
+      </p>
+    </div>
+
+    <!-- Stats Display -->
+    <div class={`
+      border-t-2 ${config.accentBorder}
+      pt-4 mb-6
+      grid grid-cols-2 gap-4
     `}>
-      {subtitle}
-    </p>
-    
-    <!-- Descripción -->
-    <p class={`
-      text-xs md:text-sm leading-relaxed mb-8 
-      ${config.descriptionColor} opacity-85
-    `}>
-      {description}
-    </p>
-    
-    <!-- Botón usando LinkButton -->
-    <div class="mt-auto transform transition-transform duration-300 group-hover:scale-105">
-      <LinkButton 
+      <div>
+        <div class={`${config.statLabel} text-xs uppercase tracking-wide mb-1`}>Tipo</div>
+        <div class="text-white font-bold">{variant === "gold" ? "Competitivo" : "Ascenso"}</div>
+      </div>
+      <div>
+        <div class={`${config.statLabel} text-xs uppercase tracking-wide mb-1`}>Nivel</div>
+        <div class="text-white font-bold">{variant === "gold" ? "Elite" : "Intermedio"}</div>
+      </div>
+    </div>
+
+    <!-- Action Button -->
+    <div class="transform transition-transform duration-300 group-hover:scale-105">
+      <LinkButton
         text={buttonText}
         href={buttonHref}
         variant={config.buttonVariant}

@@ -1,5 +1,5 @@
 ---
-
+import LinkButton from "./shared/LinkButton/LinkButton.astro";
 ---
 
 <section id="info" class="w-full">
@@ -23,9 +23,22 @@
       </div>
     </div>
 
-    <div class="mt-8 text-center">
-      {/** Oculto por ahora a petición: */}
-      {/** <LinkButton text="Conoce más sobre nosotros" href="#about" variant="green" newTab={false} /> */}
+    <!-- Social Media -->
+    <div class="mt-8 flex justify-center">
+      <a
+        href="https://x.com/calmind_team"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="group flex items-center gap-2 bg-jacksons-purple-700 hover:bg-jacksons-purple-600 border-3 border-retro-cyan-500 retro-border px-4 py-2 transition-all duration-300 hover:-translate-y-1"
+        aria-label="Síguenos en Twitter/X"
+      >
+        <svg class="w-4 h-4 text-retro-cyan-300 group-hover:text-retro-cyan-200 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        <span class="text-white font-bold uppercase tracking-wide text-xs">
+          Síguenos en X
+        </span>
+      </a>
     </div>
   </div>
   <div class="border-t-4 border-retro-gold-500 max-w-5xl mx-auto opacity-60"></div>

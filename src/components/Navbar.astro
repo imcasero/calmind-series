@@ -5,9 +5,12 @@ import LinkButton from "./shared/LinkButton/LinkButton.astro";
 ---
 
 <nav
-  class="flex items-center justify-around gap-4 p-6 md:p-8 max-w-7xl mx-auto bg-transparent w-full "
+  class="flex flex-col md:flex-row items-center justify-between md:justify-around gap-4 p-6 md:p-8 max-w-7xl mx-auto bg-transparent w-full"
 >
-  <a href="/" class="flex items-center justify-center gap-1 hover:opacity-80 transition-opacity cursor-pointer">
+  <a
+    href="/"
+    class="flex items-center justify-center gap-1 hover:opacity-80 transition-opacity cursor-pointer"
+  >
     <Image src={CalmindLogo} alt="Calmind Series Logo" class="h-22 w-22" />
     <h1 class="pokemon-title text-3xl font-bold text-yellow-500">
       Pokemon<br />
@@ -16,8 +19,13 @@ import LinkButton from "./shared/LinkButton/LinkButton.astro";
     </h1>
   </a>
 
-  <div class="flex items-center justify-end gap-2 flex-wrap">
-    <LinkButton text="Primera" href="/primera-division" variant="primary" newTab={false} />
+  <div class="flex items-center justify-center md:justify-end gap-2 flex-wrap">
+    <LinkButton
+      text="Primera"
+      href="/primera-division"
+      variant="primary"
+      newTab={false}
+    />
     <LinkButton
       text="Segunda"
       href="/segunda-division"
@@ -27,6 +35,11 @@ import LinkButton from "./shared/LinkButton/LinkButton.astro";
     <!-- TODO: this button should be a link to the hall of fame tab -->
     <!-- <LinkButton text="Hall" href="/hall-of-fame" variant="primary" newTab={false} /> -->
     <!-- Discord server invitation link -->
-    <LinkButton text="Unete!" href="https://discord.gg/97GeP7uS" variant="yellow" newTab={true} />
+    <LinkButton
+      text="Unete!"
+      href="https://discord.gg/97GeP7uS"
+      variant="yellow"
+      newTab={true}
+    />
   </div>
 </nav>

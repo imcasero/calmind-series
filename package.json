@@ -2,6 +2,9 @@
   "name": "calmind-series",
   "type": "module",
   "version": "0.0.4",
+  "license": "UNLICENSED",
+  "private": true,
+  "author": "Diego Casero Martín <diegocaserosmr@gmail.com>",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",

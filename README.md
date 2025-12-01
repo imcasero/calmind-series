@@ -1,48 +1,63 @@
-# Astro Starter Kit: Basics
+# Pokémon CalMind Series
 
-```sh
-pnpm create astro@latest -- --template basics
-```
+Sitio web oficial de la competición amateur de Pokémon CalMind Series.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/basics)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/basics/devcontainer.json)
+## ⚖️ Licencia y Copyright
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+**Copyright © 2025 Diego Casero Martín. Todos los derechos reservados.**
 
-![just-the-basics](https://github.com/withastro/astro/assets/2244813/a0a5533c-a856-4198-8470-2d67b1d7c554)
+Este proyecto y todo su código fuente están protegidos por derechos de autor.
+**NO está permitido copiar, modificar, distribuir o utilizar este código sin autorización expresa por escrito.**
 
-## 🚀 Project Structure
+Para consultas sobre licencias o permisos, contacta a:
+- **Email:** diegocaserosmr@gmail.com
+- **Discord:** https://discord.gg/97GeP7uS
 
-Inside of your Astro project, you'll see the following folders and files:
+Ver el archivo [LICENSE](LICENSE) para más detalles legales.
+
+---
+
+## 🚀 Comandos de Desarrollo
+
+Todos los comandos se ejecutan desde la raíz del proyecto:
+
+| Comando                | Acción                                           |
+| :--------------------- | :----------------------------------------------- |
+| `pnpm install`         | Instala las dependencias                         |
+| `pnpm dev`             | Inicia el servidor de desarrollo en `localhost:4321` |
+| `pnpm build`           | Construye el sitio para producción en `./dist/`  |
+| `pnpm preview`         | Vista previa local del build de producción       |
+
+## 🛠️ Tecnologías
+
+- **Astro 5.9** - Framework estático
+- **Tailwind CSS 4** - Estilos
+- **Preact** - Componentes interactivos
+- **TypeScript** - Tipado
+
+## 📁 Estructura del Proyecto
 
 ```text
 /
-├── public/
-│   └── favicon.svg
+├── public/              # Archivos estáticos
 ├── src/
-│   ├── layouts/
-│   │   └── Layout.astro
-│   └── pages/
-│       └── index.astro
+│   ├── assets/         # Imágenes y recursos
+│   ├── components/     # Componentes reutilizables
+│   ├── layouts/        # Layouts de página
+│   ├── pages/          # Páginas del sitio
+│   └── styles/         # Estilos globales
 └── package.json
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+## 🎨 Características
 
-## 🧞 Commands
+- Diseño retro inspirado en Pokémon Nintendo (Game Boy/DS)
+- Animaciones pixel art de nubes flotantes
+- Fuente Press Start 2P para títulos estilo Pokémon
+- Cards estilo Pokédex para las divisiones
+- Paleta de colores retro (dorado, cyan, morado)
+- Totalmente responsive
 
-All commands are run from the root of the project, from a terminal:
+---
 
-| Command                | Action                                           |
-| :--------------------- | :----------------------------------------------- |
-| `pnpm install`         | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+**© 2025 Diego Casero Martín - All Rights Reserved**

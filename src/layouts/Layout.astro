@@ -16,6 +16,14 @@ import "../styles/global.css";
     <title>Astro Basics</title>
   </head>
   <body>
+    <!-- Pixel Art Clouds Animation -->
+    <div class="clouds-container">
+      <div class="cloud cloud-1"></div>
+      <div class="cloud cloud-2"></div>
+      <div class="cloud cloud-3"></div>
+      <div class="cloud cloud-4"></div>
+    </div>
+
     <Navbar />
     <div class="max-w-4xl mx-auto px-4">
       <slot />
@@ -81,6 +89,116 @@ import "../styles/global.css";
 
     .retro-button:active {
       transform: translateY(0px);
+    }
+
+    /* Pokemon-style Pixel Art Clouds Animation */
+    .clouds-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .cloud {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      opacity: 0.4;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+      transform: scale(1.5);
+    }
+
+    /* Pixel art cloud using box-shadow - larger version */
+    .cloud::before {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: white;
+      box-shadow:
+        /* Row 1 */
+        24px 0 0 white,
+        36px 0 0 white,
+        48px 0 0 white,
+        /* Row 2 */
+        12px 12px 0 white,
+        24px 12px 0 white,
+        36px 12px 0 white,
+        48px 12px 0 white,
+        60px 12px 0 white,
+        72px 12px 0 white,
+        /* Row 3 */
+        0px 24px 0 white,
+        12px 24px 0 white,
+        24px 24px 0 white,
+        36px 24px 0 white,
+        48px 24px 0 white,
+        60px 24px 0 white,
+        72px 24px 0 white,
+        84px 24px 0 white,
+        /* Row 4 */
+        12px 36px 0 white,
+        24px 36px 0 white,
+        36px 36px 0 white,
+        48px 36px 0 white,
+        60px 36px 0 white,
+        72px 36px 0 white;
+    }
+
+    .cloud-1 {
+      top: 10%;
+      animation: float-cloud-left-to-right 60s linear infinite;
+      animation-delay: 0s;
+    }
+
+    .cloud-2 {
+      top: 30%;
+      animation: float-cloud-right-to-left 80s linear infinite;
+      animation-delay: -25s;
+      opacity: 0.35;
+    }
+
+    .cloud-3 {
+      top: 60%;
+      animation: float-cloud-left-to-right 70s linear infinite;
+      animation-delay: -45s;
+      opacity: 0.3;
+    }
+
+    .cloud-4 {
+      top: 80%;
+      animation: float-cloud-right-to-left 90s linear infinite;
+      animation-delay: -60s;
+      opacity: 0.25;
+    }
+
+    @keyframes float-cloud-left-to-right {
+      from {
+        left: -200px;
+      }
+      to {
+        left: 100%;
+      }
+    }
+
+    @keyframes float-cloud-right-to-left {
+      from {
+        right: -200px;
+      }
+      to {
+        right: 100%;
+      }
+    }
+
+    /* Ensure content is above clouds */
+    body > *:not(.clouds-container) {
+      position: relative;
+      z-index: 1;
     }
   </style>
 </html>

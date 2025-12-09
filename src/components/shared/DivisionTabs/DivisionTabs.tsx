@@ -9,6 +9,7 @@ interface Tab {
 interface Props {
   activeTab?: string;
   children: any;
+  hasData?: boolean;
 }
 
 const tabs: Tab[] = [
@@ -17,7 +18,11 @@ const tabs: Tab[] = [
   { id: 'calendario', label: 'Calendario', emoji: '📅' },
 ];
 
-export default function DivisionTabs({ activeTab = 'clasificacion', children }: Props) {
+export default function DivisionTabs({
+  activeTab = 'clasificacion',
+  children,
+  hasData = false,
+}: Props) {
   const [currentTab, setCurrentTab] = useState(activeTab);
 
   return (
@@ -58,7 +63,9 @@ export default function DivisionTabs({ activeTab = 'clasificacion', children }: 
               Participantes
             </h3>
             <p class="text-white/95 drop-shadow font-semibold">
-              Información detallada de los participantes estará disponible próximamente.
+              {hasData
+                ? 'Información detallada de los participantes estará disponible próximamente.'
+                : 'Los participantes se mostrarán cuando comience la temporada.'}
             </p>
           </div>
         )}

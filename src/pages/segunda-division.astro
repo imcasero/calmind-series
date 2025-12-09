@@ -3,9 +3,67 @@ import Layout from "../layouts/Layout.astro";
 import ClassificationTable from "../components/shared/ClassificationTable/ClassificationTable.astro";
 import DivisionTabs from "../components/shared/DivisionTabs/DivisionTabs.tsx";
 import LinkButton from "../components/shared/LinkButton/LinkButton.astro";
-import divisionsData from "../data/divisions.json";
+import { supabase } from "../lib/supabase";
+import type { Player } from "../components/shared/ClassificationTable/ClassificationTable.astro";
 
-const segundaPlayers = divisionsData.segunda;
+// Fetch data from Supabase
+const { data: activeSeasonData } = await supabase
+  .from('seasons')
+  .select('id, name')
+  .eq('is_active', true)
+  .single();
+
+let segundaPlayers: Player[] = [];
+let hasData = false;
+
+if (activeSeasonData) {
+  const { data: divisionData } = await supabase
+    .from('divisions')
+    .select('id')
+    .eq('season_id', activeSeasonData.id)
+    .eq('name', 'Segunda División')
+    .single();
+
+  if (divisionData) {
+    const { data: participantsData } = await supabase
+      .from('division_participants')
+      .select(`
+        id,
+        matches_played,
+        matches_won,
+        matches_lost,
+        points,
+        trainers (
+          id,
+          name
+        )
+      `)
+      .eq('division_id', divisionData.id)
+      .order('points', { ascending: false })
+      .order('matches_won', { ascending: false });
+
+    if (participantsData && participantsData.length > 0) {
+      hasData = true;
+      segundaPlayers = participantsData.map((participant: any, index: number) => {
+        const trainer = Array.isArray(participant.trainers)
+          ? participant.trainers[0]
+          : participant.trainers;
+
+        return {
+          id: index + 1,
+          name: trainer?.name || 'Sin nombre',
+          avatar: String(index + 1),
+          pj: participant.matches_played,
+          pg: participant.matches_won,
+          pp: participant.matches_lost,
+          points: participant.points,
+          isPromoted: index < 2,
+          isChampion: false,
+        };
+      });
+    }
+  }
+}
 ---
 
 <Layout title="Segunda División - CalMind Series">
@@ -52,8 +110,20 @@ const segundaPlayers = divisionsData.segunda;
     <!-- Tabs and Content -->
     <section class="relative w-full">
       <div class="mx-auto max-w-5xl px-4 py-14 md:py-20">
-        <DivisionTabs client:load>
-          <ClassificationTable players={segundaPlayers} showPromotionZones={true} />
+        <DivisionTabs client:load hasData={hasData}>
+          {hasData ? (
+            <ClassificationTable players={segundaPlayers} showPromotionZones={true} />
+          ) : (
+            <div class="bg-jacksons-purple-800/80 rounded-lg border-4 border-yellow-400 p-8 text-center shadow-2xl">
+              <div class="text-6xl mb-4">🏆</div>
+              <h3 class="text-2xl drop-shadow-md font-black tracking-wide text-yellow-300 mb-4">
+                Clasificación
+              </h3>
+              <p class="text-white/95 drop-shadow font-semibold">
+                La clasificación de la Segunda División estará disponible cuando comience la temporada.
+              </p>
+            </div>
+          )}
         </DivisionTabs>
       </div>
     </section>

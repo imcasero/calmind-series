@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 CalMind Series is a landing page and tournament hub for a competitive Pokémon gaming event organizer. Built with Astro for static site generation with Preact components for interactive features. The site features tournament divisions, player rankings, and community engagement tools.
 
 **Tech Stack:**
+
 - Astro 5.9.2 (SSG framework)
 - Preact (for interactive components)
 - Tailwind CSS 4.x (via Vite plugin)
@@ -43,6 +44,7 @@ pnpm astro [command]
 ### Component Structure
 
 **Astro Components** (.astro files) - Server-rendered, no client-side JavaScript:
+
 - `src/layouts/Layout.astro` - Base layout with Navbar and global styles
 - `src/components/Navbar.astro` - Site navigation
 - `src/components/Welcome.astro` - Hero section
@@ -52,17 +54,20 @@ pnpm astro [command]
 - `src/components/shared/LinkButton/LinkButton.astro` - Navigation link component
 
 **Preact Components** (.tsx files) - Client-side interactive:
+
 - `src/components/shared/DivisionTabs/DivisionTabs.tsx` - Tabbed interface for division pages (clasificación, participantes, calendario)
 - `src/components/shared/TabNavigation/TabNavigation.tsx` - Generic tab navigation
 - `src/components/shared/Button/Button.tsx` - Interactive button component
 
 **When to use Preact:**
+
 - Forms and user input
 - Dynamic content that changes without page reload
 - Tab switching, accordions, modals
 - Client-side state management
 
 **When to use Astro components:**
+
 - Static content
 - Server-rendered layouts
 - SEO-critical content
@@ -71,19 +76,21 @@ pnpm astro [command]
 ### Data Management
 
 **Current approach (Phase 1):**
+
 - Data stored in JSON files (`src/data/divisions.json`)
 - Manual updates through code changes
 - No database, no CMS
 
 **Data structure:**
+
 ```typescript
 interface Player {
   id: number;
   name: string;
   avatar: string;
-  pj: number;      // Partidos jugados (games played)
-  pg: number;      // Partidos ganados (games won)
-  pp: number;      // Partidos perdidos (games lost)
+  pj: number; // Partidos jugados (games played)
+  pg: number; // Partidos ganados (games won)
+  pp: number; // Partidos perdidos (games lost)
   points: number;
   isPromoted?: boolean;
   isChampion?: boolean;
@@ -100,21 +107,25 @@ interface Player {
 ### Design System
 
 **Color Theme:**
+
 - Primary: Purple (`jacksons-purple-*` shades)
 - Accent: Yellow (`yellow-*` shades)
 - Text: White with drop-shadows
 - Background: Gradient purple with dotted pattern overlay
 
 **Custom colors defined in global CSS:**
+
 - `--color-jacksons-purple-300: #b9b7fb`
 - Additional purple shades referenced via Tailwind classes
 
 **Typography:**
+
 - System font stack: `system-ui, sans-serif`
 - Bold/black weights for headings
 - Drop shadows for text contrast
 
 **Component patterns:**
+
 - Border thickness: `border-4`
 - Border color: `border-yellow-400`
 - Rounded corners: `rounded-lg`
@@ -130,6 +141,7 @@ interface Player {
 ## Code Style
 
 **Prettier configuration:**
+
 - Single quotes
 - Semicolons
 - 2-space indentation
@@ -138,6 +150,7 @@ interface Player {
 - Arrow parens: avoid
 
 **File organization:**
+
 - Shared/reusable components in `src/components/shared/`
 - Page-specific components in `src/components/`
 - Layouts in `src/layouts/`
@@ -150,7 +163,7 @@ interface Player {
 
 2. **Responsive design:** All components should work on mobile devices. Use Tailwind's responsive prefixes (`sm:`, `md:`)
 
-3. **Discord integration:** The site links to Discord server (`https://discord.gg/97GeP7uS`) for community engagement and registration
+3. **Discord integration:** The site links to Discord server (`https://forms.gle/Ai7mZvu38nj85NiZ8`) for community engagement and registration
 
 4. **Spanish language:** Content is in Spanish. UI labels use Spanish terminology (e.g., "Clasificación", "Participantes", "Calendario")
 
@@ -164,22 +177,19 @@ interface Player {
 ## Future Development (from REQUIREMENTS.md)
 
 **Phase 1 priorities:**
+
 1. Info page - Tournament news and announcements
 2. Contact page - Contact form and social links
 3. Fix remaining navigation links
 
-**Phase 2:**
-4. First Division features - Match calendar, player profiles, replay links
-5. Second Division features - Reuse First Division components
-6. Qualifying Tournament page - Registration form and brackets
+**Phase 2:** 4. First Division features - Match calendar, player profiles, replay links 5. Second Division features - Reuse First Division components 6. Qualifying Tournament page - Registration form and brackets
 
-**Phase 3:**
-7. Hall of Fame - Past champions showcase
-8. Admin panel - Content management without code changes
+**Phase 3:** 7. Hall of Fame - Past champions showcase 8. Admin panel - Content management without code changes
 
 ## Testing the Site
 
 After making changes:
+
 1. Run `pnpm dev` to test locally
 2. Check mobile responsiveness (site should work well on small screens)
 3. Verify all navigation links work

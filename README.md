@@ -10,8 +10,9 @@ Este proyecto y todo su código fuente están protegidos por derechos de autor.
 **NO está permitido copiar, modificar, distribuir o utilizar este código sin autorización expresa por escrito.**
 
 Para consultas sobre licencias o permisos, contacta a:
+
 - **Email:** diegocaserosmr@gmail.com
-- **Discord:** https://discord.gg/97GeP7uS
+- **Discord:** https://forms.gle/Ai7mZvu38nj85NiZ8
 
 Ver el archivo [LICENSE](LICENSE) para más detalles legales.
 
@@ -21,12 +22,12 @@ Ver el archivo [LICENSE](LICENSE) para más detalles legales.
 
 Todos los comandos se ejecutan desde la raíz del proyecto:
 
-| Comando                | Acción                                           |
-| :--------------------- | :----------------------------------------------- |
-| `pnpm install`         | Instala las dependencias                         |
-| `pnpm dev`             | Inicia el servidor de desarrollo en `localhost:4321` |
-| `pnpm build`           | Construye el sitio para producción en `./dist/`  |
-| `pnpm preview`         | Vista previa local del build de producción       |
+| Comando        | Acción                                               |
+| :------------- | :--------------------------------------------------- |
+| `pnpm install` | Instala las dependencias                             |
+| `pnpm dev`     | Inicia el servidor de desarrollo en `localhost:4321` |
+| `pnpm build`   | Construye el sitio para producción en `./dist/`      |
+| `pnpm preview` | Vista previa local del build de producción           |
 
 ## 🛠️ Tecnologías
 

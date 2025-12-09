@@ -5,6 +5,7 @@ import DivisionTabs from "../components/shared/DivisionTabs/DivisionTabs.tsx";
 import LinkButton from "../components/shared/LinkButton/LinkButton.astro";
 import { supabase } from "../lib/supabase";
 import type { Player } from "../components/shared/ClassificationTable/ClassificationTable.astro";
+import type { Participant } from "../components/shared/ParticipantsList/ParticipantsList.tsx";
 
 // Fetch data from Supabase
 const { data: activeSeasonData } = await supabase
@@ -14,6 +15,7 @@ const { data: activeSeasonData } = await supabase
   .single();
 
 let segundaPlayers: Player[] = [];
+let segundaParticipants: Participant[] = [];
 let hasData = false;
 
 if (activeSeasonData) {
@@ -21,7 +23,7 @@ if (activeSeasonData) {
     .from('divisions')
     .select('id')
     .eq('season_id', activeSeasonData.id)
-    .eq('name', 'Segunda División')
+    .eq('name', 'Segunda')
     .single();
 
   if (divisionData) {
@@ -35,7 +37,10 @@ if (activeSeasonData) {
         points,
         trainers (
           id,
-          name
+          name,
+          twitch_url,
+          twitter_url,
+          instagram_url
         )
       `)
       .eq('division_id', divisionData.id)
@@ -57,6 +62,27 @@ if (activeSeasonData) {
           pg: participant.matches_won,
           pp: participant.matches_lost,
           points: participant.points,
+          isPromoted: index < 2,
+          isChampion: false,
+        };
+      });
+
+      segundaParticipants = participantsData.map((participant: any, index: number) => {
+        const trainer = Array.isArray(participant.trainers)
+          ? participant.trainers[0]
+          : participant.trainers;
+
+        return {
+          id: index + 1,
+          name: trainer?.name || 'Sin nombre',
+          avatar: String(index + 1),
+          pj: participant.matches_played,
+          pg: participant.matches_won,
+          pp: participant.matches_lost,
+          points: participant.points,
+          twitchUrl: trainer?.twitch_url,
+          twitterUrl: trainer?.twitter_url,
+          instagramUrl: trainer?.instagram_url,
           isPromoted: index < 2,
           isChampion: false,
         };
@@ -110,7 +136,11 @@ if (activeSeasonData) {
     <!-- Tabs and Content -->
     <section class="relative w-full">
       <div class="mx-auto max-w-5xl px-4 py-14 md:py-20">
-        <DivisionTabs client:load hasData={hasData}>
+        <DivisionTabs
+          client:load
+          hasData={hasData}
+          participants={segundaParticipants}
+        >
           {hasData ? (
             <ClassificationTable players={segundaPlayers} showPromotionZones={true} />
           ) : (

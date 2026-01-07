@@ -1,5 +1,9 @@
 import { createServerClient } from '../supabase/server';
-import type { Player, Participant, DivisionParticipant } from '../types/database.types';
+import type {
+  DivisionParticipant,
+  Participant,
+  Player,
+} from '../types/database.types';
 
 export interface DivisionData {
   season: {
@@ -16,7 +20,9 @@ export interface DivisionData {
   hasData: boolean;
 }
 
-export async function getDivisionData(divisionName: 'Primera' | 'Segunda'): Promise<DivisionData> {
+export async function getDivisionData(
+  divisionName: 'Primera' | 'Segunda',
+): Promise<DivisionData> {
   const supabase = await createServerClient();
 
   // 1. Get active season
@@ -89,45 +95,49 @@ export async function getDivisionData(divisionName: 'Primera' | 'Segunda'): Prom
   }
 
   // 4. Transform data for Players (Classification Table)
-  const players: Player[] = participantsData.map((participant: DivisionParticipant, index: number) => {
-    const trainer = Array.isArray(participant.trainers)
-      ? participant.trainers[0]
-      : participant.trainers;
+  const players: Player[] = participantsData.map(
+    (participant: DivisionParticipant, index: number) => {
+      const trainer = Array.isArray(participant.trainers)
+        ? participant.trainers[0]
+        : participant.trainers;
 
-    return {
-      id: index + 1,
-      name: trainer?.name || 'Sin nombre',
-      avatar: String(index + 1),
-      pj: participant.matches_played,
-      pg: participant.matches_won,
-      pp: participant.matches_lost,
-      points: participant.points,
-      isChampion: divisionName === 'Primera' && index === 0,
-      isPromoted: divisionName === 'Segunda' && index < 2,
-    };
-  });
+      return {
+        id: index + 1,
+        name: trainer?.name || 'Sin nombre',
+        avatar: String(index + 1),
+        pj: participant.matches_played,
+        pg: participant.matches_won,
+        pp: participant.matches_lost,
+        points: participant.points,
+        isChampion: divisionName === 'Primera' && index === 0,
+        isPromoted: divisionName === 'Segunda' && index < 2,
+      };
+    },
+  );
 
   // 5. Transform data for Participants (Participants Grid)
-  const participants: Participant[] = participantsData.map((participant: DivisionParticipant, index: number) => {
-    const trainer = Array.isArray(participant.trainers)
-      ? participant.trainers[0]
-      : participant.trainers;
+  const participants: Participant[] = participantsData.map(
+    (participant: DivisionParticipant, index: number) => {
+      const trainer = Array.isArray(participant.trainers)
+        ? participant.trainers[0]
+        : participant.trainers;
 
-    return {
-      id: index + 1,
-      name: trainer?.name || 'Sin nombre',
-      avatar: String(index + 1),
-      pj: participant.matches_played,
-      pg: participant.matches_won,
-      pp: participant.matches_lost,
-      points: participant.points,
-      twitchUrl: trainer?.twitch_url,
-      twitterUrl: trainer?.twitter_url,
-      instagramUrl: trainer?.instagram_url,
-      isChampion: divisionName === 'Primera' && index === 0,
-      isPromoted: divisionName === 'Segunda' && index < 2,
-    };
-  });
+      return {
+        id: index + 1,
+        name: trainer?.name || 'Sin nombre',
+        avatar: String(index + 1),
+        pj: participant.matches_played,
+        pg: participant.matches_won,
+        pp: participant.matches_lost,
+        points: participant.points,
+        twitchUrl: trainer?.twitch_url,
+        twitterUrl: trainer?.twitter_url,
+        instagramUrl: trainer?.instagram_url,
+        isChampion: divisionName === 'Primera' && index === 0,
+        isPromoted: divisionName === 'Segunda' && index < 2,
+      };
+    },
+  );
 
   return {
     season: activeSeasonData,

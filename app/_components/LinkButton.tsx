@@ -3,18 +3,18 @@ import Link from 'next/link';
 interface Props {
   text?: string;
   href?: string;
-  variant?: "primary" | "secondary" | "blue" | "red" | "green" | "yellow";
+  variant?: 'primary' | 'secondary' | 'blue' | 'red' | 'green' | 'yellow';
   icon?: string;
-  iconPosition?: "left" | "right" | "top" | "bottom";
+  iconPosition?: 'left' | 'right' | 'top' | 'bottom';
   newTab?: boolean;
 }
 
 export default function LinkButton({
-  text = "",
-  href = "",
-  variant = "primary",
+  text = '',
+  href = '',
+  variant = 'primary',
   icon,
-  iconPosition = "left",
+  iconPosition = 'left',
   newTab = true,
 }: Props) {
   const variantClasses = {
@@ -41,11 +41,11 @@ export default function LinkButton({
 
   const content = (
     <>
-      {icon && iconPosition === "left" && (
+      {icon && iconPosition === 'left' && (
         <img src={icon} alt="icon" className="h-6" />
       )}
       <span>{text}</span>
-      {icon && iconPosition === "right" && (
+      {icon && iconPosition === 'right' && (
         <img src={icon} alt="icon" className="h-6" />
       )}
     </>
@@ -56,8 +56,8 @@ export default function LinkButton({
       <a
         href={href}
         className={className}
-        rel={newTab ? "noopener noreferrer" : undefined}
-        target={newTab ? "_blank" : undefined}
+        rel={newTab ? 'noopener noreferrer' : undefined}
+        target={newTab ? '_blank' : undefined}
       >
         {content}
       </a>

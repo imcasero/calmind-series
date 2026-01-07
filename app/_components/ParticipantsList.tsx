@@ -29,7 +29,9 @@ export default function ParticipantsList({ participants }: Props) {
           {/* Avatar y nombre */}
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center border-3 border-yellow-300 shadow-lg">
-              <span className="text-lg font-black text-slate-900">#{participant.avatar}</span>
+              <span className="text-lg font-black text-slate-900">
+                #{participant.avatar}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-black text-yellow-300 drop-shadow-md truncate">
@@ -39,7 +41,9 @@ export default function ParticipantsList({ participants }: Props) {
           </div>
 
           {/* Redes sociales */}
-          {(participant.twitterUrl || participant.twitchUrl || participant.instagramUrl) && (
+          {(participant.twitterUrl ||
+            participant.twitchUrl ||
+            participant.instagramUrl) && (
             <div className="flex gap-2 justify-center pt-2 border-t-2 border-yellow-400/30">
               {participant.twitterUrl && (
                 <a

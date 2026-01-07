@@ -1,7 +1,7 @@
-import { getDivisionData } from '../_lib/services/division.service';
-import LiveClassificationTable from '../_components/LiveClassificationTable';
 import DivisionTabs from '../_components/DivisionTabs';
 import LinkButton from '../_components/LinkButton';
+import LiveClassificationTable from '../_components/LiveClassificationTable';
+import { getDivisionData } from '../_lib/services/division.service';
 
 // ISR: Revalidate every 60 seconds
 export const revalidate = 60;
@@ -12,7 +12,8 @@ export const metadata = {
 };
 
 export default async function SegundaDivisionPage() {
-  const { players, participants, hasData, divisionId } = await getDivisionData('Segunda');
+  const { players, participants, hasData, divisionId } =
+    await getDivisionData('Segunda');
 
   return (
     <main className="w-full">
@@ -46,7 +47,12 @@ export default async function SegundaDivisionPage() {
             </p>
             <div className="flex justify-center">
               <div className="scale-110">
-                <LinkButton text="LUCHAR POR EL ASCENSO" href="https://forms.gle/Ai7mZvu38nj85NiZ8" variant="yellow" newTab={true} />
+                <LinkButton
+                  text="LUCHAR POR EL ASCENSO"
+                  href="https://forms.gle/Ai7mZvu38nj85NiZ8"
+                  variant="yellow"
+                  newTab={true}
+                />
               </div>
             </div>
           </div>
@@ -58,10 +64,7 @@ export default async function SegundaDivisionPage() {
       {/* Tabs and Content */}
       <section className="relative w-full">
         <div className="mx-auto max-w-5xl px-4 py-14 md:py-20">
-          <DivisionTabs
-            hasData={hasData}
-            participants={participants}
-          >
+          <DivisionTabs hasData={hasData} participants={participants}>
             {hasData && divisionId ? (
               <LiveClassificationTable
                 divisionId={divisionId}
@@ -76,7 +79,8 @@ export default async function SegundaDivisionPage() {
                   Clasificación
                 </h3>
                 <p className="text-white/95 drop-shadow font-semibold">
-                  La clasificación de la Segunda División estará disponible cuando comience la temporada.
+                  La clasificación de la Segunda División estará disponible
+                  cuando comience la temporada.
                 </p>
               </div>
             )}

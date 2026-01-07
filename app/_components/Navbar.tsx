@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import LinkButton from './LinkButton';
 import CalmindLogo from '@/public/CalmindSeriesLogo.png';
+import LinkButton from './LinkButton';
 
 export default function Navbar() {
   return (
@@ -18,9 +18,13 @@ export default function Navbar() {
           height={88}
         />
         <h1 className="pokemon-title text-3xl font-bold text-yellow-500">
-          Pokemon<br />
-          Calmind<br />
-          <span className="text-xl font-semibold text-retro-cyan-300">Series</span>
+          Pokemon
+          <br />
+          Calmind
+          <br />
+          <span className="text-xl font-semibold text-retro-cyan-300">
+            Series
+          </span>
         </h1>
       </Link>
 

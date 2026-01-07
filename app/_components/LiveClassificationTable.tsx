@@ -1,8 +1,8 @@
 'use client';
 
 import { useRealtimeRankings } from '../_lib/hooks/useRealtimeRankings';
-import ClassificationTable from './ClassificationTable';
 import type { Player } from '../_lib/types/database.types';
+import ClassificationTable from './ClassificationTable';
 
 interface Props {
   divisionId: string;
@@ -17,7 +17,11 @@ export default function LiveClassificationTable({
   initialPlayers,
   showPromotionZones = false,
 }: Props) {
-  const { players, isLive } = useRealtimeRankings(divisionId, initialPlayers, divisionName);
+  const { players, isLive } = useRealtimeRankings(
+    divisionId,
+    initialPlayers,
+    divisionName,
+  );
 
   return (
     <div>
@@ -32,7 +36,10 @@ export default function LiveClassificationTable({
           </span>
         </div>
       )}
-      <ClassificationTable players={players} showPromotionZones={showPromotionZones} />
+      <ClassificationTable
+        players={players}
+        showPromotionZones={showPromotionZones}
+      />
     </div>
   );
 }

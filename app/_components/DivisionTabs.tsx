@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import ParticipantsList from './ParticipantsList';
 import type { Participant } from '../_lib/types/database.types';
+import ParticipantsList from './ParticipantsList';
 
 interface Tab {
   id: string;
@@ -42,7 +42,9 @@ export default function DivisionTabs({
             ? 'text-slate-900 drop-shadow-md font-black'
             : 'text-white drop-shadow font-bold';
           const borderClass =
-            index < tabs.length - 1 ? 'border-r-4 border-jacksons-purple-800' : '';
+            index < tabs.length - 1
+              ? 'border-r-4 border-jacksons-purple-800'
+              : '';
 
           return (
             <button
@@ -88,7 +90,8 @@ export default function DivisionTabs({
               Calendario
             </h3>
             <p className="text-white/95 drop-shadow font-semibold">
-              El calendario de partidos y fechas importantes se publicará pronto.
+              El calendario de partidos y fechas importantes se publicará
+              pronto.
             </p>
           </div>
         )}

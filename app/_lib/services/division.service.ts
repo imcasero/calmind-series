@@ -1,9 +1,5 @@
-import { createServerClient } from '../supabase/server';
-import type {
-  DivisionParticipant,
-  Participant,
-  Player,
-} from '../types/database.types';
+import { createServerClient } from "../supabase/server";
+import type { Participant, Player } from "../types/database.types";
 
 export interface DivisionData {
   season: {
@@ -21,15 +17,15 @@ export interface DivisionData {
 }
 
 export async function getDivisionData(
-  divisionName: 'Primera' | 'Segunda',
+  divisionName: "Primera" | "Segunda"
 ): Promise<DivisionData> {
   const supabase = await createServerClient();
 
   // 1. Get active season
   const { data: activeSeasonData } = await supabase
-    .from('seasons')
-    .select('id, name')
-    .eq('is_active', true)
+    .from("seasons")
+    .select("id, name")
+    .eq("is_active", true)
     .single();
 
   if (!activeSeasonData) {
@@ -45,10 +41,10 @@ export async function getDivisionData(
 
   // 2. Get division
   const { data: divisionData } = await supabase
-    .from('divisions')
-    .select('id, name')
-    .eq('season_id', activeSeasonData.id)
-    .eq('name', divisionName)
+    .from("divisions")
+    .select("id, name")
+    .eq("season_id", activeSeasonData.id)
+    .eq("name", divisionName)
     .single();
 
   if (!divisionData) {
@@ -64,8 +60,9 @@ export async function getDivisionData(
 
   // 3. Get participants
   const { data: participantsData } = await supabase
-    .from('division_participants')
-    .select(`
+    .from("division_participants")
+    .select(
+      `
       id,
       matches_played,
       matches_won,
@@ -78,10 +75,11 @@ export async function getDivisionData(
         twitter_url,
         instagram_url
       )
-    `)
-    .eq('division_id', divisionData.id)
-    .order('points', { ascending: false })
-    .order('matches_won', { ascending: false });
+    `
+    )
+    .eq("division_id", divisionData.id)
+    .order("points", { ascending: false })
+    .order("matches_won", { ascending: false });
 
   if (!participantsData || participantsData.length === 0) {
     return {
@@ -96,35 +94,35 @@ export async function getDivisionData(
 
   // 4. Transform data for Players (Classification Table)
   const players: Player[] = participantsData.map(
-    (participant: DivisionParticipant, index: number) => {
+    (participant, index: number) => {
       const trainer = Array.isArray(participant.trainers)
         ? participant.trainers[0]
         : participant.trainers;
 
       return {
         id: index + 1,
-        name: trainer?.name || 'Sin nombre',
+        name: trainer?.name || "Sin nombre",
         avatar: String(index + 1),
         pj: participant.matches_played,
         pg: participant.matches_won,
         pp: participant.matches_lost,
         points: participant.points,
-        isChampion: divisionName === 'Primera' && index === 0,
-        isPromoted: divisionName === 'Segunda' && index < 2,
+        isChampion: divisionName === "Primera" && index === 0,
+        isPromoted: divisionName === "Segunda" && index < 2,
       };
-    },
+    }
   );
 
   // 5. Transform data for Participants (Participants Grid)
   const participants: Participant[] = participantsData.map(
-    (participant: DivisionParticipant, index: number) => {
+    (participant, index: number) => {
       const trainer = Array.isArray(participant.trainers)
         ? participant.trainers[0]
         : participant.trainers;
 
       return {
         id: index + 1,
-        name: trainer?.name || 'Sin nombre',
+        name: trainer?.name || "Sin nombre",
         avatar: String(index + 1),
         pj: participant.matches_played,
         pg: participant.matches_won,
@@ -133,10 +131,10 @@ export async function getDivisionData(
         twitchUrl: trainer?.twitch_url,
         twitterUrl: trainer?.twitter_url,
         instagramUrl: trainer?.instagram_url,
-        isChampion: divisionName === 'Primera' && index === 0,
-        isPromoted: divisionName === 'Segunda' && index < 2,
+        isChampion: divisionName === "Primera" && index === 0,
+        isPromoted: divisionName === "Segunda" && index < 2,
       };
-    },
+    }
   );
 
   return {

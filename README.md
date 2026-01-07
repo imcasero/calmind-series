@@ -1,64 +1,81 @@
-# Pokémon CalMind Series
+# Pokemon Calmind Series
 
-Sitio web oficial de la competición amateur de Pokémon CalMind Series.
+Competición Amateur de Pokemon con clasificaciones en tiempo real.
 
-## ⚖️ Licencia y Copyright
+## Stack Tecnológico
 
-**Copyright © 2025 Diego Casero Martín. Todos los derechos reservados.**
+- **Next.js 16** - App Router con React Server Components
+- **React 19** - UI Components
+- **Tailwind CSS v4** - Sistema de estilos retro Pokemon
+- **Supabase** - Base de datos con actualizaciones en tiempo real
+- **TypeScript** - Type safety completo
+- **pnpm** - Package manager
 
-Este proyecto y todo su código fuente están protegidos por derechos de autor.
-**NO está permitido copiar, modificar, distribuir o utilizar este código sin autorización expresa por escrito.**
+## Características Principales
 
-Para consultas sobre licencias o permisos, contacta a:
+### ISR (Incremental Static Regeneration)
+- Páginas de divisiones se regeneran cada 60 segundos
+- Mejor rendimiento y menor latencia
+- SEO optimizado
 
-- **Email:** diegocaserosmr@gmail.com
-- **Discord:** https://forms.gle/Ai7mZvu38nj85NiZ8
+### Real-Time Updates
+- Rankings actualizados en tiempo real usando Supabase Realtime
+- Indicador visual "En Vivo" cuando está conectado
+- Sin necesidad de recargar la página
 
-Ver el archivo [LICENSE](LICENSE) para más detalles legales.
+## Setup
 
----
+### 1. Instalar dependencias
 
-## 🚀 Comandos de Desarrollo
-
-Todos los comandos se ejecutan desde la raíz del proyecto:
-
-| Comando        | Acción                                               |
-| :------------- | :--------------------------------------------------- |
-| `pnpm install` | Instala las dependencias                             |
-| `pnpm dev`     | Inicia el servidor de desarrollo en `localhost:4321` |
-| `pnpm build`   | Construye el sitio para producción en `./dist/`      |
-| `pnpm preview` | Vista previa local del build de producción           |
-
-## 🛠️ Tecnologías
-
-- **Astro 5.9** - Framework estático
-- **Tailwind CSS 4** - Estilos
-- **Preact** - Componentes interactivos
-- **TypeScript** - Tipado
-
-## 📁 Estructura del Proyecto
-
-```text
-/
-├── public/              # Archivos estáticos
-├── src/
-│   ├── assets/         # Imágenes y recursos
-│   ├── components/     # Componentes reutilizables
-│   ├── layouts/        # Layouts de página
-│   ├── pages/          # Páginas del sitio
-│   └── styles/         # Estilos globales
-└── package.json
+```bash
+pnpm install
 ```
 
-## 🎨 Características
+### 2. Configurar variables de entorno
 
-- Diseño retro inspirado en Pokémon Nintendo (Game Boy/DS)
-- Animaciones pixel art de nubes flotantes
-- Fuente Press Start 2P para títulos estilo Pokémon
-- Cards estilo Pokédex para las divisiones
-- Paleta de colores retro (dorado, cyan, morado)
-- Totalmente responsive
+Crea un archivo `.env.local` basado en `.env.example`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. Configurar base de datos
+
+Ejecuta el script `supabase-schema.sql` en tu proyecto de Supabase para crear las tablas necesarias.
+
+### 4. Ejecutar en desarrollo
+
+```bash
+pnpm dev
+```
+
+El servidor estará disponible en `http://localhost:3000`
+
+## Deploy en Vercel
+
+1. Push el código a GitHub
+2. Conecta el repo en vercel.com
+3. Configura las variables de entorno
+4. Deploy automático en cada push
+
+## Estructura del Proyecto
+
+```
+app/
+├── _components/          # Componentes React
+├── _lib/
+│   ├── hooks/           # Custom React hooks
+│   ├── services/        # Servicios de datos
+│   ├── supabase/        # Configuración Supabase
+│   └── types/           # TypeScript types
+├── primera-division/    # Página Primera División
+├── segunda-division/    # Página Segunda División
+├── layout.tsx           # Layout principal
+├── page.tsx             # Homepage
+└── globals.css          # Estilos globales
+```
 
 ---
 
-**© 2025 Diego Casero Martín - All Rights Reserved**
+**Migrado de Astro a Next.js - Enero 2026**

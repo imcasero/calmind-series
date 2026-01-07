@@ -2,196 +2,236 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Repository Overview
 
-CalMind Series is a landing page and tournament hub for a competitive Pokémon gaming event organizer. Built with Astro for static site generation with Preact components for interactive features. The site features tournament divisions, player rankings, and community engagement tools.
+This is a monorepo for **Calmind Series**, a Pokemon-themed competitive tournament platform. The active project is in `calmind-series/` (Next.js 16 + React 19 + Supabase). It displays real-time division rankings with live updates using Supabase Realtime.
 
-**Tech Stack:**
+## Commands
 
-- Astro 5.9.2 (SSG framework)
-- Preact (for interactive components)
-- Tailwind CSS 4.x (via Vite plugin)
-- TypeScript
-- pnpm (package manager)
-
-## Development Commands
+### Development
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Start dev server (localhost:4321)
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Preview production build
-pnpm preview
-
-# Format code with Prettier
-pnpm format
-
-# Check formatting without writing
-pnpm format:check
-
-# Run Astro CLI commands
-pnpm astro [command]
+cd calmind-series
+pnpm install          # Install dependencies
+pnpm dev              # Start dev server with Turbopack (localhost:3000)
+pnpm build            # Production build
+pnpm start            # Start production server
+pnpm lint             # Run Biome linter
+pnpm format           # Format code with Biome
+pnpm check            # Lint and format (auto-fix)
 ```
+
+### Environment Setup
+
+Create `.env.local` in `calmind-series/` with:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### Development Tools
+
+- **Turbopack**: Enabled for ultra-fast dev server (Next.js 16 native bundler)
+- **Biome**: All-in-one toolchain for linting and formatting (replaces ESLint + Prettier)
+- Configuration in `biome.json` with recommended rules for React/Next.js
 
 ## Architecture
 
-### Component Structure
+### Directory Structure
 
-**Astro Components** (.astro files) - Server-rendered, no client-side JavaScript:
-
-- `src/layouts/Layout.astro` - Base layout with Navbar and global styles
-- `src/components/Navbar.astro` - Site navigation
-- `src/components/Welcome.astro` - Hero section
-- `src/components/Info.astro` - Information section
-- `src/components/Divisions.astro` - Division cards overview
-- `src/components/shared/ClassificationTable/ClassificationTable.astro` - Player rankings table
-- `src/components/shared/LinkButton/LinkButton.astro` - Navigation link component
-
-**Preact Components** (.tsx files) - Client-side interactive:
-
-- `src/components/shared/DivisionTabs/DivisionTabs.tsx` - Tabbed interface for division pages (clasificación, participantes, calendario)
-- `src/components/shared/TabNavigation/TabNavigation.tsx` - Generic tab navigation
-- `src/components/shared/Button/Button.tsx` - Interactive button component
-
-**When to use Preact:**
-
-- Forms and user input
-- Dynamic content that changes without page reload
-- Tab switching, accordions, modals
-- Client-side state management
-
-**When to use Astro components:**
-
-- Static content
-- Server-rendered layouts
-- SEO-critical content
-- Components that don't need interactivity
-
-### Data Management
-
-**Current approach (Phase 1):**
-
-- Data stored in JSON files (`src/data/divisions.json`)
-- Manual updates through code changes
-- No database, no CMS
-
-**Data structure:**
-
-```typescript
-interface Player {
-  id: number;
-  name: string;
-  avatar: string;
-  pj: number; // Partidos jugados (games played)
-  pg: number; // Partidos ganados (games won)
-  pp: number; // Partidos perdidos (games lost)
-  points: number;
-  isPromoted?: boolean;
-  isChampion?: boolean;
-}
+```
+calmind-series/
+├── app/
+│   ├── page.tsx                      # Home page
+│   ├── layout.tsx                    # Root layout
+│   ├── primera-division/page.tsx     # First division rankings
+│   ├── segunda-division/page.tsx     # Second division rankings
+│   ├── _lib/
+│   │   ├── services/                 # Data fetching services
+│   │   ├── hooks/                    # React hooks for real-time
+│   │   ├── supabase/                 # Supabase client configs
+│   │   └── types/                    # TypeScript types
+│   └── _components/                  # Shared React components
+├── public/                           # Static assets
 ```
 
-### Page Structure
+### Key Architectural Patterns
 
-- `/` - Homepage with welcome, info, and division cards
-- `/primera-division` - First division rankings and details
-- `/segunda-division` - Second division rankings and details
-- Additional pages planned: `/info`, `/contacto`, `/torneo-clasificatorio`, `/hall-of-fame`
+**1. Server vs Client Components**
 
-### Design System
+- Division pages (`page.tsx`) are **server components** that fetch initial data
+- Interactive components use `'use client'` directive
+- `getDivisionData()` service runs server-side only
 
-**Color Theme:**
+**2. Data Flow**
 
-- Primary: Purple (`jacksons-purple-*` shades)
-- Accent: Yellow (`yellow-*` shades)
-- Text: White with drop-shadows
-- Background: Gradient purple with dotted pattern overlay
+```
+Server Component (page.tsx)
+  → getDivisionData() service
+    → Supabase Server Client
+      → Pass as props to Client Component
+        → LiveClassificationTable
+          → useRealtimeRankings hook
+            → Supabase Browser Client (realtime subscription)
+```
 
-**Custom colors defined in global CSS:**
+**3. Dual Supabase Client Pattern**
 
-- `--color-jacksons-purple-300: #b9b7fb`
-- Additional purple shades referenced via Tailwind classes
+- `app/_lib/supabase/server.ts`: Server-side client (async, cookie-based auth)
+- `app/_lib/supabase/client.ts`: Browser client (client-side, realtime subscriptions)
 
-**Typography:**
+**4. ISR (Incremental Static Regeneration)**
 
-- System font stack: `system-ui, sans-serif`
-- Bold/black weights for headings
-- Drop shadows for text contrast
+- Division pages use `export const revalidate = 60;`
+- Pages regenerate every 60 seconds for fresh data with good performance
 
-**Component patterns:**
+### Supabase Real-Time Implementation
 
-- Border thickness: `border-4`
-- Border color: `border-yellow-400`
-- Rounded corners: `rounded-lg`
-- Box shadows: `shadow-2xl`
-- Background opacity: `bg-{color}/80` or `bg-{color}/90`
+**Database Tables:**
 
-### Static Assets
+- `seasons`: Tournament seasons (has `is_active` flag)
+- `divisions`: Primera/Segunda divisions per season
+- `trainers`: Participant profiles with social media links
+- `division_participants`: Junction table with stats (points, matches_won, etc.)
+- `matches`: Match scheduling (future feature)
 
-- `/public/favicon.svg` - Site icon
-- `/public/normativa_pokemon_calmind_series.pdf` - Tournament rules document
-- `src/assets/CalmindSeriesLogo.png` - Logo image (imported via Astro Image component)
+**Real-Time Flow:**
 
-## Code Style
+1. `useRealtimeRankings` hook subscribes to `division_participants` table
+2. On any INSERT/UPDATE/DELETE, PostgreSQL notification triggers
+3. Hook refetches data for that division
+4. Component re-renders with updated rankings
+5. Green "En Vivo" indicator shows when subscribed
 
-**Prettier configuration:**
+**Channel Pattern:**
 
-- Single quotes
-- Semicolons
-- 2-space indentation
-- 100 character line width
-- ES5 trailing commas
-- Arrow parens: avoid
+```typescript
+supabase.channel(`division_${divisionId}`).on(
+  "postgres_changes",
+  {
+    event: "*",
+    schema: "public",
+    table: "division_participants",
+    filter: `division_id=eq.${divisionId}`,
+  },
+  callback
+);
+```
 
-**File organization:**
+### Data Transformation Pattern
 
-- Shared/reusable components in `src/components/shared/`
-- Page-specific components in `src/components/`
-- Layouts in `src/layouts/`
-- Data in `src/data/`
-- Global styles in `src/styles/`
+Both server service and client hook use identical transformation logic:
 
-## Important Implementation Notes
+1. Fetch `division_participants` with nested `trainers` join
+2. Order by `points DESC`, then `matches_won DESC`
+3. Map to `Player[]` array with position-based badges:
+   - Champion: Position 1 in Primera División
+   - Promoted: Position 1-2 in Segunda División
+4. Return structured `DivisionData` object
 
-1. **Preact integration:** Use `client:load` directive when embedding Preact components in Astro pages (e.g., `<DivisionTabs client:load>`)
+### Component Hierarchy
 
-2. **Responsive design:** All components should work on mobile devices. Use Tailwind's responsive prefixes (`sm:`, `md:`)
+**Page Components (Server):**
 
-3. **Discord integration:** The site links to Discord server (`https://forms.gle/Ai7mZvu38nj85NiZ8`) for community engagement and registration
+- Fetch data with `getDivisionData()`
+- Pass to client components as props
 
-4. **Spanish language:** Content is in Spanish. UI labels use Spanish terminology (e.g., "Clasificación", "Participantes", "Calendario")
+**Client Components:**
 
-5. **Tournament divisions:**
-   - Primera División: Top-tier players, shows champion indicator
-   - Segunda División: Lower-tier players, shows promotion zones
-   - Classification tables use Spanish abbreviations (PJ, PG, PP)
+- `LiveClassificationTable`: Wraps table with real-time hook
+- `ClassificationTable`: Presentational table (reusable)
+- `DivisionTabs`: Tab navigation (Clasificación/Participantes/Calendario)
+- `ParticipantsList`: Grid of trainer cards with social links
+- `Navbar`, `Footer`, `LinkButton`, `DivisionCard`: UI primitives
 
-6. **Navigation:** Navbar links use `LinkButton` component with variants: `primary` (purple), `yellow` (accent)
+### Styling Conventions
 
-## Future Development (from REQUIREMENTS.md)
+- **Tailwind CSS v4** with custom Pokemon-themed colors
+- Custom colors: `jacksons-purple-*`, `retro-gold-*`, `retro-cyan-*`
+- Custom font: `Press_Start_2P` (retro pixel font)
+- `.retro-border` class: 3D button effect
+- Mobile-first responsive design
 
-**Phase 1 priorities:**
+## Working with This Codebase
 
-1. Info page - Tournament news and announcements
-2. Contact page - Contact form and social links
-3. Fix remaining navigation links
+### Adding New Features
 
-**Phase 2:** 4. First Division features - Match calendar, player profiles, replay links 5. Second Division features - Reuse First Division components 6. Qualifying Tournament page - Registration form and brackets
+**To modify rankings display:**
 
-**Phase 3:** 7. Hall of Fame - Past champions showcase 8. Admin panel - Content management without code changes
+- Edit `app/_components/ClassificationTable.tsx`
+- Badge logic is position-based in `getDivisionData()` transformation
 
-## Testing the Site
+**To change data queries:**
 
-After making changes:
+- Edit `app/_lib/services/division.service.ts`
+- Use `.select()` with nested joins: `division_participants(...trainers(...))`
+- Mirror changes in `useRealtimeRankings` hook for consistency
 
-1. Run `pnpm dev` to test locally
-2. Check mobile responsiveness (site should work well on small screens)
-3. Verify all navigation links work
-4. Test interactive Preact components (tab switching)
-5. Build with `pnpm build` to catch any SSG issues
+**To add new pages:**
+
+- Create `app/new-page/page.tsx`
+- Use server components for initial fetch
+- Pass data to client components if interactivity needed
+
+### Type System
+
+All types in `app/_lib/types/database.types.ts`:
+
+- Database types: `Trainer`, `Division`, `DivisionParticipant`, `Season`, `Match`
+- Frontend types: `Player` (for tables), `Participant` (for cards)
+- Use proper imports to maintain type safety
+
+### Performance Considerations
+
+- ISR caching reduces Supabase reads (60s revalidate)
+- Real-time only subscribes on changes, not constant polling
+- Next.js `Image` component for optimized images
+- Tab content conditionally renders (only active tab)
+- Channel cleanup on component unmount
+
+## Common Modifications
+
+### Updating Division Rankings Logic
+
+Edit `app/_lib/services/division.service.ts:45-70` where players array is created and badges applied.
+
+### Changing Real-Time Behavior
+
+Edit `app/_lib/hooks/useRealtimeRankings.ts` subscription callback at line ~30.
+
+### Modifying Table Display
+
+Edit `app/_components/ClassificationTable.tsx` for visual changes to the rankings table.
+
+### Adding Database Queries
+
+Use the nested query pattern:
+
+```typescript
+const { data } = await supabase
+  .from("division_participants")
+  .select(
+    `
+    *,
+    trainers (
+      id,
+      name,
+      twitch_url,
+      twitter_url,
+      instagram_url
+    )
+  `
+  )
+  .eq("division_id", divisionId)
+  .order("points", { ascending: false });
+```
+
+## Project Context
+
+- Migrated from Astro to Next.js in January 2026
+- Uses pnpm as package manager
+- Spanish language UI
+- Retro Pokemon aesthetic theme
+- Amateur competitive Pokemon tournament platform
+- Real-time updates are critical feature for live tournament tracking

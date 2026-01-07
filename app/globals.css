@@ -1,0 +1,244 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary purple color - Nintendo Vintage Style */
+  --color-jacksons-purple-50: #f3f3ff;
+  --color-jacksons-purple-100: #eaeafd;
+  --color-jacksons-purple-200: #d7d7fd;
+  --color-jacksons-purple-300: #b9b7fb;
+  --color-jacksons-purple-400: #968ef7;
+  --color-jacksons-purple-500: #6b5bd0;
+  --color-jacksons-purple-600: #5246a5;
+  --color-jacksons-purple-700: #3d3580;
+  --color-jacksons-purple-800: #2d2660;
+  --color-jacksons-purple-900: #1f1a45;
+  --color-jacksons-purple-950: #12102a;
+
+  /* Secondary pink/magenta color - Retro Gaming */
+  --color-snuff-50: #fff0f8;
+  --color-snuff-100: #ffe3f4;
+  --color-snuff-200: #ffc7e8;
+  --color-snuff-300: #ff9dd5;
+  --color-snuff-400: #ff5cb8;
+  --color-snuff-500: #f72a9b;
+  --color-snuff-600: #d81878;
+  --color-snuff-700: #b5145f;
+  --color-snuff-800: #8a1349;
+  --color-snuff-900: #5d1035;
+  --color-snuff-950: #3a0820;
+
+  /* Retro Blue/Violet - Inspired by classic Pokemon games */
+  --color-retro-cyan-50: #e8e5ff;
+  --color-retro-cyan-100: #d0cbff;
+  --color-retro-cyan-200: #b8b0ff;
+  --color-retro-cyan-300: #9b8fff;
+  --color-retro-cyan-400: #7d6eff;
+  --color-retro-cyan-500: #6050dc;
+  --color-retro-cyan-600: #4d3fb8;
+  --color-retro-cyan-700: #3b2f94;
+  --color-retro-cyan-800: #2a2070;
+  --color-retro-cyan-900: #1a144c;
+
+  /* Retro Gold/Yellow - Classic Pokemon yellow */
+  --color-retro-gold-50: #fffde7;
+  --color-retro-gold-100: #fff9c4;
+  --color-retro-gold-200: #fff59d;
+  --color-retro-gold-300: #fff176;
+  --color-retro-gold-400: #ffed4e;
+  --color-retro-gold-500: #ffd700;
+  --color-retro-gold-600: #ffb300;
+  --color-retro-gold-700: #ff8f00;
+  --color-retro-gold-800: #ff6f00;
+  --color-retro-gold-900: #e65100;
+}
+
+:root {
+  --color-jacksons-purple-300: #b9b7fb;
+  --font-pokemon: "Press Start 2P", system-ui, sans-serif;
+}
+
+html {
+  font-family: system-ui, sans-serif;
+  color: #fff;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+body {
+  @apply flex flex-col items-center justify-start min-h-screen;
+  /* Retro Nintendo Background - pixelated grid pattern */
+  background-color: #2d2660;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.03) 0px,
+      transparent 1px,
+      transparent 2px,
+      rgba(255, 255, 255, 0.03) 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0px,
+      transparent 1px,
+      transparent 2px,
+      rgba(255, 255, 255, 0.03) 3px
+    ),
+    radial-gradient(
+      circle at 20% 50%,
+      rgba(107, 91, 208, 0.3) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 80%,
+      rgba(247, 42, 155, 0.2) 0%,
+      transparent 50%
+    ),
+    linear-gradient(180deg, #1f1a45 0%, #2d2660 50%, #1f1a45 100%);
+  background-attachment: fixed;
+}
+
+/* Clase para títulos estilo Pokémon */
+.pokemon-title {
+  font-family: var(--font-pokemon);
+  letter-spacing: 0.05em;
+  text-shadow:
+    3px 3px 0px rgba(0, 0, 0, 0.5),
+    -1px -1px 0px rgba(255, 255, 255, 0.1);
+}
+
+/* Ajustes de tamaño para títulos con fuente Pokémon */
+h1.pokemon-title {
+  line-height: 1.3;
+}
+
+/* Retro pixelated borders */
+.retro-border {
+  border-style: solid;
+  box-shadow:
+    inset -2px -2px 0px rgba(0, 0, 0, 0.3),
+    inset 2px 2px 0px rgba(255, 255, 255, 0.2);
+}
+
+/* Retro button effect - simplified */
+.retro-button {
+  transition: all 0.2s ease;
+}
+
+.retro-button:hover {
+  transform: translateY(-2px);
+}
+
+.retro-button:active {
+  transform: translateY(0px);
+}
+
+/* Pokemon-style Pixel Art Clouds Animation */
+.clouds-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cloud {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  opacity: 0.4;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  transform: scale(1.5);
+}
+
+/* Pixel art cloud using box-shadow - larger version */
+.cloud::before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: white;
+  /* Row 1 */
+  box-shadow:
+    24px 0 0 white,
+    36px 0 0 white,
+    48px 0 0 white,
+    /* Row 2 */
+    12px 12px 0 white,
+    24px 12px 0 white,
+    36px 12px 0 white,
+    48px 12px 0 white,
+    60px 12px 0 white,
+    72px 12px 0 white,
+    /* Row 3 */
+    0px 24px 0 white,
+    12px 24px 0 white,
+    24px 24px 0 white,
+    36px 24px 0 white,
+    48px 24px 0 white,
+    60px 24px 0 white,
+    72px 24px 0 white,
+    84px 24px 0 white,
+    /* Row 4 */
+    12px 36px 0 white,
+    24px 36px 0 white,
+    36px 36px 0 white,
+    48px 36px 0 white,
+    60px 36px 0 white,
+    72px 36px 0 white;
+}
+
+.cloud-1 {
+  top: 10%;
+  animation: float-cloud-left-to-right 60s linear infinite;
+  animation-delay: 0s;
+}
+
+.cloud-2 {
+  top: 30%;
+  animation: float-cloud-right-to-left 80s linear infinite;
+  animation-delay: -25s;
+  opacity: 0.35;
+}
+
+.cloud-3 {
+  top: 60%;
+  animation: float-cloud-left-to-right 70s linear infinite;
+  animation-delay: -45s;
+  opacity: 0.3;
+}
+
+.cloud-4 {
+  top: 80%;
+  animation: float-cloud-right-to-left 90s linear infinite;
+  animation-delay: -60s;
+  opacity: 0.25;
+}
+
+@keyframes float-cloud-left-to-right {
+  from {
+    left: -200px;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+@keyframes float-cloud-right-to-left {
+  from {
+    right: -200px;
+  }
+  to {
+    right: 100%;
+  }
+}
+
+/* Ensure content is above clouds */
+body > *:not(.clouds-container) {
+  position: relative;
+  z-index: 1;
+}

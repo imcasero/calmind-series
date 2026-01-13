@@ -8,16 +8,11 @@ interface ParticipantCardProps {
 
 export default function ParticipantCard({ participant }: ParticipantCardProps) {
   const hasSocialMedia =
-    participant.twitterUrl ||
-    participant.twitchUrl ||
-    participant.instagramUrl;
+    participant.twitterUrl || participant.twitchUrl || participant.instagramUrl;
 
   return (
     <div className="bg-jacksons-purple-800/90 rounded-lg border-4 border-yellow-400 p-4 shadow-xl hover:shadow-yellow-400/20 transition-all duration-200 hover:scale-105">
-      <ParticipantAvatar
-        avatar={participant.avatar}
-        name={participant.name}
-      />
+      <ParticipantAvatar avatar={participant.avatar} name={participant.name} />
 
       {hasSocialMedia && (
         <SocialMediaLinks

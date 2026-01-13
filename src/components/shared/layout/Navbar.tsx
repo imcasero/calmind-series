@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import CalmindLogo from '../../../../public/CalmindSeriesLogo.png';
 import LinkButton from '@/components/shared/ui/Button/LinkButton';
 import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
+import CalmindLogo from '../../../../public/CalmindSeriesLogo.png';
 
 export default function Navbar() {
   return (

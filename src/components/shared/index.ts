@@ -3,10 +3,9 @@
  * Central export point for all shared/reusable components
  */
 
-// UI Components
-export { default as LinkButton } from './ui/Button/LinkButton';
-export type { LinkButtonProps } from './ui/Button/LinkButton';
-
+export { default as Footer } from './layout/Footer';
 // Layout Components
 export { default as Navbar } from './layout/Navbar';
-export { default as Footer } from './layout/Footer';
+export type { LinkButtonProps } from './ui/Button/LinkButton';
+// UI Components
+export { default as LinkButton } from './ui/Button/LinkButton';

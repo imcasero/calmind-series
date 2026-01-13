@@ -49,22 +49,13 @@ export default function SocialMediaLinks({
   return (
     <div className="flex gap-2 justify-center pt-2 border-t-2 border-yellow-400/30">
       {twitterUrl && (
-        <SocialLink
-          href={twitterUrl}
-          {...SOCIAL_MEDIA_CONFIG.twitter}
-        />
+        <SocialLink href={twitterUrl} {...SOCIAL_MEDIA_CONFIG.twitter} />
       )}
       {twitchUrl && (
-        <SocialLink
-          href={twitchUrl}
-          {...SOCIAL_MEDIA_CONFIG.twitch}
-        />
+        <SocialLink href={twitchUrl} {...SOCIAL_MEDIA_CONFIG.twitch} />
       )}
       {instagramUrl && (
-        <SocialLink
-          href={instagramUrl}
-          {...SOCIAL_MEDIA_CONFIG.instagram}
-        />
+        <SocialLink href={instagramUrl} {...SOCIAL_MEDIA_CONFIG.instagram} />
       )}
     </div>
   );

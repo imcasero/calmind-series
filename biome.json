@@ -67,6 +67,9 @@
     "parser": {
       "cssModules": false,
       "tailwindDirectives": true
+    },
+    "linter": {
+      "enabled": true
     }
   }
 }

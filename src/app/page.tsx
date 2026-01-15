@@ -1,5 +1,7 @@
-import { LinkButton, Navbar } from '@/components/shared';
-import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
+import Image from "next/image";
+import pokeballImg from "@/assets/pokeball.png";
+import { LinkButton, Navbar } from "@/components/shared";
+import { EXTERNAL_ROUTES, ROUTES } from "@/lib/constants/routes";
 
 export default function HomePage() {
   return (
@@ -7,10 +9,25 @@ export default function HomePage() {
       <Navbar />
       <div className="max-w-4xl mx-auto px-4">
         {/* Hero Section */}
-        <section id="home" className="relative w-full">
-          <div className="mx-auto max-w-5xl px-4 pt-16 pb-16 md:pt-24 md:pb-20 text-center">
-            {/* Main Title */}
+        <section id="home" className="relative w-full overflow-hidden">
+          <div className="mx-auto max-w-5xl px-4 pt-16 pb-12 md:pt-24 md:pb-16 text-center relative z-10">
+            {/* Main Title with embedded Pokeballs */}
             <div className="relative inline-block">
+              {/* Embedded Pokeballs - solid, part of the title */}
+              <Image
+                src={pokeballImg}
+                alt=""
+                width={44}
+                height={44}
+                className="absolute -left-12 sm:-left-14 top-1 -rotate-20 hidden sm:block drop-shadow-lg"
+              />
+              <Image
+                src={pokeballImg}
+                alt=""
+                width={36}
+                height={36}
+                className="absolute -right-10 sm:-right-12 top-12 rotate-15 hidden sm:block drop-shadow-lg"
+              />
               <h1 className="pokemon-title text-retro-gold-400 drop-shadow-md font-black tracking-wide text-5xl sm:text-6xl md:text-7xl leading-tight">
                 POKEMON
               </h1>
@@ -21,28 +38,28 @@ export default function HomePage() {
 
             {/* Tagline Badge */}
             <div className="mt-8 flex justify-center">
-              <div className="retro-border bg-jacksons-purple-800/80 border-2 border-retro-cyan-500 px-6 py-3">
-                <span className="text-retro-gold-300 font-bold uppercase tracking-widest text-sm sm:text-sm">
+              <div className="retro-border bg-jacksons-purple-800/90 border-3 border-retro-cyan-500 px-6 py-3">
+                <span className="text-retro-gold-300 font-bold uppercase tracking-widest text-sm">
                   Competición Amateur de Pokemon VGC
                 </span>
               </div>
             </div>
 
-            {/* Feature Pills */}
+            {/* Feature Pills - Unified styling */}
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <span className="bg-jacksons-purple-700/60 border border-retro-cyan-600/50 text-retro-cyan-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
+              <span className="retro-border bg-jacksons-purple-700 border-2 border-retro-cyan-500 text-retro-cyan-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
                 Combates Bo3
               </span>
-              <span className="bg-jacksons-purple-700/60 border border-retro-gold-500/50 text-retro-gold-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
+              <span className="retro-border bg-jacksons-purple-700 border-2 border-retro-gold-500 text-retro-gold-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
                 Sistema de Ligas
               </span>
-              <span className="bg-jacksons-purple-700/60 border border-retro-cyan-600/50 text-retro-cyan-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
+              <span className="retro-border bg-jacksons-purple-700 border-2 border-retro-cyan-500 text-retro-cyan-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
                 Ascensos y Descensos
               </span>
             </div>
 
             {/* CTA Buttons */}
-            <div className="mt-10 flex items-center justify-center gap-4 sm:gap-5 flex-wrap ">
+            <div className="mt-10 flex items-center justify-center gap-4 flex-wrap">
               <LinkButton
                 text="Inscribirme"
                 href={EXTERNAL_ROUTES.INSCRIPTION_FORM}
@@ -57,8 +74,6 @@ export default function HomePage() {
               />
             </div>
           </div>
-
-          <div className="border-t-4 border-retro-gold-500 max-w-5xl mx-auto opacity-60" />
         </section>
 
         {/* Tournament Format Section */}
@@ -200,7 +215,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <p className="text-white/90 text-sm leading-relaxed">
-                  <strong>El exiliado</strong> de primera vs{' '}
+                  <strong>El exiliado</strong> de primera vs{" "}
                   <strong>el elegido</strong> de segunda. El ganador asciende o
                   mantiene su puesto en la elite.
                 </p>
@@ -248,8 +263,6 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
-          <div className="border-t-4 border-retro-gold-500 max-w-5xl mx-auto opacity-60" />
         </section>
 
         {/* About Section */}
@@ -321,37 +334,37 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Values */}
+            {/* Stats Row - Retro styled */}
             <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-jacksons-purple-700/40 border border-white/10 p-4 text-center">
-                <span className="text-retro-cyan-300 text-2xl mb-2 block">
+              <div className="retro-border bg-jacksons-purple-700 border-3 border-jacksons-purple-500 p-4 text-center">
+                <span className="text-retro-cyan-300 text-2xl font-bold mb-1 block">
                   16
                 </span>
-                <span className="text-white/70 text-sm uppercase tracking-wide">
+                <span className="text-white/80 text-sm uppercase tracking-wide">
                   Entrenadores
                 </span>
               </div>
-              <div className="bg-jacksons-purple-700/40 border border-white/10 p-4 text-center">
-                <span className="text-retro-gold-400 text-2xl mb-2 block">
+              <div className="retro-border bg-jacksons-purple-700 border-3 border-jacksons-purple-500 p-4 text-center">
+                <span className="text-retro-gold-400 text-2xl font-bold mb-1 block">
                   2
                 </span>
-                <span className="text-white/70 text-sm uppercase tracking-wide">
+                <span className="text-white/80 text-sm uppercase tracking-wide">
                   Divisiones
                 </span>
               </div>
-              <div className="bg-jacksons-purple-700/40 border border-white/10 p-4 text-center">
-                <span className="text-retro-cyan-300 text-2xl mb-2 block">
+              <div className="retro-border bg-jacksons-purple-700 border-3 border-jacksons-purple-500 p-4 text-center">
+                <span className="text-retro-cyan-300 text-2xl font-bold mb-1 block">
                   9
                 </span>
-                <span className="text-white/70 text-sm uppercase tracking-wide">
+                <span className="text-white/80 text-sm uppercase tracking-wide">
                   Jornadas
                 </span>
               </div>
-              <div className="bg-jacksons-purple-700/40 border border-white/10 p-4 text-center">
-                <span className="text-retro-gold-400 text-2xl mb-2 block">
+              <div className="retro-border bg-jacksons-purple-700 border-3 border-jacksons-purple-500 p-4 text-center">
+                <span className="text-retro-gold-400 text-2xl font-bold mb-1 block">
                   Bo3
                 </span>
-                <span className="text-white/70 text-sm uppercase tracking-wide">
+                <span className="text-white/80 text-sm uppercase tracking-wide">
                   Formato
                 </span>
               </div>
@@ -379,8 +392,6 @@ export default function HomePage() {
               </a>
             </div>
           </div>
-
-          <div className="border-t-4 border-retro-gold-500 max-w-5xl mx-auto opacity-60" />
         </section>
 
         {/* Current Season CTA */}
@@ -399,18 +410,22 @@ export default function HomePage() {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <LinkButton
-                  text="Ver Clasificación"
-                  href={ROUTES.CURRENT_SEASON}
-                  variant="yellow"
-                  newTab={false}
-                />
-                <LinkButton
-                  text="The Finals"
-                  href={ROUTES.finals('s1', 'split1')}
-                  variant="primary"
-                  newTab={false}
-                />
+                <div className="min-w-[180px]">
+                  <LinkButton
+                    text="Ver Clasificación"
+                    href={ROUTES.CURRENT_SEASON}
+                    variant="yellow"
+                    newTab={false}
+                  />
+                </div>
+                <div className="min-w-[180px]">
+                  <LinkButton
+                    text="The Finals"
+                    href={ROUTES.finals("s1", "split1")}
+                    variant="primary"
+                    newTab={false}
+                  />
+                </div>
               </div>
             </div>
           </div>

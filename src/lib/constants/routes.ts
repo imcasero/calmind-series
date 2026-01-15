@@ -4,8 +4,9 @@
  */
 export const ROUTES = {
   HOME: '/',
-  PRIMERA_DIVISION: '/primera-division',
-  SEGUNDA_DIVISION: '/segunda-division',
+  CURRENT_SEASON: '/s1/split1',
+  season: (season: string, split: string) => `/${season}/${split}`,
+  finals: (season: string, split: string) => `/${season}/${split}/final`,
 } as const;
 
 /**

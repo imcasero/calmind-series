@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Press_Start_2P } from 'next/font/google';
-import { Footer, Navbar } from '@/components/shared';
+import { Footer } from '@/components/shared';
 import './globals.css';
 
 const pressStart2P = Press_Start_2P({
@@ -42,8 +42,7 @@ export default function RootLayout({
           <div className="cloud cloud-4" />
         </div>
 
-        <Navbar />
-        <div className="max-w-4xl mx-auto px-4">{children}</div>
+        {children}
         <Footer />
       </body>
     </html>

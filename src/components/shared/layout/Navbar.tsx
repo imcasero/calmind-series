@@ -31,14 +31,8 @@ export default function Navbar() {
 
       <div className="flex items-center justify-center md:justify-end gap-2 flex-wrap">
         <LinkButton
-          text="Primera"
-          href={ROUTES.PRIMERA_DIVISION}
-          variant="primary"
-          newTab={false}
-        />
-        <LinkButton
-          text="Segunda"
-          href={ROUTES.SEGUNDA_DIVISION}
+          text="Temporada"
+          href={ROUTES.CURRENT_SEASON}
           variant="primary"
           newTab={false}
         />

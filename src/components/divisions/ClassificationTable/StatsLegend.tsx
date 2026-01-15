@@ -24,7 +24,7 @@ export default function StatsLegend({
 
       {/* Zone indicators */}
       {showPromotionZones && (
-        <div className="flex flex-wrap gap-4 justify-center mt-2 text-xs">
+        <div className="flex flex-wrap gap-4 justify-center mt-2 text-sm">
           <span className="flex items-center gap-1">
             <div className="w-3 h-3 bg-yellow-500/50 rounded" />
             Zona de campeón

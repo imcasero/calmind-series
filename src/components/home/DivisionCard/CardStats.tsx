@@ -15,7 +15,7 @@ export default function CardStats({ config }: CardStatsProps) {
     >
       <div>
         <div
-          className={`${config.statLabel} text-xs uppercase tracking-wide mb-1`}
+          className={`${config.statLabel} text-sm uppercase tracking-wide mb-1`}
         >
           Tipo
         </div>
@@ -23,7 +23,7 @@ export default function CardStats({ config }: CardStatsProps) {
       </div>
       <div>
         <div
-          className={`${config.statLabel} text-xs uppercase tracking-wide mb-1`}
+          className={`${config.statLabel} text-sm uppercase tracking-wide mb-1`}
         >
           Nivel
         </div>

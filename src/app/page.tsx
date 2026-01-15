@@ -1,143 +1,436 @@
-import { DivisionCard } from '@/components/home';
-import { LinkButton } from '@/components/shared';
-import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
-
-// SVG paths para los iconos
-const trophyIcon =
-  'M7 4V2C7 1.45 7.45 1 8 1H16C16.55 1 17 1.45 17 2V4H20C20.55 4 21 4.45 21 5S20.55 6 20 6H19V7C19 10.31 16.31 13 13 13H12V16H14C14.55 16 15 16.45 15 17S14.55 18 14 18H10C9.45 18 9 17.55 9 17S9.45 16 10 16H12V13H11C7.69 13 5 10.31 5 7V6H4C3.45 6 3 5.55 3 5S3.45 4 4 4H7ZM9 3V4H15V3H9ZM7 6V7C7 9.21 8.79 11 11 11H13C15.21 11 17 9.21 17 7V6H7Z';
-const usersIcon =
-  'M16 4C18.2 4 20 5.8 20 8S18.2 12 16 12 12 10.2 12 8 13.8 4 16 4M16 14C20.4 14 24 15.8 24 18V20H8V18C8 15.8 11.6 14 16 14M8 4C10.2 4 12 5.8 12 8S10.2 12 8 12 4 10.2 4 8 5.8 4 8 4M8 14C12.4 14 16 15.8 16 18V20H0V18C0 15.8 3.6 14 8 14Z';
+import Image from "next/image";
+import pokeballImg from "@/assets/pokeball.png";
+import { LinkButton, Navbar } from "@/components/shared";
+import { EXTERNAL_ROUTES, ROUTES } from "@/lib/constants/routes";
 
 export default function HomePage() {
   return (
     <>
-      {/* Welcome Section */}
-      <section id="home" className="relative w-full">
-        <div className="mx-auto max-w-5xl px-4 pt-16 pb-20 md:pt-24 md:pb-28 text-center">
-          <h1 className="pokemon-title text-retro-gold-400 drop-shadow-md font-black tracking-wide text-5xl sm:text-6xl md:text-7xl leading-tight">
-            POKEMON
-          </h1>
-          <p className="pokemon-title text-retro-cyan-300 drop-shadow font-extrabold text-2xl sm:text-3xl md:text-4xl mt-1">
-            CALMIND SERIES
-          </p>
+      <Navbar />
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Hero Section */}
+        <section id="home" className="relative w-full overflow-hidden">
+          <div className="mx-auto max-w-5xl px-4 pt-16 pb-12 md:pt-24 md:pb-16 text-center relative z-10">
+            {/* Main Title with embedded Pokeballs */}
+            <div className="relative inline-block">
+              {/* Embedded Pokeballs - solid, part of the title */}
+              <Image
+                src={pokeballImg}
+                alt=""
+                width={44}
+                height={44}
+                className="absolute -left-12 sm:-left-14 top-1 -rotate-20 hidden sm:block drop-shadow-lg"
+              />
+              <Image
+                src={pokeballImg}
+                alt=""
+                width={36}
+                height={36}
+                className="absolute -right-10 sm:-right-12 top-12 rotate-15 hidden sm:block drop-shadow-lg"
+              />
+              <h1 className="pokemon-title text-retro-gold-400 drop-shadow-md font-black tracking-wide text-5xl sm:text-6xl md:text-7xl leading-tight">
+                POKEMON
+              </h1>
+              <h2 className="pokemon-title text-retro-cyan-300 drop-shadow font-extrabold text-2xl sm:text-3xl md:text-4xl mt-1">
+                CALMIND SERIES
+              </h2>
+            </div>
 
-          <p className="text-white/90 mt-6 text-sm sm:text-base">
-            Competición Amateur de Pokemon
-          </p>
-          <p className="text-white/85 mt-2 text-sm sm:text-base">
-            Combates estratégicos · Accesible para todos · Demuestra tu
-            habilidad
-          </p>
+            {/* Tagline Badge */}
+            <div className="mt-8 flex justify-center">
+              <div className="retro-border bg-jacksons-purple-800/90 border-3 border-retro-cyan-500 px-6 py-3">
+                <span className="text-retro-gold-300 font-bold uppercase tracking-widest text-sm">
+                  Competición Amateur de Pokemon VGC
+                </span>
+              </div>
+            </div>
 
-          <div className="mt-8 flex items-center justify-center gap-4 sm:gap-5 flex-wrap">
-            <div className="scale-110">
+            {/* Feature Pills - Unified styling */}
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <span className="retro-border bg-jacksons-purple-700 border-2 border-retro-cyan-500 text-retro-cyan-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
+                Combates Bo3
+              </span>
+              <span className="retro-border bg-jacksons-purple-700 border-2 border-retro-gold-500 text-retro-gold-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
+                Sistema de Ligas
+              </span>
+              <span className="retro-border bg-jacksons-purple-700 border-2 border-retro-cyan-500 text-retro-cyan-300 px-4 py-2 text-sm font-bold uppercase tracking-wide">
+                Ascensos y Descensos
+              </span>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="mt-10 flex items-center justify-center gap-4 flex-wrap">
               <LinkButton
-                text="Participar"
+                text="Inscribirme"
                 href={EXTERNAL_ROUTES.INSCRIPTION_FORM}
                 variant="yellow"
                 newTab={true}
               />
-            </div>
-            <div className="scale-110">
               <LinkButton
-                text="Normativa"
+                text="Ver Normativa"
                 href={EXTERNAL_ROUTES.NORMATIVA_PDF}
                 variant="primary"
                 newTab={true}
               />
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="border-t-4 border-retro-gold-500 max-w-5xl mx-auto opacity-60" />
-      </section>
-
-      {/* Info Section */}
-      <section id="info" className="w-full">
-        <div className="mx-auto max-w-5xl px-4 py-14 md:py-20">
-          <h2 className="pokemon-title text-center text-retro-gold-400 font-extrabold text-2xl sm:text-3xl md:text-4xl">
-            Sobre CalMind
-          </h2>
-
-          <div className="mt-8 grid grid-cols-1 gap-6">
-            <div className="retro-border border-4 border-retro-cyan-500 bg-jacksons-purple-800 p-6 shadow-lg">
-              <p className="text-white/95 text-sm sm:text-base leading-relaxed">
-                CalMind comenzó como un equipo de eSports y ha evolucionado para
-                convertirse en una promotora de eventos gaming dedicada a crear
-                experiencias competitivas de calidad.
-              </p>
-            </div>
-            <div className="retro-border border-4 border-retro-cyan-500 bg-jacksons-purple-800 p-6 shadow-lg">
-              <p className="text-white/95 text-sm sm:text-base leading-relaxed">
-                Nuestro objetivo es fomentar la competición sana y accesible,
-                creando un ambiente donde los jugadores puedan desarrollar sus
-                habilidades y disfrutar del juego estratégico.
-              </p>
-            </div>
-          </div>
-
-          {/* Social Media */}
-          <div className="mt-8 flex justify-center">
-            <a
-              href={EXTERNAL_ROUTES.TWITTER}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex items-center gap-2 bg-jacksons-purple-700 hover:bg-jacksons-purple-600 border-3 border-retro-cyan-500 retro-border px-4 py-2 transition-all duration-300 hover:-translate-y-1"
-              aria-label="Síguenos en Twitter/X"
-            >
-              <svg
-                className="w-4 h-4 text-retro-cyan-300 group-hover:text-retro-cyan-200 transition-colors"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              <span className="text-white font-bold uppercase tracking-wide text-xs">
-                Síguenos en X
-              </span>
-            </a>
-          </div>
-        </div>
-        <div className="border-t-4 border-retro-gold-500 max-w-5xl mx-auto opacity-60" />
-      </section>
-
-      {/* Divisions Section */}
-      <section id="divisiones" className="w-full">
-        <div className="mx-auto max-w-6xl px-4 py-14 md:py-20">
-          <div className="mb-12 text-center">
+        {/* Tournament Format Section */}
+        <section id="formato" className="w-full">
+          <div className="mx-auto max-w-5xl px-4 py-14 md:py-20">
             <h2 className="pokemon-title text-center text-retro-gold-400 font-extrabold text-2xl sm:text-3xl md:text-4xl mb-4">
-              Divisiones
+              Formato del Torneo
             </h2>
-            <p className="text-white/90 text-sm sm:text-base">
-              Compite en tu nivel y asciende en las clasificaciones
-            </p>
+            <div className="text-center mb-10">
+              <span className="text-retro-cyan-300/80 text-sm uppercase tracking-wider font-semibold">
+                Sistema de Splits por Temporada
+              </span>
+            </div>
+
+            {/* Phase Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Regular Season */}
+              <div className="retro-border border-4 border-retro-cyan-500 bg-jacksons-purple-800 p-5 shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-retro-cyan-600 p-2 retro-border">
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-retro-gold-400 font-bold text-sm uppercase tracking-wide">
+                      Fase Regular
+                    </span>
+                    <span className="block text-white/60 text-sm">
+                      Jornadas 1-7
+                    </span>
+                  </div>
+                </div>
+                <p className="text-white/90 text-sm leading-relaxed">
+                  16 entrenadores en 2 divisiones compiten en partidas Bo3.
+                  Acumula puntos y escala en la clasificación.
+                </p>
+              </div>
+
+              {/* J8 - Cruces */}
+              <div className="retro-border border-4 border-retro-gold-500 bg-jacksons-purple-800 p-5 shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-retro-gold-500 p-2 retro-border">
+                    <svg
+                      className="w-5 h-5 text-jacksons-purple-900"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-retro-gold-400 font-bold text-sm uppercase tracking-wide">
+                      Los Cruces
+                    </span>
+                    <span className="block text-white/60 text-sm">
+                      Jornada 8
+                    </span>
+                  </div>
+                </div>
+                <p className="text-white/90 text-sm leading-relaxed">
+                  Cada división se divide: Top 4 (1v4, 2v3) luchan por el título
+                  y Bottom 4 (5v8, 6v7) por la permanencia.
+                </p>
+              </div>
+
+              {/* J9 - Finals */}
+              <div className="retro-border border-4 border-retro-gold-500 bg-jacksons-purple-800 p-5 shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-retro-gold-500 p-2 retro-border">
+                    <svg
+                      className="w-5 h-5 text-jacksons-purple-900"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-retro-gold-400 font-bold text-sm uppercase tracking-wide">
+                      Las Finales
+                    </span>
+                    <span className="block text-white/60 text-sm">
+                      Jornada 9
+                    </span>
+                  </div>
+                </div>
+                <p className="text-white/90 text-sm leading-relaxed">
+                  Gran Final, 3er puesto, Lucha por Permanencia y más. Se decide
+                  El Elegido y El Exiliado para el Olimpo.
+                </p>
+              </div>
+
+              {/* Olympus */}
+              <div className="retro-border border-4 border-snuff-500 bg-jacksons-purple-800 p-5 shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-snuff-500 p-2 retro-border">
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-retro-gold-400 font-bold text-sm uppercase tracking-wide">
+                      El Olimpo
+                    </span>
+                    <span className="block text-white/60 text-sm">Post-J9</span>
+                  </div>
+                </div>
+                <p className="text-white/90 text-sm leading-relaxed">
+                  <strong>El exiliado</strong> de primera vs{" "}
+                  <strong>el elegido</strong> de segunda. El ganador asciende o
+                  mantiene su puesto en la elite.
+                </p>
+              </div>
+            </div>
+
+            {/* Scoring System */}
+            <div className="mt-10 retro-border border-4 border-jacksons-purple-600 bg-jacksons-purple-900/50 p-6">
+              <h3 className="text-retro-cyan-300 font-bold text-sm uppercase tracking-wide mb-4 text-center">
+                Sistema de Puntuación
+              </h3>
+              <div className="flex flex-wrap justify-center gap-6 text-center">
+                <div>
+                  <span className="block text-retro-gold-400 font-bold text-2xl">
+                    3
+                  </span>
+                  <span className="text-white/70 text-sm uppercase tracking-wide">
+                    Victoria 2-0
+                  </span>
+                </div>
+                <div className="border-l border-white/20 pl-6">
+                  <span className="block text-retro-gold-400 font-bold text-2xl">
+                    2
+                  </span>
+                  <span className="text-white/70 text-sm uppercase tracking-wide">
+                    Victoria 2-1
+                  </span>
+                </div>
+                <div className="border-l border-white/20 pl-6">
+                  <span className="block text-retro-cyan-400 font-bold text-2xl">
+                    1
+                  </span>
+                  <span className="text-white/70 text-sm uppercase tracking-wide">
+                    Derrota 1-2
+                  </span>
+                </div>
+                <div className="border-l border-white/20 pl-6">
+                  <span className="block text-snuff-400 font-bold text-2xl">
+                    0
+                  </span>
+                  <span className="text-white/70 text-sm uppercase tracking-wide">
+                    Derrota 0-2
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-12">
-            <DivisionCard
-              title="PRIMERA DIVISIÓN"
-              subtitle="Elite de entrenadores"
-              description="Los mejores entrenadores compiten por el título de campeón en combates de alto nivel estratégico."
-              variant="gold"
-              icon={trophyIcon}
-              buttonText="Ver clasificación"
-              buttonHref={ROUTES.PRIMERA_DIVISION}
-            />
+        {/* About Section */}
+        <section id="about" className="w-full">
+          <div className="mx-auto max-w-5xl px-4 py-14 md:py-20">
+            <h2 className="pokemon-title text-center text-retro-gold-400 font-extrabold text-2xl sm:text-3xl md:text-4xl mb-10">
+              Sobre CalMind
+            </h2>
 
-            <DivisionCard
-              title="SEGUNDA DIVISIÓN"
-              subtitle="Entrenadores en ascenso"
-              description="Competidores prometedores que buscan demostrar su valía y ascender a la Primera División."
-              variant="purple"
-              icon={usersIcon}
-              buttonText="Ver clasificación"
-              buttonHref={ROUTES.SEGUNDA_DIVISION}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Origin Card */}
+              <div className="retro-border border-4 border-retro-cyan-500 bg-jacksons-purple-800 p-6 shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-retro-cyan-600 p-2 retro-border">
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-retro-gold-400 font-bold text-sm uppercase tracking-wide">
+                    Nuestro Origen
+                  </span>
+                </div>
+                <p className="text-white/90 text-sm leading-relaxed">
+                  CalMind nació como un equipo de eSports y ha evolucionado
+                  hasta convertirse en una promotora de eventos gaming dedicada
+                  a crear experiencias competitivas de calidad para la comunidad
+                  Pokemon.
+                </p>
+              </div>
+
+              {/* Mission Card */}
+              <div className="retro-border border-4 border-retro-gold-500 bg-jacksons-purple-800 p-6 shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-retro-gold-500 p-2 retro-border">
+                    <svg
+                      className="w-5 h-5 text-jacksons-purple-900"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-retro-gold-400 font-bold text-sm uppercase tracking-wide">
+                    Nuestra Misión
+                  </span>
+                </div>
+                <p className="text-white/90 text-sm leading-relaxed">
+                  Fomentar la competición sana y accesible, creando un ambiente
+                  donde los jugadores puedan desarrollar sus habilidades,
+                  aprender de sus rivales y disfrutar del juego estratégico al
+                  máximo nivel amateur.
+                </p>
+              </div>
+            </div>
+
+            {/* Stats Row - Retro styled */}
+            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="retro-border bg-jacksons-purple-700 border-3 border-jacksons-purple-500 p-4 text-center">
+                <span className="text-retro-cyan-300 text-2xl font-bold mb-1 block">
+                  16
+                </span>
+                <span className="text-white/80 text-sm uppercase tracking-wide">
+                  Entrenadores
+                </span>
+              </div>
+              <div className="retro-border bg-jacksons-purple-700 border-3 border-jacksons-purple-500 p-4 text-center">
+                <span className="text-retro-gold-400 text-2xl font-bold mb-1 block">
+                  2
+                </span>
+                <span className="text-white/80 text-sm uppercase tracking-wide">
+                  Divisiones
+                </span>
+              </div>
+              <div className="retro-border bg-jacksons-purple-700 border-3 border-jacksons-purple-500 p-4 text-center">
+                <span className="text-retro-cyan-300 text-2xl font-bold mb-1 block">
+                  9
+                </span>
+                <span className="text-white/80 text-sm uppercase tracking-wide">
+                  Jornadas
+                </span>
+              </div>
+              <div className="retro-border bg-jacksons-purple-700 border-3 border-jacksons-purple-500 p-4 text-center">
+                <span className="text-retro-gold-400 text-2xl font-bold mb-1 block">
+                  Bo3
+                </span>
+                <span className="text-white/80 text-sm uppercase tracking-wide">
+                  Formato
+                </span>
+              </div>
+            </div>
+
+            {/* Social Media */}
+            <div className="mt-10 flex justify-center">
+              <a
+                href={EXTERNAL_ROUTES.TWITTER}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-3 bg-jacksons-purple-700 hover:bg-jacksons-purple-600 border-3 border-retro-cyan-500 retro-border px-5 py-3 transition-all duration-300 hover:-translate-y-1"
+                aria-label="Síguenos en Twitter/X"
+              >
+                <svg
+                  className="w-5 h-5 text-retro-cyan-300 group-hover:text-retro-cyan-200 transition-colors"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                <span className="text-white font-bold uppercase tracking-wide text-sm">
+                  Síguenos en X
+                </span>
+              </a>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div className="border-t-4 border-retro-gold-500 max-w-5xl mx-auto opacity-60" />
-      </section>
+        {/* Current Season CTA */}
+        <section id="season" className="w-full">
+          <div className="mx-auto max-w-5xl px-4 py-14 md:py-20">
+            <div className="retro-border border-4 border-retro-gold-500 bg-linear-to-br from-jacksons-purple-800 to-jacksons-purple-900 p-8 md:p-10 text-center shadow-2xl">
+              <h2 className="pokemon-title text-retro-gold-400 font-extrabold text-2xl sm:text-3xl md:text-4xl mb-4">
+                Temporada Actual
+              </h2>
+              <p className="text-retro-cyan-300/90 text-sm sm:text-base mb-2 uppercase tracking-wider font-semibold">
+                Season 1 · Split 1
+              </p>
+              <p className="text-white/80 text-sm mb-8 max-w-md mx-auto">
+                Consulta las clasificaciones en tiempo real, resultados de
+                partidas y el bracket de los playoffs.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <div className="min-w-[180px]">
+                  <LinkButton
+                    text="Ver Clasificación"
+                    href={ROUTES.CURRENT_SEASON}
+                    variant="yellow"
+                    newTab={false}
+                  />
+                </div>
+                <div className="min-w-[180px]">
+                  <LinkButton
+                    text="The Finals"
+                    href={ROUTES.finals("s1", "split1")}
+                    variant="primary"
+                    newTab={false}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </>
   );
 }

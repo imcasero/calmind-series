@@ -10,10 +10,10 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           {/* Info Section */}
           <div className="text-center md:text-left">
-            <h3 className="pokemon-title text-sm text-yellow-500 mb-2">
+            <h3 className="pokemon-title text-base text-yellow-500 mb-2">
               Pokemon Calmind Series
             </h3>
-            <p className="text-xs text-gray-300">
+            <p className="text-sm text-gray-300">
               Competición Amateur de Pokemon
             </p>
           </div>
@@ -21,22 +21,16 @@ export default function Footer() {
           {/* Links Section */}
           <div className="flex flex-col md:flex-row gap-4 items-center">
             <Link
-              href={ROUTES.PRIMERA_DIVISION}
-              className="text-sm text-gray-300 hover:text-yellow-500 transition-colors"
+              href={ROUTES.CURRENT_SEASON}
+              className="text-base text-gray-300 hover:text-yellow-500 transition-colors"
             >
-              Primera División
-            </Link>
-            <Link
-              href={ROUTES.SEGUNDA_DIVISION}
-              className="text-sm text-gray-300 hover:text-yellow-500 transition-colors"
-            >
-              Segunda División
+              Temporada Actual
             </Link>
             <a
               href={EXTERNAL_ROUTES.NORMATIVA_PDF}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-300 hover:text-yellow-500 transition-colors"
+              className="text-base text-gray-300 hover:text-yellow-500 transition-colors"
             >
               Normativa
             </a>
@@ -44,11 +38,19 @@ export default function Footer() {
 
           {/* Copyright */}
           <div className="text-center md:text-right">
-            <p className="text-xs text-gray-400">
+            <p className="text-sm text-gray-400">
               &copy; {currentYear} Pokemon Calmind Series
             </p>
-            <p className="text-xs text-gray-500">
-              Desarrollado por Diego Casero Martín
+            <p className="text-sm text-gray-500">
+              Desarrollado por{' '}
+              <a
+                href="https://imcasero.dev/"
+                target="_blank"
+                rel="noopener"
+                className="hover:text-zinc-200 font-bold transition-all"
+              >
+                @imcasero.dev
+              </a>
             </p>
           </div>
         </div>

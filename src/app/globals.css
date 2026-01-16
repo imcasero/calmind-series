@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  /* Custom breakpoint for extra small devices (320px-639px) */
+  --breakpoint-xs: 375px;
   /* Primary purple color - Nintendo Vintage Style */
   --color-jacksons-purple-50: #f3f3ff;
   --color-jacksons-purple-100: #eaeafd;

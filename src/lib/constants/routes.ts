@@ -5,8 +5,12 @@
 export const ROUTES = {
   HOME: '/',
   CURRENT_SEASON: '/s1/split1',
+  seasonOverview: (season: string) => `/${season}`,
   season: (season: string, split: string) => `/${season}/${split}`,
+  cruces: (season: string, split: string) => `/${season}/${split}/cruces`,
   finals: (season: string, split: string) => `/${season}/${split}/final`,
+  division: (season: string, split: string, division: 'primera' | 'segunda') =>
+    `/${season}/${split}/${division}`,
 } as const;
 
 /**

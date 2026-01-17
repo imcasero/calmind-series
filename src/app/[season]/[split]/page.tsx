@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
-import type { JornadaStatus } from '@/lib/types/season.types';
 import { getAllLeagues, getRankings } from '@/lib/queries';
 
 interface SplitPageProps {

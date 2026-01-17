@@ -11,3 +11,7 @@ export {
   getSeasonWithSplits,
   type SeasonWithActiveSplit,
 } from './seasons.queries';
+export {
+  getRankings,
+  getAllLeagues
+} from './ranking.queries'

@@ -37,7 +37,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
           {splits.map((split) => (
             <Link
               key={split.id}
-              href={ROUTES.season(season, split.id)}
+              href={ROUTES.season(season, split.name)}
               className={`retro-border border-3 xs:border-4 p-4 xs:p-6 text-center transition-transform hover:-translate-y-1 ${
                 split.is_active
                   ? 'border-retro-gold-500 bg-jacksons-purple-800'

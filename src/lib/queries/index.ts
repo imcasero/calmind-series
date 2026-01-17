@@ -5,7 +5,6 @@
  * import { getActiveSeasonWithSplit, getLeagueRankings } from "@/lib/queries";
  */
 
-export { getLeagueRankings, getRankingsBySplit } from './rankings.queries';
 export {
   getActiveSeasonWithSplit,
   getAllSeasons,

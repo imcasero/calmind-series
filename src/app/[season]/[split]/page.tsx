@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Navbar } from '@/components/shared';
-import { LinkButton } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import type { JornadaStatus } from '@/lib/types/season.types';
 

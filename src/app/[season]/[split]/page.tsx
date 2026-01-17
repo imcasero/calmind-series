@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Navbar } from '@/components/shared';
-import { LinkButton } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import type { JornadaStatus } from '@/lib/types/season.types';
 
@@ -113,12 +112,6 @@ export default async function SplitPage({ params }: SplitPageProps) {
                 </div>
               ))}
             </div>
-            <Link
-              href={`/${season}/${split}/primera`}
-              className="block mt-3 xs:mt-4 text-center text-retro-cyan-300 text-[10px] xs:text-xs uppercase tracking-wide hover:text-retro-cyan-200 transition-colors"
-            >
-              Ver tabla completa →
-            </Link>
           </div>
 
           {/* Segunda División Preview */}
@@ -146,12 +139,6 @@ export default async function SplitPage({ params }: SplitPageProps) {
                 </div>
               ))}
             </div>
-            <Link
-              href={`/${season}/${split}/segunda`}
-              className="block mt-3 xs:mt-4 text-center text-retro-gold-400 text-[10px] xs:text-xs uppercase tracking-wide hover:text-retro-gold-300 transition-colors"
-            >
-              Ver tabla completa →
-            </Link>
           </div>
         </section>
 

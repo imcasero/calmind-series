@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
+import { getActiveSeasonWithSplit, getSeasonWithSplits } from '@/lib/queries';
 
 interface SeasonPageProps {
   params: Promise<{
@@ -10,12 +11,12 @@ interface SeasonPageProps {
 
 export default async function SeasonPage({ params }: SeasonPageProps) {
   const { season } = await params;
+  const seasonInfo = await getActiveSeasonWithSplit();
 
-  // Mock data - will be replaced with API call
-  const mockSplits = [
-    { id: 'split1', name: 'Split 1', isActive: true },
-    { id: 'split2', name: 'Split 2', isActive: false },
-  ];
+  const seasonWithSplits = seasonInfo
+    ? await getSeasonWithSplits(seasonInfo.id)
+    : null;
+  const splits = seasonWithSplits?.splits ?? [];
 
   return (
     <>
@@ -33,12 +34,12 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
 
         {/* Splits Grid */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 xs:gap-6">
-          {mockSplits.map((split) => (
+          {splits.map((split) => (
             <Link
               key={split.id}
-              href={ROUTES.season(season, split.id)}
+              href={ROUTES.season(season, split.name)}
               className={`retro-border border-3 xs:border-4 p-4 xs:p-6 text-center transition-transform hover:-translate-y-1 ${
-                split.isActive
+                split.is_active
                   ? 'border-retro-gold-500 bg-jacksons-purple-800'
                   : 'border-jacksons-purple-600 bg-jacksons-purple-900/50 opacity-60'
               }`}
@@ -46,7 +47,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
               <h2 className="text-retro-gold-400 font-bold text-lg xs:text-xl mb-2">
                 {split.name}
               </h2>
-              {split.isActive ? (
+              {split.is_active ? (
                 <span className="inline-block bg-retro-cyan-600 text-white text-[10px] xs:text-xs px-2 py-1 uppercase tracking-wide">
                   Activo
                 </span>

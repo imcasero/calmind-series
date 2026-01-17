@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import type { JornadaStatus } from '@/lib/types/season.types';
+import { getAllLeagues, getRankings } from '@/lib/queries';
 
 interface SplitPageProps {
   params: Promise<{
@@ -13,41 +14,47 @@ interface SplitPageProps {
 export default async function SplitPage({ params }: SplitPageProps) {
   const { season, split } = await params;
 
-  // Mock data - will be replaced with API call
-  const mockJornadaStatus: {
-    current: number;
-    total: number;
-    status: JornadaStatus;
-    statusMessage: string;
-  } = {
-    current: 5,
-    total: 9,
-    status: 'in_progress',
-    statusMessage: 'Jornada 5 en curso - Finalizando 20 de Enero',
-  };
+  const rankings = await getRankings();
+  const leagues = await getAllLeagues();
 
-  const mockLeaguePreview = {
-    primera: [
-      { position: 1, name: 'Trainer Red', points: 12 },
-      { position: 2, name: 'Trainer Blue', points: 10 },
-      { position: 3, name: 'Trainer Green', points: 9 },
-    ],
-    segunda: [
-      { position: 1, name: 'Trainer Gold', points: 11 },
-      { position: 2, name: 'Trainer Silver', points: 10 },
-      { position: 3, name: 'Trainer Crystal', points: 8 },
-    ],
-  };
+  // Find league IDs by tier name (assuming tier_name contains "Primera" or "Segunda")
+  const primeraLeague = leagues.find((league) =>
+    league.tier_name.toLowerCase().includes('primera'),
+  );
+  const segundaLeague = leagues.find((league) =>
+    league.tier_name.toLowerCase().includes('segunda'),
+  );
 
-  const getStatusColor = (status: JornadaStatus) => {
-    switch (status) {
-      case 'in_progress':
-        return 'bg-retro-cyan-600 border-retro-cyan-400';
-      case 'completed':
-        return 'bg-retro-gold-600 border-retro-gold-400';
-      case 'upcoming':
-        return 'bg-jacksons-purple-600 border-jacksons-purple-400';
-    }
+  // Build league preview from real data
+  const leaguePreview = {
+    primera: rankings
+      .filter((ranking) => ranking.league_id === primeraLeague?.id)
+      .filter(
+        (ranking) =>
+          ranking.position !== null &&
+          ranking.nickname &&
+          ranking.total_points !== null,
+      )
+
+      .map((ranking) => ({
+        position: ranking.position!,
+        name: ranking.nickname!,
+        points: ranking.total_points!,
+      })),
+    segunda: rankings
+      .filter((ranking) => ranking.league_id === segundaLeague?.id)
+      .filter(
+        (ranking) =>
+          ranking.position !== null &&
+          ranking.nickname &&
+          ranking.total_points !== null,
+      )
+
+      .map((ranking) => ({
+        position: ranking.position!,
+        name: ranking.nickname!,
+        points: ranking.total_points!,
+      })),
   };
 
   return (
@@ -70,21 +77,6 @@ export default async function SplitPage({ params }: SplitPageProps) {
           </p>
         </section>
 
-        {/* Jornada Status Banner */}
-        <section
-          className={`retro-border border-2 xs:border-3 ${getStatusColor(mockJornadaStatus.status)} p-3 xs:p-4 mb-6 xs:mb-8 text-center`}
-        >
-          <div className="flex flex-col xs:flex-row items-center justify-center gap-2 xs:gap-4">
-            <span className="text-white font-bold text-sm xs:text-base">
-              Jornada {mockJornadaStatus.current} / {mockJornadaStatus.total}
-            </span>
-            <span className="hidden xs:block text-white/40">|</span>
-            <span className="text-white/90 text-xs xs:text-sm">
-              {mockJornadaStatus.statusMessage}
-            </span>
-          </div>
-        </section>
-
         {/* League Table Previews */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 xs:gap-6 mb-6 xs:mb-8">
           {/* Primera División Preview */}
@@ -93,7 +85,7 @@ export default async function SplitPage({ params }: SplitPageProps) {
               Primera División
             </h3>
             <div className="space-y-2">
-              {mockLeaguePreview.primera.map((player) => (
+              {leaguePreview.primera.map((player) => (
                 <div
                   key={player.position}
                   className="flex items-center justify-between bg-jacksons-purple-900/50 px-2 xs:px-3 py-1.5 xs:py-2"
@@ -120,7 +112,7 @@ export default async function SplitPage({ params }: SplitPageProps) {
               Segunda División
             </h3>
             <div className="space-y-2">
-              {mockLeaguePreview.segunda.map((player) => (
+              {leaguePreview.segunda.map((player) => (
                 <div
                   key={player.position}
                   className="flex items-center justify-between bg-jacksons-purple-900/50 px-2 xs:px-3 py-1.5 xs:py-2"

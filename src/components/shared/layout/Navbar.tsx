@@ -2,9 +2,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import LinkButton from '@/components/shared/ui/Button/LinkButton';
 import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
+import type { SeasonWithActiveSplit } from '@/lib/queries';
 import CalmindLogo from '../../../../public/CalmindSeriesLogo.png';
 
-export default function Navbar() {
+export default function Navbar({
+  seasonInfo,
+}: {
+  seasonInfo: SeasonWithActiveSplit | null;
+}) {
   return (
     <nav className="flex flex-col md:flex-row items-center justify-between md:justify-around gap-4 p-6 md:p-8 max-w-7xl mx-auto bg-transparent w-full">
       <Link
@@ -30,12 +35,14 @@ export default function Navbar() {
       </Link>
 
       <div className="flex items-center justify-center md:justify-end gap-2 flex-wrap">
-        <LinkButton
-          text="Temporada"
-          href={ROUTES.CURRENT_SEASON}
-          variant="primary"
-          newTab={false}
-        />
+        {seasonInfo?.name && seasonInfo?.activeSplit?.name && (
+          <LinkButton
+            text="Temporada"
+            href={ROUTES.season(seasonInfo.name, seasonInfo.activeSplit.name)}
+            variant="primary"
+            newTab={false}
+          />
+        )}
         <LinkButton
           text="Unete!"
           href={EXTERNAL_ROUTES.INSCRIPTION_FORM}

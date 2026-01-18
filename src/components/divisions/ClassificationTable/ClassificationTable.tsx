@@ -1,15 +1,15 @@
-import type { Player } from '@/lib/types';
+import type { RankingEntry } from '@/lib/queries';
 import StatsLegend from './StatsLegend';
 import TableHeader from './TableHeader';
 import TableRow from './TableRow';
 
 export interface ClassificationTableProps {
-  players: Player[];
+  rankings: RankingEntry[];
   showPromotionZones?: boolean;
 }
 
 export default function ClassificationTable({
-  players,
+  rankings,
   showPromotionZones = false,
 }: ClassificationTableProps) {
   return (
@@ -30,10 +30,10 @@ export default function ClassificationTable({
                 PJ
               </th>
               <th className="px-4 py-3 text-retro-gold-300 drop-shadow font-bold text-center">
-                PG
+                Sets
               </th>
               <th className="px-4 py-3 text-retro-gold-300 drop-shadow font-bold text-center">
-                PP
+                Diff
               </th>
               <th className="px-4 py-3 text-retro-gold-300 drop-shadow font-bold text-center">
                 Puntos
@@ -41,13 +41,12 @@ export default function ClassificationTable({
             </tr>
           </thead>
           <tbody>
-            {players.map((player, index) => (
+            {rankings.map((ranking) => (
               <TableRow
-                key={player.id}
-                player={player}
-                position={index + 1}
+                key={ranking.trainerId}
+                ranking={ranking}
                 showPromotionZones={showPromotionZones}
-                totalPlayers={players.length}
+                totalPlayers={rankings.length}
               />
             ))}
           </tbody>
@@ -56,7 +55,7 @@ export default function ClassificationTable({
 
       <StatsLegend
         showPromotionZones={showPromotionZones}
-        totalPlayers={players.length}
+        totalPlayers={rankings.length}
       />
     </div>
   );

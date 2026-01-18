@@ -1,53 +1,50 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import type { League, LeagueRanking } from '@/lib/types/database.types';
+import type { LeagueRanking } from '@/lib/types/database.types';
 
 /**
  * Gets all league rankings ordered by position.
- * Returns an empty array if no rankings are found or on error.
  *
- * @example
- * const rankings = await getRankings();
- * rankings.forEach(ranking => {
- *   console.log(ranking.nickname, ranking.position);
- * });
+ * @deprecated Prefer using getRankingsByLeague from leagues.queries.ts for filtered results
  */
-export async function getRankings(): Promise<LeagueRanking[]> {
+export const getAllRankings = cache(async (): Promise<LeagueRanking[]> => {
   const supabase = await createClient();
 
-  const { data: league_rankings, error } = await supabase
+  const { data, error } = await supabase
     .from('league_rankings')
     .select('*')
     .order('position', { ascending: true });
 
   if (error) {
-    console.error('[getRankings] Error:', error.message);
+    console.error('[getAllRankings] Error:', error.message);
     return [];
   }
 
-  return league_rankings ?? [];
-}
+  return data ?? [];
+});
 
 /**
- * Gets all leagues with only id and tier_name.
- * Returns an empty array if no leagues are found or on error.
- *
- * @example
- * const leagues = await getAllLeagues();
- * leagues.forEach(league => {
- *   console.log(league.id, league.tier_name);
- * });
+ * Gets a trainer's ranking in a specific league
  */
-export async function getAllLeagues(): Promise<Pick<League, 'id' | 'tier_name'>[]> {
-  const supabase = await createClient();
+export const getTrainerRanking = cache(
+  async (
+    leagueId: string,
+    trainerId: string,
+  ): Promise<LeagueRanking | null> => {
+    const supabase = await createClient();
 
-  const { data: leagues, error } = await supabase
-    .from('leagues')
-    .select('id, tier_name');
+    const { data, error } = await supabase
+      .from('league_rankings')
+      .select('*')
+      .eq('league_id', leagueId)
+      .eq('trainer_id', trainerId)
+      .single();
 
-  if (error) {
-    console.error('[getAllLeagues] Error:', error.message);
-    return [];
-  }
+    if (error) {
+      console.error('[getTrainerRanking] Error:', error.message);
+      return null;
+    }
 
-  return leagues ?? [];
-}
+    return data;
+  },
+);

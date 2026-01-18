@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
-import { getActiveSeasonWithSplit, getSeasonWithSplits } from '@/lib/queries';
+import { getSeasonByName } from '@/lib/queries';
 
 interface SeasonPageProps {
   params: Promise<{
@@ -11,12 +12,15 @@ interface SeasonPageProps {
 
 export default async function SeasonPage({ params }: SeasonPageProps) {
   const { season } = await params;
-  const seasonInfo = await getActiveSeasonWithSplit();
 
-  const seasonWithSplits = seasonInfo
-    ? await getSeasonWithSplits(seasonInfo.id)
-    : null;
-  const splits = seasonWithSplits?.splits ?? [];
+  // Get season by URL param name (single query with joins)
+  const seasonData = await getSeasonByName(season);
+
+  if (!seasonData) {
+    notFound();
+  }
+
+  const { splits } = seasonData;
 
   return (
     <>

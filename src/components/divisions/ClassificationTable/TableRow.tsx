@@ -39,7 +39,9 @@ export default function TableRow({
       <td className="px-4 py-3 text-center text-retro-cyan-400 drop-shadow font-bold">
         {ranking.totalSetsWon}
       </td>
-      <td className={`px-4 py-3 text-center drop-shadow font-bold ${ranking.setBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+      <td
+        className={`px-4 py-3 text-center drop-shadow font-bold ${ranking.setBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}
+      >
         {ranking.setBalance > 0 ? `+${ranking.setBalance}` : ranking.setBalance}
       </td>
       <td className="px-4 py-3 text-center text-retro-gold-400 drop-shadow font-black text-lg">

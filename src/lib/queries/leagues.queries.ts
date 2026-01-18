@@ -136,3 +136,90 @@ export const getLeagueByTier = cache(
     return data;
   },
 );
+
+/**
+ * Participant entry for UI display
+ */
+export type ParticipantEntry = {
+  trainerId: string;
+  nickname: string;
+  avatarUrl: string | null;
+};
+
+/**
+ * Participants grouped by division
+ */
+export type ParticipantsByDivision = {
+  primera: ParticipantEntry[];
+  segunda: ParticipantEntry[];
+};
+
+/**
+ * Gets all participants for a split, grouped by division
+ */
+export const getParticipantsBySplit = cache(
+  async (splitId: string): Promise<ParticipantsByDivision> => {
+    const supabase = await createClient();
+
+    // Get leagues for this split
+    const leagues = await getLeaguesBySplit(splitId);
+
+    if (leagues.length === 0) {
+      return { primera: [], segunda: [] };
+    }
+
+    const primeraLeague = leagues.find((l) => l.tier_priority === 1);
+    const segundaLeague = leagues.find((l) => l.tier_priority === 2);
+
+    // Fetch participants for each league
+    const fetchParticipants = async (
+      leagueId: string,
+    ): Promise<ParticipantEntry[]> => {
+      const { data, error } = await supabase
+        .from('league_participants')
+        .select(
+          `
+          trainer_id,
+          trainers!inner(
+            id,
+            nickname,
+            avatar_url
+          )
+        `,
+        )
+        .eq('league_id', leagueId)
+        .eq('status', 'active');
+
+      if (error) {
+        console.error('[getParticipantsBySplit] Error:', error.message);
+        return [];
+      }
+
+      type ParticipantRow = {
+        trainer_id: string | null;
+        trainers: {
+          id: string;
+          nickname: string;
+          avatar_url: string | null;
+        };
+      };
+
+      return ((data ?? []) as ParticipantRow[]).map((p) => ({
+        trainerId: p.trainers.id,
+        nickname: p.trainers.nickname,
+        avatarUrl: p.trainers.avatar_url,
+      }));
+    };
+
+    const [primera, segunda] = await Promise.all([
+      primeraLeague ? fetchParticipants(primeraLeague.id) : Promise.resolve([]),
+      segundaLeague ? fetchParticipants(segundaLeague.id) : Promise.resolve([]),
+    ]);
+
+    // Sort alphabetically
+    primera.sort((a, b) => a.nickname.localeCompare(b.nickname));
+    segunda.sort((a, b) => a.nickname.localeCompare(b.nickname));
+
+    return { primera, segunda };
+  },
+);

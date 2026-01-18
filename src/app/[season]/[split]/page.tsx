@@ -1,9 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import ClassificationTable from '@/components/divisions/ClassificationTable/ClassificationTable';
+import SplitContent from '@/components/divisions/SplitContent/SplitContent';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
-import { getDivisionPreview, getSplitByNames } from '@/lib/queries';
+import {
+  getDivisionPreview,
+  getParticipantsBySplit,
+  getSplitByNames,
+} from '@/lib/queries';
 
 interface SplitPageProps {
   params: Promise<{
@@ -22,13 +26,16 @@ export default async function SplitPage({ params }: SplitPageProps) {
     notFound();
   }
 
-  // Get division rankings (already formatted for UI)
-  const { primera, segunda } = await getDivisionPreview(splitInfo.split.id);
+  // Get rankings and participants in parallel
+  const [rankings, participants] = await Promise.all([
+    getDivisionPreview(splitInfo.split.id),
+    getParticipantsBySplit(splitInfo.split.id),
+  ]);
 
   return (
     <>
       <Navbar />
-      <div className="max-w-4xl mx-auto px-2 xs:px-3 sm:px-4 py-6 xs:py-8">
+      <div className="max-w-6xl mx-auto px-2 xs:px-3 sm:px-4 py-6 xs:py-8">
         {/* Header */}
         <section className="text-center mb-6 xs:mb-8">
           <Link
@@ -45,24 +52,11 @@ export default async function SplitPage({ params }: SplitPageProps) {
           </p>
         </section>
 
-        {/* Primera División */}
-        <section className="mb-6 xs:mb-8">
-          <h2 className="text-retro-gold-400 font-bold text-sm xs:text-base uppercase tracking-wide mb-3 xs:mb-4 text-center">
-            Primera División
-          </h2>
-          <ClassificationTable rankings={primera} showPromotionZones />
-        </section>
-
-        {/* Segunda División */}
-        <section className="mb-6 xs:mb-8">
-          <h2 className="text-retro-cyan-300 font-bold text-sm xs:text-base uppercase tracking-wide mb-3 xs:mb-4 text-center">
-            Segunda División
-          </h2>
-          <ClassificationTable rankings={segunda} showPromotionZones />
-        </section>
+        {/* Tabs: Clasificación / Participantes */}
+        <SplitContent rankings={rankings} participants={participants} />
 
         {/* J8 & J9 Action Buttons */}
-        <section className="retro-border border-3 xs:border-4 border-jacksons-purple-600 bg-jacksons-purple-900/50 p-4 xs:p-6">
+        <section className="retro-border border-3 xs:border-4 border-jacksons-purple-600 bg-jacksons-purple-900/50 p-4 xs:p-6 mt-6 xs:mt-8">
           <h3 className="text-retro-gold-400 font-bold text-xs xs:text-sm uppercase tracking-wide mb-4 xs:mb-6 text-center">
             Fases Finales
           </h3>

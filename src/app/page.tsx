@@ -11,7 +11,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <Navbar seasonInfo={seasonInfo} />
+      <Navbar />
       <div className="max-w-4xl mx-auto px-2 xs:px-3 sm:px-4">
         {/* Hero Section */}
         <Hero />

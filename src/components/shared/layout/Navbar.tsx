@@ -2,14 +2,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import LinkButton from '@/components/shared/ui/Button/LinkButton';
 import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
-import type { SeasonWithActiveSplit } from '@/lib/queries';
+import { getActiveSeasonWithSplit } from '@/lib/queries';
 import CalmindLogo from '../../../../public/CalmindSeriesLogo.png';
 
-export default function Navbar({
-  seasonInfo,
-}: {
-  seasonInfo: SeasonWithActiveSplit | null;
-}) {
+export default async function Navbar() {
+  const seasonInfo = await getActiveSeasonWithSplit();
   return (
     <nav className="flex flex-col md:flex-row items-center justify-between md:justify-around gap-4 p-6 md:p-8 max-w-7xl mx-auto bg-transparent w-full">
       <Link

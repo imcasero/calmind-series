@@ -13,19 +13,21 @@ export default function PlayerAvatar({ avatarUrl, name }: PlayerAvatarProps) {
     .toUpperCase();
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3">
       {avatarUrl ? (
         <img
           src={avatarUrl}
           alt={name}
-          className="w-8 h-8 rounded-full object-cover"
+          className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full object-cover flex-shrink-0"
         />
       ) : (
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm bg-linear-to-br from-jacksons-purple-500 to-snuff-500">
+        <div className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px] xs:text-xs sm:text-sm bg-linear-to-br from-jacksons-purple-500 to-snuff-500 flex-shrink-0">
           {initials}
         </div>
       )}
-      <span className="text-white drop-shadow font-bold">{name}</span>
+      <span className="text-white drop-shadow font-bold truncate max-w-[80px] xs:max-w-[100px] sm:max-w-none">
+        {name}
+      </span>
     </div>
   );
 }

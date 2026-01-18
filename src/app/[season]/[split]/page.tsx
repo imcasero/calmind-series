@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Navbar } from '@/components/shared';
 import ClassificationTable from '@/components/divisions/ClassificationTable/ClassificationTable';
+import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import { getDivisionPreview, getSplitByNames } from '@/lib/queries';
 

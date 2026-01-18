@@ -22,7 +22,7 @@ function ParticipantCard({
           className="w-8 h-8 xs:w-10 xs:h-10 rounded-full object-cover shrink-0"
         />
       ) : (
-        <div className="w-8 h-8 xs:w-10 xs:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs xs:text-sm bg-gradient-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
+        <div className="w-8 h-8 xs:w-10 xs:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs xs:text-sm bg-linear-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
           {initials}
         </div>
       )}

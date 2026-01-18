@@ -62,8 +62,6 @@
 html {
   font-family: system-ui, sans-serif;
   color: #fff;
-  image-rendering: pixelated;
-  image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
 }
 
@@ -244,3 +242,4 @@ body > *:not(.clouds-container) {
   position: relative;
   z-index: 1;
 }
+

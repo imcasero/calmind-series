@@ -1,17 +1,34 @@
 /**
  * Central export point for all queries
  *
+ * All queries use React cache() for deduplication within the same request.
+ *
  * Usage in Server Components:
- * import { getActiveSeasonWithSplit, getLeagueRankings } from "@/lib/queries";
+ * import { getActiveSeasonWithSplit, getDivisionPreview } from "@/lib/queries";
  */
 
+// League queries (preferred for UI)
+export {
+  type DivisionPreview,
+  getDivisionPreview,
+  getLeagueByTier,
+  getLeaguesBySplit,
+  getRankingsByLeague,
+  type LeagueInfo,
+  type RankingEntry,
+} from './leagues.queries';
+// Ranking queries (low-level)
+export {
+  getAllRankings,
+  getTrainerRanking,
+} from './ranking.queries';
+// Season queries
 export {
   getActiveSeasonWithSplit,
   getAllSeasons,
+  getSeasonByName,
   getSeasonWithSplits,
+  getSplitByNames,
   type SeasonWithActiveSplit,
+  type SeasonWithSplits,
 } from './seasons.queries';
-export {
-  getRankings,
-  getAllLeagues
-} from './ranking.queries'

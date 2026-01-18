@@ -15,10 +15,10 @@ export default function StatsLegend({
           <strong>PJ:</strong> Partidos jugados
         </span>
         <span className="drop-shadow font-semibold">
-          <strong>PG:</strong> Partidos ganados
+          <strong>Sets:</strong> Sets ganados
         </span>
         <span className="drop-shadow font-semibold">
-          <strong>PP:</strong> Partidos perdidos
+          <strong>Diff:</strong> Balance de sets
         </span>
       </div>
 

@@ -1,23 +1,22 @@
-import type { Player } from '@/lib/types';
+import type { RankingEntry } from '@/lib/queries';
 import PlayerAvatar from './PlayerAvatar';
 import PlayerBadge from './PlayerBadge';
 import { getRowClassName } from './utils';
 
 interface TableRowProps {
-  player: Player;
-  position: number;
+  ranking: RankingEntry;
   showPromotionZones: boolean;
   totalPlayers: number;
 }
 
 export default function TableRow({
-  player,
-  position,
+  ranking,
   showPromotionZones,
   totalPlayers,
 }: TableRowProps) {
-  const isChampion = player.isChampion || false;
-  const isPromoted = (player.isPromoted && !isChampion) || false;
+  const position = ranking.position;
+  const isChampion = position === 1;
+  const isPromoted = position <= 4 && !isChampion;
   const isRelegation = showPromotionZones && position > totalPlayers - 2;
 
   const rowClass = getRowClassName({ isChampion, isPromoted, isRelegation });
@@ -32,19 +31,19 @@ export default function TableRow({
         />
       </td>
       <td className="px-4 py-3">
-        <PlayerAvatar avatar={player.avatar} name={player.name} />
+        <PlayerAvatar avatarUrl={ranking.avatarUrl} name={ranking.nickname} />
       </td>
       <td className="px-4 py-3 text-center text-white drop-shadow font-bold">
-        {player.pj}
+        {ranking.matchesPlayed}
       </td>
-      <td className="px-4 py-3 text-center text-green-400 drop-shadow font-bold">
-        {player.pg}
+      <td className="px-4 py-3 text-center text-retro-cyan-400 drop-shadow font-bold">
+        {ranking.totalSetsWon}
       </td>
-      <td className="px-4 py-3 text-center text-red-400 drop-shadow font-bold">
-        {player.pp}
+      <td className={`px-4 py-3 text-center drop-shadow font-bold ${ranking.setBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        {ranking.setBalance > 0 ? `+${ranking.setBalance}` : ranking.setBalance}
       </td>
       <td className="px-4 py-3 text-center text-retro-gold-400 drop-shadow font-black text-lg">
-        {player.points}
+        {ranking.totalPoints}
       </td>
     </tr>
   );

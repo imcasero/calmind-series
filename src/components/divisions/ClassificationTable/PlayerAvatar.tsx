@@ -18,10 +18,10 @@ export default function PlayerAvatar({ avatarUrl, name }: PlayerAvatarProps) {
         <img
           src={avatarUrl}
           alt={name}
-          className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full object-cover flex-shrink-0"
+          className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0"
         />
       ) : (
-        <div className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px] xs:text-xs sm:text-sm bg-linear-to-br from-jacksons-purple-500 to-snuff-500 flex-shrink-0">
+        <div className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-bold text-[10px] xs:text-xs sm:text-sm bg-linear-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
           {initials}
         </div>
       )}

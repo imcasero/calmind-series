@@ -2,9 +2,9 @@
 
 import {
   Children,
+  isValidElement,
   type ReactElement,
   type ReactNode,
-  isValidElement,
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';

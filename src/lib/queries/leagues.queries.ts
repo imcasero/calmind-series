@@ -58,6 +58,7 @@ export const getRankingsByLeague = cache(
   async (leagueId: string): Promise<RankingEntry[]> => {
     const supabase = await createClient();
 
+    // Get rankings from view
     const { data, error } = await supabase
       .from('league_rankings')
       .select('*')
@@ -71,13 +72,42 @@ export const getRankingsByLeague = cache(
       return [];
     }
 
+    // Get actual played matches count per trainer
+    const { data: playedMatches } = await supabase
+      .from('matches')
+      .select('home_trainer_id, away_trainer_id')
+      .eq('league_id', leagueId)
+      .eq('played', true);
+
+    type PlayedMatch = {
+      home_trainer_id: string | null;
+      away_trainer_id: string | null;
+    };
+
+    // Count played matches per trainer
+    const playedCountMap = new Map<string, number>();
+    for (const match of (playedMatches ?? []) as PlayedMatch[]) {
+      if (match.home_trainer_id) {
+        playedCountMap.set(
+          match.home_trainer_id,
+          (playedCountMap.get(match.home_trainer_id) ?? 0) + 1,
+        );
+      }
+      if (match.away_trainer_id) {
+        playedCountMap.set(
+          match.away_trainer_id,
+          (playedCountMap.get(match.away_trainer_id) ?? 0) + 1,
+        );
+      }
+    }
+
     return (data ?? []).map((ranking: LeagueRanking) => ({
       position: ranking.position!,
       nickname: ranking.nickname!,
       totalPoints: ranking.total_points ?? 0,
       avatarUrl: ranking.avatar_url,
       setBalance: ranking.set_balance ?? 0,
-      matchesPlayed: ranking.matches_played ?? 0,
+      matchesPlayed: playedCountMap.get(ranking.trainer_id ?? '') ?? 0,
       totalSetsWon: ranking.total_sets_won ?? 0,
       trainerId: ranking.trainer_id ?? '',
     }));
@@ -266,9 +296,19 @@ export const getMatchesByRound = cache(
   async (splitId: string): Promise<MatchesByRound> => {
     const supabase = await createClient();
 
-    // Get leagues for tier name lookup
+    // Get leagues for tier lookup (use priority to identify Primera/Segunda)
     const leagues = await getLeaguesBySplit(splitId);
-    const leagueMap = new Map(leagues.map((l) => [l.id, l.tier_name]));
+    // Map league_id to normalized tier name based on priority
+    const leagueMap = new Map(
+      leagues.map((l) => [
+        l.id,
+        l.tier_priority === 1
+          ? 'Primera'
+          : l.tier_priority === 2
+            ? 'Segunda'
+            : l.tier_name,
+      ]),
+    );
 
     const { data, error } = await supabase
       .from('matches')

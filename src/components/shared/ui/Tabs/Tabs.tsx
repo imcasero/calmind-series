@@ -47,7 +47,7 @@ export default function Tabs({ children, defaultIndex = 0 }: TabsProps) {
   return (
     <div>
       {/* Tab buttons */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap justify-center gap-2 mb-6">
         {panels.map((panel, index) => {
           const isActive = activeIndex === index;
           return (

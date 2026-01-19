@@ -45,7 +45,6 @@ export default function ClassificationTable({
               <TableRow
                 key={ranking.trainerId}
                 ranking={ranking}
-                showPromotionZones={showPromotionZones}
                 totalPlayers={rankings.length}
               />
             ))}

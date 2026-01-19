@@ -5,6 +5,7 @@ import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import {
   getDivisionPreview,
+  getMatchesByRound,
   getParticipantsBySplit,
   getSplitByNames,
 } from '@/lib/queries';
@@ -26,10 +27,11 @@ export default async function SplitPage({ params }: SplitPageProps) {
     notFound();
   }
 
-  // Get rankings and participants in parallel
-  const [rankings, participants] = await Promise.all([
+  // Get rankings, participants and matches in parallel
+  const [rankings, participants, matches] = await Promise.all([
     getDivisionPreview(splitInfo.split.id),
     getParticipantsBySplit(splitInfo.split.id),
+    getMatchesByRound(splitInfo.split.id),
   ]);
 
   return (
@@ -52,8 +54,12 @@ export default async function SplitPage({ params }: SplitPageProps) {
           </p>
         </section>
 
-        {/* Tabs: Clasificación / Participantes */}
-        <SplitContent rankings={rankings} participants={participants} />
+        {/* Tabs: Clasificación / Participantes / Enfrentamientos */}
+        <SplitContent
+          rankings={rankings}
+          participants={participants}
+          matches={matches}
+        />
 
         {/* J8 & J9 Action Buttons */}
         <section className="retro-border border-3 xs:border-4 border-jacksons-purple-600 bg-jacksons-purple-900/50 p-4 xs:p-6 mt-6 xs:mt-8">

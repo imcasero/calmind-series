@@ -266,9 +266,15 @@ export const getMatchesByRound = cache(
   async (splitId: string): Promise<MatchesByRound> => {
     const supabase = await createClient();
 
-    // Get leagues for tier name lookup
+    // Get leagues for tier lookup (use priority to identify Primera/Segunda)
     const leagues = await getLeaguesBySplit(splitId);
-    const leagueMap = new Map(leagues.map((l) => [l.id, l.tier_name]));
+    // Map league_id to normalized tier name based on priority
+    const leagueMap = new Map(
+      leagues.map((l) => [
+        l.id,
+        l.tier_priority === 1 ? 'Primera' : l.tier_priority === 2 ? 'Segunda' : l.tier_name,
+      ]),
+    );
 
     const { data, error } = await supabase
       .from('matches')

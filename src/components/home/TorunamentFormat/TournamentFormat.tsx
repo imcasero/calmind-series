@@ -36,17 +36,17 @@ export const TournamentFormat = () => {
                   Fase Regular
                 </span>
                 <span className="block text-white/60 text-xs xs:text-sm">
-                  Jornadas 1-7
+                  Jornadas 1-14
                 </span>
               </div>
             </div>
             <p className="text-white/90 text-xs xs:text-sm leading-relaxed">
-              16 entrenadores en 2 divisiones compiten en partidas Bo3. Acumula
-              puntos y escala en la clasificación.
+              16 entrenadores en 2 divisiones compiten en partidas Bo3 a doble
+              vuelta. Acumula puntos y escala en la clasificación.
             </p>
           </div>
 
-          {/* J8 - Cruces */}
+          {/* J15 - Cruces */}
           <div className="retro-border border-3 xs:border-4 border-retro-gold-500 bg-jacksons-purple-800 p-3 xs:p-5 shadow-lg">
             <div className="flex items-center gap-2 xs:gap-3 mb-3 xs:mb-4">
               <div className="bg-retro-gold-500 p-1.5 xs:p-2 retro-border">
@@ -69,7 +69,7 @@ export const TournamentFormat = () => {
                   Los Cruces
                 </span>
                 <span className="block text-white/60 text-xs xs:text-sm">
-                  Jornada 8
+                  Jornada 15
                 </span>
               </div>
             </div>
@@ -79,7 +79,7 @@ export const TournamentFormat = () => {
             </p>
           </div>
 
-          {/* J9 - Finals */}
+          {/* J16 - Finals */}
           <div className="retro-border border-3 xs:border-4 border-retro-gold-500 bg-jacksons-purple-800 p-3 xs:p-5 shadow-lg">
             <div className="flex items-center gap-2 xs:gap-3 mb-3 xs:mb-4">
               <div className="bg-retro-gold-500 p-1.5 xs:p-2 retro-border">
@@ -102,7 +102,7 @@ export const TournamentFormat = () => {
                   Las Finales
                 </span>
                 <span className="block text-white/60 text-xs xs:text-sm">
-                  Jornada 9
+                  Jornada 16
                 </span>
               </div>
             </div>
@@ -135,7 +135,7 @@ export const TournamentFormat = () => {
                   El Olimpo
                 </span>
                 <span className="block text-white/60 text-xs xs:text-sm">
-                  Post-J9
+                  Post-J16
                 </span>
               </div>
             </div>

@@ -15,29 +15,29 @@ export default async function FinalPage({ params }: FinalPageProps) {
   // Mock data - will be replaced with API call
   const mockGrandFinal = {
     tag: 'grand_final',
-    home: { name: 'Ganador Semi 1', from: 'J8 Semi 1' },
-    away: { name: 'Ganador Semi 2', from: 'J8 Semi 2' },
+    home: { name: 'Ganador Semi 1', from: 'J15 Semi 1' },
+    away: { name: 'Ganador Semi 2', from: 'J15 Semi 2' },
     winner: null,
   };
 
   const mockThirdPlace = {
     tag: 'third_place',
-    home: { name: 'Perdedor Semi 1', from: 'J8 Semi 1' },
-    away: { name: 'Perdedor Semi 2', from: 'J8 Semi 2' },
+    home: { name: 'Perdedor Semi 1', from: 'J15 Semi 1' },
+    away: { name: 'Perdedor Semi 2', from: 'J15 Semi 2' },
     winner: null,
   };
 
   const mockFifthPlace = {
     tag: 'fifth_place',
-    home: { name: 'Ganador Surv. 1', from: 'J8 Supervivencia 1' },
-    away: { name: 'Ganador Surv. 2', from: 'J8 Supervivencia 2' },
+    home: { name: 'Ganador Surv. 1', from: 'J15 Supervivencia 1' },
+    away: { name: 'Ganador Surv. 2', from: 'J15 Supervivencia 2' },
     winner: null,
   };
 
   const mockRelegation = {
     tag: 'relegation_final',
-    home: { name: 'Perdedor Surv. 1', from: 'J8 Supervivencia 1' },
-    away: { name: 'Perdedor Surv. 2', from: 'J8 Supervivencia 2' },
+    home: { name: 'Perdedor Surv. 1', from: 'J15 Supervivencia 1' },
+    away: { name: 'Perdedor Surv. 2', from: 'J15 Supervivencia 2' },
     winner: null,
   };
 
@@ -61,7 +61,7 @@ export default async function FinalPage({ params }: FinalPageProps) {
             ← {split.replace('split', 'Split ')}
           </Link>
           <h1 className="pokemon-title text-retro-gold-400 text-xl xs:text-2xl sm:text-3xl mt-2 mb-1">
-            J9 - The Finals
+            J16 - The Finals
           </h1>
           <p className="text-white/60 text-xs xs:text-sm">
             Finales y Promoción - {season.toUpperCase()}{' '}
@@ -69,13 +69,13 @@ export default async function FinalPage({ params }: FinalPageProps) {
           </p>
         </section>
 
-        {/* Navigation to J8 */}
+        {/* Navigation to J15 */}
         <section className="mb-6 xs:mb-8 text-center">
           <Link
             href={ROUTES.cruces(season, split)}
             className="inline-block text-retro-cyan-300/70 text-xs uppercase tracking-wide hover:text-retro-cyan-300 transition-colors"
           >
-            ← Ver J8 - Los Cruces
+            ← Ver J15 - Los Cruces
           </Link>
         </section>
 

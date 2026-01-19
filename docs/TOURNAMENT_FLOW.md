@@ -1,12 +1,19 @@
-# ⚔️ Tournament Flow: Rounds 8 & 9 (The Coliseum)
+# ⚔️ Tournament Flow: Rounds 15 & 16 (The Coliseum)
 
-This document describes the business logic and visual flow for the post-season phase. The system splits the league into two distinct brackets based on the final standings of Round 7.
+This document describes the business logic and visual flow for the post-season phase. The system splits the league into two distinct brackets based on the final standings of Round 14 (end of regular season).
+
+## 📅 Season Structure
+
+- **Regular Season (J1-J14)**: Double round-robin format (home and away matches)
+- **Playoffs (J15)**: Semifinals & Survival matches
+- **Finals (J16)**: Grand Final, 3rd Place, and Relegation matches
+- **Post-Season**: The Olympus promotion/relegation playoff
 
 ## 📊 Tournament Visualization
 
 ```mermaid
 graph LR
-    subgraph J8 [Round 8: Semifinals & Survival]
+    subgraph J15 [Round 15: Semifinals & Survival]
         direction TB
         H1[1st vs 4th] --> W1[Winner A]
         H1 --> L1[Loser A]
@@ -21,7 +28,7 @@ graph LR
         S2 --> L4[Loser D]
     end
 
-    subgraph J9 [Round 9: Finals & Promotion]
+    subgraph J16 [Round 16: Finals & Promotion]
         direction TB
         W1 & W2 --> GF[GRAND FINAL]
         L1 & L2 --> B3[3rd Place Match]
@@ -50,20 +57,20 @@ To render these brackets, the frontend queries the matches table filtering by ma
 
 | Match Group | Match Tag           | Description                           | Round |
 | ----------- | ------------------- | ------------------------------------- | ----- |
-| `top_4`     | `semi_1`            | 1st Place vs 4th Place Semifinal      | 8     |
-| `top_4`     | `semi_2`            | 2nd Place vs 3rd Place Semifinal      | 8     |
-| `top_4`     | `grand_final`       | Championship match (Winners of Semis) | 9     |
-| `top_4`     | `third_place`       | 3rd Place match (Losers of Semis)     | 9     |
-| `bottom_4`  | `survival_1`        | 5th Place vs 8th Place Match          | 8     |
-| `bottom_4`  | `survival_2`        | 6th Place vs 7th Place Match          | 8     |
-| `bottom_4`  | `relegation_final`  | The battle to avoid the Olympus       | 9     |
-| `olympus`   | `promotion_playoff` | 1st Div Survivor vs 2nd Div Champion  | 10    |
+| `top_4`     | `semi_1`            | 1st Place vs 4th Place Semifinal      | 15    |
+| `top_4`     | `semi_2`            | 2nd Place vs 3rd Place Semifinal      | 15    |
+| `top_4`     | `grand_final`       | Championship match (Winners of Semis) | 16    |
+| `top_4`     | `third_place`       | 3rd Place match (Losers of Semis)     | 16    |
+| `bottom_4`  | `survival_1`        | 5th Place vs 8th Place Match          | 15    |
+| `bottom_4`  | `survival_2`        | 6th Place vs 7th Place Match          | 15    |
+| `bottom_4`  | `relegation_final`  | The battle to avoid the Olympus       | 16    |
+| `olympus`   | `promotion_playoff` | 1st Div Survivor vs 2nd Div Champion  | 17    |
 
 ### 2. Transition from Projected to Official
 
-**Projected State (J1-J7):** The UI uses the position field from the league_rankings view to fill the brackets with tentative names. This allows spectators to see "who would play against whom" in real-time.
+**Projected State (J1-J14):** The UI uses the position field from the league_rankings view to fill the brackets with tentative names. This allows spectators to see "who would play against whom" in real-time.
 
-**Official State (J8+):** Once the Admin generates the Play-off matches in the database, the UI switches from "Rankings-based" to "Match-based" rendering. It will now consume fixed home_trainer_id and away_trainer_id from the matches table.
+**Official State (J15+):** Once the Admin generates the Play-off matches in the database, the UI switches from "Rankings-based" to "Match-based" rendering. It will now consume fixed home_trainer_id and away_trainer_id from the matches table.
 
 ### 3. The Olympus Play-off
 

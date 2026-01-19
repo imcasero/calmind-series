@@ -1,28 +1,20 @@
 import type { RankingEntry } from '@/lib/queries';
 import PlayerAvatar from './PlayerAvatar';
 import PlayerBadge from './PlayerBadge';
-import { getRowClassName } from './utils';
 
 interface TableRowProps {
   ranking: RankingEntry;
-  showPromotionZones: boolean;
+
   totalPlayers: number;
 }
 
-export default function TableRow({
-  ranking,
-  showPromotionZones,
-  totalPlayers,
-}: TableRowProps) {
+export default function TableRow({ ranking }: TableRowProps) {
   const position = ranking.position;
   const isChampion = position === 1;
   const isPromoted = position <= 4 && !isChampion;
-  const isRelegation = showPromotionZones && position > totalPlayers - 2;
-
-  const rowClass = getRowClassName({ isChampion, isPromoted, isRelegation });
 
   return (
-    <tr className={rowClass}>
+    <tr>
       <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-white drop-shadow font-bold">
         <PlayerBadge
           isChampion={isChampion}

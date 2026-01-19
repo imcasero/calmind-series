@@ -106,20 +106,26 @@ function LeagueMatchesList({
   const colors = colorClasses[accentColor];
 
   return (
-    <section>
+    <section className="min-w-0">
       <h3
         className={`${colors.title} font-bold text-sm xs:text-base uppercase tracking-wide mb-3 xs:mb-4 text-center`}
       >
         {leagueName}
       </h3>
       <div
-        className={`retro-border border-2 ${colors.border} bg-jacksons-purple-800/80 p-3 xs:p-4`}
+        className={`retro-border border-2 ${colors.border} bg-jacksons-purple-800/80 p-3 xs:p-4 min-h-[200px]`}
       >
-        <div className="space-y-2">
-          {matches.map((match) => (
-            <MatchCard key={match.id} match={match} />
-          ))}
-        </div>
+        {matches.length > 0 ? (
+          <div className="space-y-2">
+            {matches.map((match) => (
+              <MatchCard key={match.id} match={match} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-white/40 text-sm">
+            Sin partidos
+          </div>
+        )}
       </div>
     </section>
   );
@@ -253,23 +259,19 @@ export default function MatchesSection({ matches }: MatchesSectionProps) {
         ))}
       </div>
 
-      {/* Two-column layout for leagues */}
+      {/* Two-column layout for leagues - always render both to maintain consistent width */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xs:gap-8">
-        {primeraMatches.length > 0 && (
-          <LeagueMatchesList
-            leagueName="Primera División"
-            matches={primeraMatches}
-            accentColor="gold"
-          />
-        )}
+        <LeagueMatchesList
+          leagueName="Primera División"
+          matches={primeraMatches}
+          accentColor="gold"
+        />
 
-        {segundaMatches.length > 0 && (
-          <LeagueMatchesList
-            leagueName="Segunda División"
-            matches={segundaMatches}
-            accentColor="cyan"
-          />
-        )}
+        <LeagueMatchesList
+          leagueName="Segunda División"
+          matches={segundaMatches}
+          accentColor="cyan"
+        />
       </div>
     </div>
   );

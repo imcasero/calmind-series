@@ -56,7 +56,7 @@ export default async function CrucesPage({ params }: CrucesPageProps) {
             ← {split.replace('split', 'Split ')}
           </Link>
           <h1 className="pokemon-title text-retro-gold-400 text-xl xs:text-2xl sm:text-3xl mt-2 mb-1">
-            J8 - Los Cruces
+            J15 - Los Cruces
           </h1>
           <p className="text-white/60 text-xs xs:text-sm">
             Semifinales y Supervivencia
@@ -145,7 +145,7 @@ export default async function CrucesPage({ params }: CrucesPageProps) {
             {/* Flow indicator */}
             <div className="mt-4 xs:mt-6 pt-4 border-t border-white/10 text-center">
               <span className="text-retro-gold-400/70 text-[10px] xs:text-xs uppercase tracking-wide">
-                Perdedores → Partido por 3er Puesto (J9)
+                Perdedores → Partido por 3er Puesto (J16)
               </span>
             </div>
           </div>
@@ -233,20 +233,20 @@ export default async function CrucesPage({ params }: CrucesPageProps) {
             {/* Flow indicator */}
             <div className="mt-4 xs:mt-6 pt-4 border-t border-white/10 text-center">
               <span className="text-snuff-400/70 text-[10px] xs:text-xs uppercase tracking-wide">
-                Perdedores → Lucha por Permanencia (J9) → El Olimpo
+                Perdedores → Lucha por Permanencia (J16) → El Olimpo
               </span>
             </div>
           </div>
         </section>
 
-        {/* Navigation to J9 */}
+        {/* Navigation to J16 */}
         <section className="text-center">
           <Link
             href={ROUTES.finals(season, split)}
             className="inline-block retro-border border-2 xs:border-3 border-retro-gold-500 bg-jacksons-purple-700 hover:bg-jacksons-purple-600 px-4 xs:px-6 py-2 xs:py-3 transition-all hover:-translate-y-1"
           >
             <span className="text-retro-gold-400 font-bold text-xs xs:text-sm uppercase tracking-wide">
-              Ver J9 - The Finals →
+              Ver J16 - The Finals →
             </span>
           </Link>
         </section>

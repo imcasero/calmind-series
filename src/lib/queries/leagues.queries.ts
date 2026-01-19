@@ -223,3 +223,152 @@ export const getParticipantsBySplit = cache(
     return { primera, segunda };
   },
 );
+
+/**
+ * Match trainer info
+ */
+export type MatchTrainer = {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+};
+
+/**
+ * Match entry for UI display
+ */
+export type MatchEntry = {
+  id: string;
+  round: number;
+  matchGroup: string;
+  matchTag: string;
+  played: boolean;
+  homeSets: number;
+  awaySets: number;
+  homeTrainer: MatchTrainer | null;
+  awayTrainer: MatchTrainer | null;
+  leagueId: string | null;
+  leagueTierName: string | null;
+};
+
+/**
+ * Matches grouped by round
+ */
+export type MatchesByRound = {
+  round: number;
+  matches: MatchEntry[];
+}[];
+
+/**
+ * Gets all matches for a split, grouped by round (jornada).
+ * Only returns regular season matches (match_group = 'regular').
+ */
+export const getMatchesByRound = cache(
+  async (splitId: string): Promise<MatchesByRound> => {
+    const supabase = await createClient();
+
+    // Get leagues for tier name lookup
+    const leagues = await getLeaguesBySplit(splitId);
+    const leagueMap = new Map(leagues.map((l) => [l.id, l.tier_name]));
+
+    const { data, error } = await supabase
+      .from('matches')
+      .select(
+        `
+        id,
+        round,
+        match_group,
+        match_tag,
+        played,
+        home_sets,
+        away_sets,
+        league_id,
+        home_trainer:trainers!matches_home_trainer_id_fkey(
+          id,
+          nickname,
+          avatar_url
+        ),
+        away_trainer:trainers!matches_away_trainer_id_fkey(
+          id,
+          nickname,
+          avatar_url
+        )
+      `,
+      )
+      .eq('split_id', splitId)
+      .eq('match_group', 'regular')
+      .order('round', { ascending: true })
+      .order('league_id', { ascending: true });
+
+    if (error) {
+      console.error('[getMatchesByRound] Error:', error.message);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    type MatchRow = {
+      id: string;
+      round: number;
+      match_group: string;
+      match_tag: string;
+      played: boolean | null;
+      home_sets: number | null;
+      away_sets: number | null;
+      league_id: string | null;
+      home_trainer: {
+        id: string;
+        nickname: string;
+        avatar_url: string | null;
+      } | null;
+      away_trainer: {
+        id: string;
+        nickname: string;
+        avatar_url: string | null;
+      } | null;
+    };
+
+    // Transform and group by round
+    const matchesByRoundMap = new Map<number, MatchEntry[]>();
+
+    for (const row of data as MatchRow[]) {
+      const match: MatchEntry = {
+        id: row.id,
+        round: row.round,
+        matchGroup: row.match_group,
+        matchTag: row.match_tag,
+        played: row.played ?? false,
+        homeSets: row.home_sets ?? 0,
+        awaySets: row.away_sets ?? 0,
+        leagueId: row.league_id,
+        leagueTierName: row.league_id
+          ? (leagueMap.get(row.league_id) ?? null)
+          : null,
+        homeTrainer: row.home_trainer
+          ? {
+              id: row.home_trainer.id,
+              nickname: row.home_trainer.nickname,
+              avatarUrl: row.home_trainer.avatar_url,
+            }
+          : null,
+        awayTrainer: row.away_trainer
+          ? {
+              id: row.away_trainer.id,
+              nickname: row.away_trainer.nickname,
+              avatarUrl: row.away_trainer.avatar_url,
+            }
+          : null,
+      };
+
+      const roundMatches = matchesByRoundMap.get(row.round) ?? [];
+      roundMatches.push(match);
+      matchesByRoundMap.set(row.round, roundMatches);
+    }
+
+    // Convert to array sorted by round
+    return Array.from(matchesByRoundMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([round, matches]) => ({ round, matches }));
+  },
+);

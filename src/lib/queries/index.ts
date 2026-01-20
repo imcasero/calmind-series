@@ -24,11 +24,6 @@ export {
   type ParticipantsByDivision,
   type RankingEntry,
 } from './leagues.queries';
-// Ranking queries (low-level)
-export {
-  getAllRankings,
-  getTrainerRanking,
-} from './ranking.queries';
 // Season queries
 export {
   getActiveSeasonWithSplit,

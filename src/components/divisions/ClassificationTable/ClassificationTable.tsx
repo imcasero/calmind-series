@@ -5,12 +5,10 @@ import TableRow from './TableRow';
 
 export interface ClassificationTableProps {
   rankings: RankingEntry[];
-  showPromotionZones?: boolean;
 }
 
 export default function ClassificationTable({
   rankings,
-  showPromotionZones = false,
 }: ClassificationTableProps) {
   return (
     <div className="retro-border bg-jacksons-purple-800 border-2 xs:border-4 border-retro-gold-600 rounded-lg overflow-hidden shadow-2xl">
@@ -42,20 +40,13 @@ export default function ClassificationTable({
           </thead>
           <tbody>
             {rankings.map((ranking) => (
-              <TableRow
-                key={ranking.trainerId}
-                ranking={ranking}
-                totalPlayers={rankings.length}
-              />
+              <TableRow key={ranking.trainerId} ranking={ranking} />
             ))}
           </tbody>
         </table>
       </div>
 
-      <StatsLegend
-        showPromotionZones={showPromotionZones}
-        totalPlayers={rankings.length}
-      />
+      <StatsLegend />
     </div>
   );
 }

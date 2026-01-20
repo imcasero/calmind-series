@@ -32,6 +32,9 @@ importers:
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
+      zod:
+        specifier: ^4.3.5
+        version: 4.3.5
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.11
@@ -679,6 +682,9 @@ packages:
       utf-8-validate:
         optional: true
 
+  zod@4.3.5:
+    resolution: {integrity: sha512-k7Nwx6vuWx1IJ9Bjuf4Zt1PEllcwe7cls3VNzm4CQ1/hgtFUK2bRNG3rvnpPUhFjmqJKAKtjV576KnUkHocg/g==}
+
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
@@ -1178,3 +1184,5 @@ snapshots:
   undici-types@6.21.0: {}
 
   ws@8.19.0: {}
+
+  zod@4.3.5: {}

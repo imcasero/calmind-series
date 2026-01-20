@@ -4,23 +4,16 @@ import PlayerBadge from './PlayerBadge';
 
 interface TableRowProps {
   ranking: RankingEntry;
-
-  totalPlayers: number;
 }
 
 export default function TableRow({ ranking }: TableRowProps) {
   const position = ranking.position;
   const isChampion = position === 1;
-  const isPromoted = position <= 4 && !isChampion;
 
   return (
     <tr>
       <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-white drop-shadow font-bold">
-        <PlayerBadge
-          isChampion={isChampion}
-          isPromoted={isPromoted}
-          position={position}
-        />
+        <PlayerBadge isChampion={isChampion} position={position} />
       </td>
       <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3">
         <PlayerAvatar avatarUrl={ranking.avatarUrl} name={ranking.nickname} />

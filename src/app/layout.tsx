@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
       </head>
       <body className={pressStart2P.variable}>
         <div className="clouds-container">

@@ -39,8 +39,12 @@ export default function ClassificationTable({
             </tr>
           </thead>
           <tbody>
-            {rankings.map((ranking) => (
-              <TableRow key={ranking.trainerId} ranking={ranking} />
+            {rankings.map((ranking, index) => (
+              <TableRow
+                key={ranking.trainerId}
+                ranking={ranking}
+                index={index}
+              />
             ))}
           </tbody>
         </table>

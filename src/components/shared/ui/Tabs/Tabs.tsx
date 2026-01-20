@@ -1,5 +1,6 @@
 'use client';
 
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Children,
   isValidElement,
@@ -37,6 +38,7 @@ const pixel3dEffect = {
 
 export default function Tabs({ children, defaultIndex = 0 }: TabsProps) {
   const [activeIndex, setActiveIndex] = useState(defaultIndex);
+  const [direction, setDirection] = useState(0);
 
   // Extract TabPanel children
   const panels = Children.toArray(children).filter(
@@ -44,17 +46,24 @@ export default function Tabs({ children, defaultIndex = 0 }: TabsProps) {
       isValidElement(child) && child.type === TabPanel,
   );
 
+  const handleTabClick = (index: number) => {
+    setDirection(index > activeIndex ? 1 : -1);
+    setActiveIndex(index);
+  };
+
   return (
-    <div>
+    <div className="w-full">
       {/* Tab buttons */}
       <div className="flex flex-wrap justify-center gap-2 mb-6">
         {panels.map((panel, index) => {
           const isActive = activeIndex === index;
           return (
-            <button
+            <motion.button
               key={panel.props.title}
               type="button"
-              onClick={() => setActiveIndex(index)}
+              onClick={() => handleTabClick(index)}
+              whileHover={!isActive ? { scale: 1.02 } : {}}
+              whileTap={{ scale: 0.98 }}
               className={cn(
                 'px-3 xs:px-4 py-2 font-bold uppercase text-[10px] xs:text-xs sm:text-sm tracking-wide',
                 'border-3 xs:border-4 border-[#1a1a1a] cursor-pointer',
@@ -73,13 +82,24 @@ export default function Tabs({ children, defaultIndex = 0 }: TabsProps) {
               )}
             >
               {panel.props.title}
-            </button>
+            </motion.button>
           );
         })}
       </div>
 
-      {/* Active panel content */}
-      <div>{panels[activeIndex]}</div>
+      {/* Active panel content with animation */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeIndex}
+          initial={{ opacity: 0, x: direction * 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: direction * -20 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="w-full"
+        >
+          {panels[activeIndex]}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

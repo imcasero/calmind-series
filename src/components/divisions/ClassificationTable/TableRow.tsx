@@ -1,17 +1,27 @@
+'use client';
+
+import { motion } from 'motion/react';
 import type { RankingEntry } from '@/lib/queries';
 import PlayerAvatar from './PlayerAvatar';
 import PlayerBadge from './PlayerBadge';
 
 interface TableRowProps {
   ranking: RankingEntry;
+  index: number;
 }
 
-export default function TableRow({ ranking }: TableRowProps) {
+export default function TableRow({ ranking, index }: TableRowProps) {
   const position = ranking.position;
   const isChampion = position === 1;
 
   return (
-    <tr>
+    <motion.tr
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+      whileHover={{ backgroundColor: 'rgba(107, 91, 208, 0.3)' }}
+      className="transition-colors cursor-default"
+    >
       <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-white drop-shadow font-bold">
         <PlayerBadge isChampion={isChampion} position={position} />
       </td>
@@ -32,6 +42,6 @@ export default function TableRow({ ranking }: TableRowProps) {
       <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-center text-retro-gold-400 drop-shadow font-black text-sm xs:text-base sm:text-lg">
         {ranking.totalPoints}
       </td>
-    </tr>
+    </motion.tr>
   );
 }

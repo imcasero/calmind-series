@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 interface PlayerAvatarProps {
   avatarUrl: string | null;
   name: string;
@@ -15,9 +17,11 @@ export default function PlayerAvatar({ avatarUrl, name }: PlayerAvatarProps) {
   return (
     <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3">
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
           alt={name}
+          width={32}
+          height={32}
           className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0"
         />
       ) : (

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { ParticipantsByDivision } from '@/lib/types/queries.types';
 
 interface ParticipantsListProps {
@@ -16,9 +17,11 @@ function ParticipantCard({
   return (
     <div className="flex items-center gap-2 xs:gap-3 p-2 xs:p-3 bg-jacksons-purple-700/50 rounded">
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
           alt={nickname}
+          width={40}
+          height={40}
           className="w-8 h-8 xs:w-10 xs:h-10 rounded-full object-cover shrink-0"
         />
       ) : (

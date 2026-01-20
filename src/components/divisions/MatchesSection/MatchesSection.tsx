@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import type { MatchEntry, MatchesByRound } from '@/lib/types/queries.types';
 
@@ -18,9 +19,11 @@ function MatchCard({ match }: { match: MatchEntry }) {
       {/* Home Trainer */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {match.homeTrainer?.avatarUrl ? (
-          <img
+          <Image
             src={match.homeTrainer.avatarUrl}
             alt={match.homeTrainer.nickname}
+            width={32}
+            height={32}
             className="w-8 h-8 rounded-full object-cover shrink-0"
           />
         ) : (
@@ -68,9 +71,11 @@ function MatchCard({ match }: { match: MatchEntry }) {
           {match.awayTrainer?.nickname ?? 'TBD'}
         </span>
         {match.awayTrainer?.avatarUrl ? (
-          <img
+          <Image
             src={match.awayTrainer.avatarUrl}
             alt={match.awayTrainer.nickname}
+            width={32}
+            height={32}
             className="w-8 h-8 rounded-full object-cover shrink-0"
           />
         ) : (

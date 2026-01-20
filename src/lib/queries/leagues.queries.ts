@@ -1,32 +1,27 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import type { League, LeagueRanking } from '@/lib/types/database.types';
+import type { LeagueRanking } from '@/lib/types/database.types';
+import {
+  type DivisionPreview,
+  type LeagueInfo,
+  type MatchEntry,
+  type MatchesByRound,
+  type MatchTrainer,
+  type ParticipantEntry,
+  type ParticipantsByDivision,
+  type RankingEntry,
+  RankingEntrySchema,
+} from '@/lib/types/schemas';
 
-/**
- * League with basic info for display
- */
-export type LeagueInfo = Pick<League, 'id' | 'tier_name' | 'tier_priority'>;
-
-/**
- * Ranking entry formatted for UI display
- */
-export type RankingEntry = {
-  position: number;
-  nickname: string;
-  totalPoints: number;
-  avatarUrl: string | null;
-  setBalance: number;
-  matchesPlayed: number;
-  totalSetsWon: number;
-  trainerId: string;
-};
-
-/**
- * Division preview with rankings ready for display
- */
-export type DivisionPreview = {
-  primera: RankingEntry[];
-  segunda: RankingEntry[];
+export type {
+  DivisionPreview,
+  LeagueInfo,
+  MatchEntry,
+  MatchesByRound,
+  ParticipantEntry,
+  ParticipantsByDivision,
+  RankingEntry,
+  MatchTrainer,
 };
 
 /**
@@ -47,7 +42,7 @@ export const getLeaguesBySplit = cache(
       return [];
     }
 
-    return data ?? [];
+    return (data ?? []) as LeagueInfo[];
   },
 );
 
@@ -72,45 +67,36 @@ export const getRankingsByLeague = cache(
       return [];
     }
 
-    // Get actual played matches count per trainer
-    const { data: playedMatches } = await supabase
-      .from('matches')
-      .select('home_trainer_id, away_trainer_id')
-      .eq('league_id', leagueId)
-      .eq('played', true);
+    // Use Zod to validate and format the rankings
+    return (data ?? []).map((ranking: LeagueRanking) => {
+      const result = RankingEntrySchema.safeParse({
+        position: ranking.position,
+        nickname: ranking.nickname,
+        totalPoints: ranking.total_points ?? 0,
+        avatarUrl: ranking.avatar_url,
+        setBalance: ranking.set_balance ?? 0,
+        matchesPlayed: ranking.matches_played ?? 0,
+        totalSetsWon: ranking.total_sets_won ?? 0,
+        trainerId: ranking.trainer_id,
+      });
 
-    type PlayedMatch = {
-      home_trainer_id: string | null;
-      away_trainer_id: string | null;
-    };
-
-    // Count played matches per trainer
-    const playedCountMap = new Map<string, number>();
-    for (const match of (playedMatches ?? []) as PlayedMatch[]) {
-      if (match.home_trainer_id) {
-        playedCountMap.set(
-          match.home_trainer_id,
-          (playedCountMap.get(match.home_trainer_id) ?? 0) + 1,
-        );
+      if (!result.success) {
+        console.error('[getRankingsByLeague] Validation error:', result.error);
+        // Fallback to manual mapping if validation fails, but safeParse helps identify issues
+        return {
+          position: ranking.position!,
+          nickname: ranking.nickname!,
+          totalPoints: ranking.total_points ?? 0,
+          avatarUrl: ranking.avatar_url,
+          setBalance: ranking.set_balance ?? 0,
+          matchesPlayed: ranking.matches_played ?? 0,
+          totalSetsWon: ranking.total_sets_won ?? 0,
+          trainerId: ranking.trainer_id ?? '',
+        };
       }
-      if (match.away_trainer_id) {
-        playedCountMap.set(
-          match.away_trainer_id,
-          (playedCountMap.get(match.away_trainer_id) ?? 0) + 1,
-        );
-      }
-    }
 
-    return (data ?? []).map((ranking: LeagueRanking) => ({
-      position: ranking.position!,
-      nickname: ranking.nickname!,
-      totalPoints: ranking.total_points ?? 0,
-      avatarUrl: ranking.avatar_url,
-      setBalance: ranking.set_balance ?? 0,
-      matchesPlayed: playedCountMap.get(ranking.trainer_id ?? '') ?? 0,
-      totalSetsWon: ranking.total_sets_won ?? 0,
-      trainerId: ranking.trainer_id ?? '',
-    }));
+      return result.data;
+    });
   },
 );
 
@@ -163,26 +149,9 @@ export const getLeagueByTier = cache(
       return null;
     }
 
-    return data;
+    return data as LeagueInfo;
   },
 );
-
-/**
- * Participant entry for UI display
- */
-export type ParticipantEntry = {
-  trainerId: string;
-  nickname: string;
-  avatarUrl: string | null;
-};
-
-/**
- * Participants grouped by division
- */
-export type ParticipantsByDivision = {
-  primera: ParticipantEntry[];
-  segunda: ParticipantEntry[];
-};
 
 /**
  * Gets all participants for a split, grouped by division
@@ -253,40 +222,6 @@ export const getParticipantsBySplit = cache(
     return { primera, segunda };
   },
 );
-
-/**
- * Match trainer info
- */
-export type MatchTrainer = {
-  id: string;
-  nickname: string;
-  avatarUrl: string | null;
-};
-
-/**
- * Match entry for UI display
- */
-export type MatchEntry = {
-  id: string;
-  round: number;
-  matchGroup: string;
-  matchTag: string;
-  played: boolean;
-  homeSets: number;
-  awaySets: number;
-  homeTrainer: MatchTrainer | null;
-  awayTrainer: MatchTrainer | null;
-  leagueId: string | null;
-  leagueTierName: string | null;
-};
-
-/**
- * Matches grouped by round
- */
-export type MatchesByRound = {
-  round: number;
-  matches: MatchEntry[];
-}[];
 
 /**
  * Gets all matches for a split, grouped by round (jornada).

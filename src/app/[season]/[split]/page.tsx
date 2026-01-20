@@ -37,7 +37,7 @@ export default async function SplitPage({ params }: SplitPageProps) {
   return (
     <>
       <Navbar />
-      <div className="max-w-6xl mx-auto px-2 xs:px-3 sm:px-4 py-6 xs:py-8">
+      <div className="max-w-7xl mx-auto px-2 xs:px-3 sm:px-4 lg:px-8 py-6 xs:py-8">
         {/* Header */}
         <section className="text-center mb-6 xs:mb-8">
           <Link

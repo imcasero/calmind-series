@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
+import { getActiveSeasonWithSplit } from '@/lib/queries/seasons.queries';
 
-export default function Footer() {
+export default async function Footer() {
   const currentYear = new Date().getFullYear();
+  const activeSeason = await getActiveSeasonWithSplit();
 
   return (
     <footer className="mt-auto w-full bg-jacksons-purple-900/50 border-t-4 border-jacksons-purple-600">
@@ -20,12 +22,17 @@ export default function Footer() {
 
           {/* Links Section */}
           <div className="flex flex-col md:flex-row gap-4 items-center">
-            <Link
-              href={ROUTES.CURRENT_SEASON}
-              className="text-base text-gray-300 hover:text-yellow-500 transition-colors"
-            >
-              Temporada Actual
-            </Link>
+            {activeSeason?.name && activeSeason?.activeSplit?.name && (
+              <Link
+                href={ROUTES.season(
+                  activeSeason.name,
+                  activeSeason.activeSplit.name,
+                )}
+                className="text-base text-gray-300 hover:text-yellow-500 transition-colors"
+              >
+                Temporada Actual
+              </Link>
+            )}
             <a
               href={EXTERNAL_ROUTES.NORMATIVA_PDF}
               target="_blank"

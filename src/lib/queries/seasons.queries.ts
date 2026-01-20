@@ -1,37 +1,18 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { Season, Split } from '@/lib/types/database.types';
+import {
+  type SeasonWithActiveSplit,
+  SeasonWithActiveSplitSchema,
+  type SeasonWithSplits,
+  SeasonWithSplitsSchema,
+} from '@/lib/types/schemas';
 
-/**
- * Season with its active split included
- */
-export type SeasonWithActiveSplit = Season & {
-  activeSplit: Split | null;
-};
-
-/**
- * Season with all its splits
- */
-export type SeasonWithSplits = Season & {
-  splits: Split[];
-};
-
-/**
- * Raw response type from Supabase join query
- */
-type SeasonWithSplitsRaw = Season & {
-  splits: Split[];
-};
+export type { SeasonWithActiveSplit, SeasonWithSplits };
 
 /**
  * Gets the currently active season with its active split using a single query.
  * Returns null if no active season exists.
- *
- * @example
- * const season = await getActiveSeasonWithSplit();
- * if (season) {
- *   console.log(season.name, season.activeSplit?.name);
- * }
  */
 export const getActiveSeasonWithSplit = cache(
   async (): Promise<SeasonWithActiveSplit | null> => {
@@ -55,20 +36,28 @@ export const getActiveSeasonWithSplit = cache(
       return null;
     }
 
-    // Type assertion for Supabase join result
-    const seasonWithSplits = data as unknown as SeasonWithSplitsRaw;
-
-    // Find the active split from the joined data
+    // Use Zod to validate and format the result
+    const rawData = data as Record<string, unknown>;
+    const rawSplits = (rawData.splits as unknown[]) ?? [];
     const activeSplit =
-      seasonWithSplits.splits.find((split) => split.is_active) ?? null;
+      rawSplits.find(
+        (s) => (s as { is_active: boolean; created_at: string }).is_active,
+      ) ?? null;
 
-    // Destructure to remove splits array and return clean type
-    const { splits: _, ...season } = seasonWithSplits;
-
-    return {
-      ...season,
+    const result = SeasonWithActiveSplitSchema.safeParse({
+      ...rawData,
       activeSplit,
-    };
+    });
+
+    if (!result.success) {
+      console.error(
+        '[getActiveSeasonWithSplit] Validation error:',
+        result.error,
+      );
+      return null;
+    }
+
+    return result.data;
   },
 );
 
@@ -87,7 +76,7 @@ export const getAllSeasons = cache(async (): Promise<Season[]> => {
     throw new Error(`Failed to fetch seasons: ${error.message}`);
   }
 
-  return data ?? [];
+  return (data ?? []) as Season[];
 });
 
 /**
@@ -115,21 +104,26 @@ export const getSeasonWithSplits = cache(
       return null;
     }
 
-    // Type assertion for Supabase join result
-    const seasonWithSplits = data as unknown as SeasonWithSplitsRaw;
-
+    const rawData = data as Record<string, unknown>;
     // Sort splits by split_order
-    const splits = seasonWithSplits.splits.sort(
-      (a, b) => a.split_order - b.split_order,
+    const rawSplits = (rawData.splits as unknown[]) ?? [];
+    const splits = [...rawSplits].sort(
+      (a, b) =>
+        (a as { split_order: number }).split_order -
+        (b as { split_order: number }).split_order,
     );
 
-    // Destructure to get clean season object
-    const { splits: _, ...season } = seasonWithSplits;
-
-    return {
-      ...season,
+    const result = SeasonWithSplitsSchema.safeParse({
+      ...rawData,
       splits,
-    };
+    });
+
+    if (!result.success) {
+      console.error('[getSeasonWithSplits] Validation error:', result.error);
+      return null;
+    }
+
+    return result.data;
   },
 );
 
@@ -155,20 +149,26 @@ export const getSeasonByName = cache(
       return null;
     }
 
-    // Type assertion for Supabase join result
-    const seasonWithSplits = data as unknown as SeasonWithSplitsRaw;
-
+    const rawData = data as Record<string, unknown>;
     // Sort splits by split_order
-    const splits = seasonWithSplits.splits.sort(
-      (a, b) => a.split_order - b.split_order,
+    const rawSplits = (rawData.splits as unknown[]) ?? [];
+    const splits = [...rawSplits].sort(
+      (a, b) =>
+        (a as { split_order: number }).split_order -
+        (b as { split_order: number }).split_order,
     );
 
-    const { splits: _, ...season } = seasonWithSplits;
-
-    return {
-      ...season,
+    const result = SeasonWithSplitsSchema.safeParse({
+      ...rawData,
       splits,
-    };
+    });
+
+    if (!result.success) {
+      console.error('[getSeasonByName] Validation error:', result.error);
+      return null;
+    }
+
+    return result.data;
   },
 );
 

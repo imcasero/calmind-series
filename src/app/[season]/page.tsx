@@ -29,7 +29,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
         {/* Season Header */}
         <section className="text-center mb-8 xs:mb-12">
           <h1 className="pokemon-title text-retro-gold-400 text-2xl xs:text-3xl sm:text-4xl mb-2">
-            Temporada {season.toUpperCase()}
+            {season.toUpperCase()}
           </h1>
           <p className="text-retro-cyan-300/80 text-xs xs:text-sm uppercase tracking-wider">
             Pokemon Calmind Series

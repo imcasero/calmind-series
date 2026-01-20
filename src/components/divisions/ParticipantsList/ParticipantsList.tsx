@@ -1,3 +1,7 @@
+'use client';
+
+import { motion } from 'motion/react';
+import Image from 'next/image';
 import type { ParticipantsByDivision } from '@/lib/types/queries.types';
 
 interface ParticipantsListProps {
@@ -7,18 +11,31 @@ interface ParticipantsListProps {
 function ParticipantCard({
   nickname,
   avatarUrl,
+  index,
 }: {
   nickname: string;
   avatarUrl: string | null;
+  index: number;
 }) {
   const initials = nickname.slice(0, 2).toUpperCase();
 
   return (
-    <div className="flex items-center gap-2 xs:gap-3 p-2 xs:p-3 bg-jacksons-purple-700/50 rounded">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.3, delay: index * 0.03 }}
+      whileHover={{
+        scale: 1.03,
+        backgroundColor: 'rgba(61, 53, 128, 0.7)',
+      }}
+      className="flex items-center gap-2 xs:gap-3 p-2 xs:p-3 bg-jacksons-purple-700/50 rounded cursor-default"
+    >
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
           alt={nickname}
+          width={40}
+          height={40}
           className="w-8 h-8 xs:w-10 xs:h-10 rounded-full object-cover shrink-0"
         />
       ) : (
@@ -29,7 +46,7 @@ function ParticipantCard({
       <span className="text-white font-semibold text-xs xs:text-sm truncate">
         {nickname}
       </span>
-    </div>
+    </motion.div>
   );
 }
 
@@ -71,11 +88,12 @@ function DivisionSection({
         className={`retro-border border-2 ${borderColor} bg-jacksons-purple-800/80 p-3 xs:p-4`}
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 xs:gap-3">
-          {participants.map((p) => (
+          {participants.map((p, index) => (
             <ParticipantCard
               key={p.trainerId}
               nickname={p.nickname}
               avatarUrl={p.avatarUrl}
+              index={index}
             />
           ))}
         </div>

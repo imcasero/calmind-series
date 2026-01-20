@@ -1,5 +1,7 @@
 'use client';
 
+import { AnimatePresence, motion } from 'motion/react';
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import type { MatchEntry, MatchesByRound } from '@/lib/types/queries.types';
 
@@ -7,79 +9,99 @@ interface MatchesSectionProps {
   matches: MatchesByRound;
 }
 
-function MatchCard({ match }: { match: MatchEntry }) {
+function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
   const homeInitials =
     match.homeTrainer?.nickname.slice(0, 2).toUpperCase() ?? '??';
   const awayInitials =
     match.awayTrainer?.nickname.slice(0, 2).toUpperCase() ?? '??';
 
   return (
-    <div className="flex items-center justify-between gap-2 p-3 bg-jacksons-purple-700/50 rounded">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+      whileHover={{ scale: 1.01, backgroundColor: 'rgba(61, 53, 128, 0.7)' }}
+      className="flex items-center justify-between gap-3 p-3 bg-jacksons-purple-700/50 rounded cursor-default"
+    >
       {/* Home Trainer */}
-      <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="flex items-center gap-2.5 flex-1 min-w-0">
         {match.homeTrainer?.avatarUrl ? (
-          <img
+          <Image
             src={match.homeTrainer.avatarUrl}
             alt={match.homeTrainer.nickname}
-            className="w-8 h-8 rounded-full object-cover shrink-0"
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-full object-cover shrink-0"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs bg-linear-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs bg-linear-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
             {homeInitials}
           </div>
         )}
-        <span className="text-white font-semibold text-xs truncate">
+        <span className="text-white font-semibold text-sm whitespace-nowrap">
           {match.homeTrainer?.nickname ?? 'TBD'}
         </span>
       </div>
 
       {/* Score */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0 px-3 justify-center">
         {match.played ? (
           <>
-            <span
-              className={`text-sm font-bold ${
+            <motion.span
+              initial={{ scale: 1 }}
+              animate={
+                match.homeSets > match.awaySets ? { scale: [1, 1.2, 1] } : {}
+              }
+              transition={{ duration: 0.3 }}
+              className={`text-base font-bold ${
                 match.homeSets > match.awaySets
                   ? 'text-retro-gold-400'
                   : 'text-white/60'
               }`}
             >
               {match.homeSets}
-            </span>
-            <span className="text-white/40 text-xs">-</span>
-            <span
-              className={`text-sm font-bold ${
+            </motion.span>
+            <span className="text-white/40 text-sm">-</span>
+            <motion.span
+              initial={{ scale: 1 }}
+              animate={
+                match.awaySets > match.homeSets ? { scale: [1, 1.2, 1] } : {}
+              }
+              transition={{ duration: 0.3 }}
+              className={`text-base font-bold ${
                 match.awaySets > match.homeSets
                   ? 'text-retro-gold-400'
                   : 'text-white/60'
               }`}
             >
               {match.awaySets}
-            </span>
+            </motion.span>
           </>
         ) : (
-          <span className="text-white/40 text-xs px-2">vs</span>
+          <span className="text-white/40 text-sm">vs</span>
         )}
       </div>
 
       {/* Away Trainer */}
-      <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-        <span className="text-white font-semibold text-xs truncate text-right">
+      <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
+        <span className="text-white font-semibold text-sm whitespace-nowrap">
           {match.awayTrainer?.nickname ?? 'TBD'}
         </span>
         {match.awayTrainer?.avatarUrl ? (
-          <img
+          <Image
             src={match.awayTrainer.avatarUrl}
             alt={match.awayTrainer.nickname}
-            className="w-8 h-8 rounded-full object-cover shrink-0"
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-full object-cover shrink-0"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs bg-linear-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs bg-linear-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
             {awayInitials}
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -87,10 +109,12 @@ function LeagueMatchesList({
   leagueName,
   matches,
   accentColor,
+  roundKey,
 }: {
   leagueName: string;
   matches: MatchEntry[];
   accentColor: 'gold' | 'cyan';
+  roundKey: number;
 }) {
   const colorClasses = {
     gold: {
@@ -106,26 +130,36 @@ function LeagueMatchesList({
   const colors = colorClasses[accentColor];
 
   return (
-    <section className="min-w-0">
+    <section className="w-full">
       <h3
         className={`${colors.title} font-bold text-sm xs:text-base uppercase tracking-wide mb-3 xs:mb-4 text-center`}
       >
         {leagueName}
       </h3>
       <div
-        className={`retro-border border-2 ${colors.border} bg-jacksons-purple-800/80 p-3 xs:p-4 min-h-[200px]`}
+        className={`retro-border border-2 ${colors.border} bg-jacksons-purple-800/80 p-3 xs:p-4`}
       >
-        {matches.length > 0 ? (
-          <div className="space-y-2">
-            {matches.map((match) => (
-              <MatchCard key={match.id} match={match} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-white/40 text-sm">
-            Sin partidos
-          </div>
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={roundKey}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {matches.length > 0 ? (
+              <div className="space-y-2">
+                {matches.map((match, index) => (
+                  <MatchCard key={match.id} match={match} index={index} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-white/40 text-sm">
+                Sin partidos
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </section>
   );
@@ -133,19 +167,28 @@ function LeagueMatchesList({
 
 function EmptyState() {
   return (
-    <div className="retro-border border-2 border-jacksons-purple-600 bg-jacksons-purple-800/80 p-6 xs:p-8 text-center">
-      <div className="text-4xl mb-4">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4 }}
+      className="retro-border border-2 border-jacksons-purple-600 bg-jacksons-purple-800/80 p-6 xs:p-8 text-center"
+    >
+      <motion.div
+        animate={{ y: [0, -5, 0] }}
+        transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+        className="text-4xl mb-4"
+      >
         <span role="img" aria-label="calendar">
           &#128197;
         </span>
-      </div>
+      </motion.div>
       <h3 className="text-retro-gold-400 font-bold text-sm xs:text-base uppercase tracking-wide mb-2">
         Próximamente
       </h3>
       <p className="text-white/60 text-xs xs:text-sm">
         Los enfrentamientos de este split aún no han sido programados.
       </p>
-    </div>
+    </motion.div>
   );
 }
 
@@ -206,71 +249,90 @@ export default function MatchesSection({ matches }: MatchesSectionProps) {
   const segundaMatches = matchesByLeague.Segunda ?? [];
 
   return (
-    <div>
+    <div className="w-full">
       {/* Round Navigation */}
       <div className="flex items-center justify-center gap-4 mb-4">
-        <button
+        <motion.button
           type="button"
           onClick={handlePrev}
           disabled={!canGoPrev}
-          className={`text-lg font-bold transition-colors ${
+          whileHover={canGoPrev ? { scale: 1.2 } : {}}
+          whileTap={canGoPrev ? { scale: 0.9 } : {}}
+          className={`text-xl font-bold transition-colors ${
             canGoPrev
               ? 'text-retro-gold-400 hover:text-retro-gold-300 cursor-pointer'
               : 'text-white/20 cursor-not-allowed'
           }`}
           aria-label="Jornada anterior"
         >
-          &lt;
-        </button>
+          &#8249;
+        </motion.button>
 
-        <h3 className="text-retro-gold-400 font-bold text-sm xs:text-base uppercase tracking-wide min-w-[120px] text-center">
-          Jornada {currentRound.round}
-        </h3>
+        <AnimatePresence mode="wait">
+          <motion.h3
+            key={currentRound.round}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.15 }}
+            className="text-retro-gold-400 font-bold text-sm xs:text-base uppercase tracking-wide min-w-[140px] text-center"
+          >
+            Jornada {currentRound.round}
+          </motion.h3>
+        </AnimatePresence>
 
-        <button
+        <motion.button
           type="button"
           onClick={handleNext}
           disabled={!canGoNext}
-          className={`text-lg font-bold transition-colors ${
+          whileHover={canGoNext ? { scale: 1.2 } : {}}
+          whileTap={canGoNext ? { scale: 0.9 } : {}}
+          className={`text-xl font-bold transition-colors ${
             canGoNext
               ? 'text-retro-gold-400 hover:text-retro-gold-300 cursor-pointer'
               : 'text-white/20 cursor-not-allowed'
           }`}
           aria-label="Jornada siguiente"
         >
-          &gt;
-        </button>
+          &#8250;
+        </motion.button>
       </div>
 
       {/* Round indicator */}
-      <div className="flex justify-center gap-1 mb-6">
+      <div className="flex justify-center gap-1.5 mb-6">
         {matches.map((_, idx) => (
-          <button
+          <motion.button
             key={matches[idx].round}
             type="button"
             onClick={() => setCurrentRoundIndex(idx)}
-            className={`w-2 h-2 rounded-full transition-colors ${
+            whileHover={{ scale: 1.3 }}
+            whileTap={{ scale: 0.9 }}
+            animate={
               idx === currentRoundIndex
-                ? 'bg-retro-gold-400'
-                : 'bg-white/20 hover:bg-white/40'
-            }`}
+                ? { scale: 1.2, backgroundColor: '#ffed4e' }
+                : { scale: 1, backgroundColor: 'rgba(255,255,255,0.2)' }
+            }
+            transition={{ duration: 0.2 }}
+            className="w-2.5 h-2.5 rounded-full cursor-pointer"
             aria-label={`Ir a jornada ${matches[idx].round}`}
           />
         ))}
       </div>
 
-      {/* Two-column layout for leagues - always render both to maintain consistent width */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xs:gap-8">
+      {/* Two-column layout for leagues - fixed height to prevent resizing */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 w-full">
         <LeagueMatchesList
           leagueName="Primera División"
           matches={primeraMatches}
           accentColor="gold"
+          roundKey={currentRound.round}
         />
 
         <LeagueMatchesList
           leagueName="Segunda División"
           matches={segundaMatches}
           accentColor="cyan"
+          roundKey={currentRound.round}
         />
       </div>
     </div>

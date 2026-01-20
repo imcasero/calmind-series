@@ -4,7 +4,6 @@
  */
 export const ROUTES = {
   HOME: '/',
-  CURRENT_SEASON: '/s1/split1',
   seasonOverview: (season: string) => `/${season}`,
   season: (season: string, split: string) => `/${season}/${split}`,
   cruces: (season: string, split: string) => `/${season}/${split}/cruces`,

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -54,11 +55,23 @@ export default function LinkButton({
   const content = (
     <>
       {icon && iconPosition === 'left' && (
-        <img src={icon} alt="icon" className="h-6" />
+        <Image
+          src={icon}
+          alt=""
+          width={24}
+          height={24}
+          className="h-6 w-auto"
+        />
       )}
       <span>{text}</span>
       {icon && iconPosition === 'right' && (
-        <img src={icon} alt="icon" className="h-6" />
+        <Image
+          src={icon}
+          alt=""
+          width={24}
+          height={24}
+          className="h-6 w-auto"
+        />
       )}
     </>
   );

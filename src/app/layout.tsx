@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Press_Start_2P } from 'next/font/google';
 import { Footer } from '@/components/shared';
 import './globals.css';
@@ -22,6 +22,12 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Diego Casero Martín' }],
   robots: 'index, follow',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#1e0a3c',
 };
 
 export default function RootLayout({

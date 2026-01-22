@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import SplitContent from '@/components/divisions/SplitContent/SplitContent';
@@ -15,6 +16,23 @@ interface SplitPageProps {
     season: string;
     split: string;
   }>;
+}
+
+export async function generateMetadata({
+  params,
+}: SplitPageProps): Promise<Metadata> {
+  const { season, split } = await params;
+  const seasonName = season.toUpperCase();
+  const splitName = split.replace('split', 'Split ');
+
+  return {
+    title: `${splitName} - ${seasonName}`,
+    description: `Clasificación, participantes y enfrentamientos del ${splitName} de la temporada ${seasonName}. Competición amateur de Pokemon.`,
+    openGraph: {
+      title: `${splitName} - ${seasonName} | Pokemon Calmind Series`,
+      description: `${splitName} de la temporada ${seasonName}. Clasificaciones, participantes y calendario de enfrentamientos.`,
+    },
+  };
 }
 
 export default async function SplitPage({ params }: SplitPageProps) {

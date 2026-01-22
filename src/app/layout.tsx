@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Press_Start_2P } from 'next/font/google';
 import { Footer } from '@/components/shared';
 import './globals.css';
@@ -10,7 +10,10 @@ const pressStart2P = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
-  title: 'Pokemon Calmind Series',
+  title: {
+    default: 'Pokemon Calmind Series',
+    template: '%s | Pokemon Calmind Series',
+  },
   description: 'Competición Amateur de Pokemon Calmind Series',
   keywords: [
     'Pokemon',
@@ -22,6 +25,25 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Diego Casero Martín' }],
   robots: 'index, follow',
+  openGraph: {
+    type: 'website',
+    locale: 'es_ES',
+    siteName: 'Pokemon Calmind Series',
+    title: 'Pokemon Calmind Series',
+    description:
+      'Competición Amateur de Pokemon. Clasificaciones, participantes y enfrentamientos.',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Pokemon Calmind Series',
+    description: 'Competición Amateur de Pokemon Calmind Series',
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#1e0a3c',
 };
 
 export default function RootLayout({

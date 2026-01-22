@@ -309,7 +309,7 @@ export default function MatchesSection({ matches }: MatchesSectionProps) {
             whileTap={{ scale: 0.9 }}
             animate={
               idx === currentRoundIndex
-                ? { scale: 1.2, backgroundColor: '#ffed4e' }
+                ? { scale: 1.2, backgroundColor: 'var(--color-retro-gold-400)' }
                 : { scale: 1, backgroundColor: 'rgba(255,255,255,0.2)' }
             }
             transition={{ duration: 0.2 }}

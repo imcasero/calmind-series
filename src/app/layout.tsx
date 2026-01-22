@@ -10,7 +10,10 @@ const pressStart2P = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
-  title: 'Pokemon Calmind Series',
+  title: {
+    default: 'Pokemon Calmind Series',
+    template: '%s | Pokemon Calmind Series',
+  },
   description: 'Competición Amateur de Pokemon Calmind Series',
   keywords: [
     'Pokemon',
@@ -22,6 +25,19 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Diego Casero Martín' }],
   robots: 'index, follow',
+  openGraph: {
+    type: 'website',
+    locale: 'es_ES',
+    siteName: 'Pokemon Calmind Series',
+    title: 'Pokemon Calmind Series',
+    description:
+      'Competición Amateur de Pokemon. Clasificaciones, participantes y enfrentamientos.',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Pokemon Calmind Series',
+    description: 'Competición Amateur de Pokemon Calmind Series',
+  },
 };
 
 export const viewport: Viewport = {

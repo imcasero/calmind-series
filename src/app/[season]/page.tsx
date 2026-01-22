@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Navbar } from '@/components/shared';
@@ -8,6 +9,22 @@ interface SeasonPageProps {
   params: Promise<{
     season: string;
   }>;
+}
+
+export async function generateMetadata({
+  params,
+}: SeasonPageProps): Promise<Metadata> {
+  const { season } = await params;
+  const seasonName = season.toUpperCase();
+
+  return {
+    title: seasonName,
+    description: `Clasificaciones y participantes de la temporada ${seasonName} de Pokemon Calmind Series. Competición amateur de Pokemon.`,
+    openGraph: {
+      title: `${seasonName} - Pokemon Calmind Series`,
+      description: `Temporada ${seasonName} de la competición amateur Pokemon Calmind Series.`,
+    },
+  };
 }
 
 export default async function SeasonPage({ params }: SeasonPageProps) {

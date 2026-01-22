@@ -68,7 +68,9 @@ export const getRankingsByLeague = cache(
     }
 
     // Use Zod to validate and format the rankings
-    return (data ?? []).map((ranking: LeagueRanking) => {
+    const rankings: RankingEntry[] = [];
+
+    for (const ranking of (data ?? []) as LeagueRanking[]) {
       const result = RankingEntrySchema.safeParse({
         position: ranking.position,
         nickname: ranking.nickname,
@@ -81,22 +83,17 @@ export const getRankingsByLeague = cache(
       });
 
       if (!result.success) {
-        console.error('[getRankingsByLeague] Validation error:', result.error);
-        // Fallback to manual mapping if validation fails, but safeParse helps identify issues
-        return {
-          position: ranking.position!,
-          nickname: ranking.nickname!,
-          totalPoints: ranking.total_points ?? 0,
-          avatarUrl: ranking.avatar_url,
-          setBalance: ranking.set_balance ?? 0,
-          matchesPlayed: ranking.matches_played ?? 0,
-          totalSetsWon: ranking.total_sets_won ?? 0,
-          trainerId: ranking.trainer_id ?? '',
-        };
+        console.error(
+          '[getRankingsByLeague] Skipping invalid ranking:',
+          result.error.flatten(),
+        );
+        continue;
       }
 
-      return result.data;
-    });
+      rankings.push(result.data);
+    }
+
+    return rankings;
   },
 );
 

@@ -73,7 +73,8 @@ export const getAllSeasons = cache(async (): Promise<Season[]> => {
     .order('year', { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to fetch seasons: ${error.message}`);
+    console.error('[getAllSeasons] Error:', error.message);
+    return [];
   }
 
   return (data ?? []) as Season[];

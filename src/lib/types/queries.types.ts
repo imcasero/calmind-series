@@ -31,6 +31,7 @@ export type ParticipantEntry = {
   trainerId: string;
   nickname: string;
   avatarUrl: string | null;
+  lives: number;
 };
 
 /**

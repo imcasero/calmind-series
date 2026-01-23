@@ -86,6 +86,7 @@ export const ParticipantEntrySchema = z.object({
   trainerId: z.string().uuid(),
   nickname: z.string(),
   avatarUrl: z.string().nullable(),
+  lives: z.number(),
 });
 
 export const MatchTrainerSchema = z.object({

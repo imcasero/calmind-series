@@ -176,6 +176,7 @@ export const getParticipantsBySplit = cache(
         .select(
           `
           trainer_id,
+          lives,
           trainers!inner(
             id,
             nickname,
@@ -193,6 +194,7 @@ export const getParticipantsBySplit = cache(
 
       type ParticipantRow = {
         trainer_id: string | null;
+        lives: number;
         trainers: {
           id: string;
           nickname: string;
@@ -204,6 +206,7 @@ export const getParticipantsBySplit = cache(
         trainerId: p.trainers.id,
         nickname: p.trainers.nickname,
         avatarUrl: p.trainers.avatar_url,
+        lives: p.lives,
       }));
     };
 

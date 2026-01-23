@@ -19,6 +19,7 @@ export type Database = {
           id: string;
           initial_seed: number | null;
           league_id: string | null;
+          lives: number;
           status: string | null;
           trainer_id: string | null;
         };
@@ -26,6 +27,7 @@ export type Database = {
           id?: string;
           initial_seed?: number | null;
           league_id?: string | null;
+          lives?: number;
           status?: string | null;
           trainer_id?: string | null;
         };
@@ -33,6 +35,7 @@ export type Database = {
           id?: string;
           initial_seed?: number | null;
           league_id?: string | null;
+          lives?: number;
           status?: string | null;
           trainer_id?: string | null;
         };

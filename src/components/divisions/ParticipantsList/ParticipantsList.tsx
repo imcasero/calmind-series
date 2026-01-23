@@ -83,7 +83,7 @@ function PokedexCard({
         opacity: isActive ? 1 : 0.6,
         scale: isActive ? 1 : 0.9,
       }}
-      className={`flex-shrink-0 w-40 xs:w-44 ${isActive ? 'z-20' : 'z-0'}`}
+      className={`shrink-0 w-40 xs:w-44 ${isActive ? 'z-20' : 'z-0'}`}
     >
       <div
         className={`transition-transform duration-300 ${isActive ? '-translate-y-1' : ''}`}

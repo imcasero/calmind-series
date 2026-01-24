@@ -7,6 +7,21 @@
  * import { getActiveSeasonWithSplit, getDivisionPreview } from "@/lib/queries";
  */
 
+// Admin queries
+export {
+  type ActiveSplitInfo,
+  type DashboardStats,
+  getActiveSplitInfo,
+  getAdminLeaguesBySplit,
+  getAdminMatchesByLeague,
+  getAdminParticipantsByLeague,
+  getAdminSeasons,
+  getAdminSplitsBySeason,
+  getAdminTrainers,
+  getDashboardStats,
+  type MatchWithTrainers,
+  type ParticipantWithTrainer,
+} from './admin.queries';
 // League queries (preferred for UI)
 export {
   type DivisionPreview,

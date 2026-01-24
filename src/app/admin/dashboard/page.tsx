@@ -14,7 +14,8 @@ export default function DashboardPage() {
           Bienvenido al Panel de Administración
         </h1>
         <p className="text-jacksons-purple-200 text-sm">
-          Gestiona temporadas, divisiones, participantes y partidos de la Calmind Series.
+          Gestiona temporadas, divisiones, participantes y partidos de la
+          Calmind Series.
         </p>
       </div>
 

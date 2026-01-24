@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { Season, Split, League } from '@/lib/types/database.types';
+import type { League, Season, Split } from '@/lib/types/database.types';
 
 export default function DivisionsPage() {
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -15,7 +15,10 @@ export default function DivisionsPage() {
   const [loadingLeagues, setLoadingLeagues] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newLeague, setNewLeague] = useState({ tier_name: '', tier_priority: 1 });
+  const [newLeague, setNewLeague] = useState({
+    tier_name: '',
+    tier_priority: 1,
+  });
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
@@ -99,7 +102,10 @@ export default function DivisionsPage() {
         setError(error.message);
       } else {
         setLeagues(data ?? []);
-        setNewLeague((prev) => ({ ...prev, tier_priority: (data?.length ?? 0) + 1 }));
+        setNewLeague((prev) => ({
+          ...prev,
+          tier_priority: (data?.length ?? 0) + 1,
+        }));
       }
       setLoadingLeagues(false);
     };
@@ -174,7 +180,10 @@ export default function DivisionsPage() {
         <div className="flex items-center gap-4 flex-wrap">
           {/* Season Selector */}
           <div className="flex items-center gap-2">
-            <label htmlFor="season-select" className="text-jacksons-purple-200 text-sm uppercase tracking-wide">
+            <label
+              htmlFor="season-select"
+              className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
+            >
               Temporada:
             </label>
             <select
@@ -200,7 +209,10 @@ export default function DivisionsPage() {
 
           {/* Split Selector */}
           <div className="flex items-center gap-2">
-            <label htmlFor="split-select" className="text-jacksons-purple-200 text-sm uppercase tracking-wide">
+            <label
+              htmlFor="split-select"
+              className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
+            >
               Split:
             </label>
             <select
@@ -265,14 +277,19 @@ export default function DivisionsPage() {
             </h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label htmlFor="tier_name" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                <label
+                  htmlFor="tier_name"
+                  className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                >
                   Nombre
                 </label>
                 <input
                   id="tier_name"
                   type="text"
                   value={newLeague.tier_name}
-                  onChange={(e) => setNewLeague({ ...newLeague, tier_name: e.target.value })}
+                  onChange={(e) =>
+                    setNewLeague({ ...newLeague, tier_name: e.target.value })
+                  }
                   required
                   placeholder="Ej: Primera División"
                   className="
@@ -285,7 +302,10 @@ export default function DivisionsPage() {
                 />
               </div>
               <div>
-                <label htmlFor="tier_priority" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                <label
+                  htmlFor="tier_priority"
+                  className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                >
                   Prioridad (1 = más alta)
                 </label>
                 <input
@@ -293,7 +313,12 @@ export default function DivisionsPage() {
                   type="number"
                   min="1"
                   value={newLeague.tier_priority}
-                  onChange={(e) => setNewLeague({ ...newLeague, tier_priority: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setNewLeague({
+                      ...newLeague,
+                      tier_priority: parseInt(e.target.value),
+                    })
+                  }
                   required
                   className="
                     w-full px-4 py-3

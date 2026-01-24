@@ -9,7 +9,10 @@ export default function SeasonsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newSeason, setNewSeason] = useState({ name: '', year: new Date().getFullYear() });
+  const [newSeason, setNewSeason] = useState({
+    name: '',
+    year: new Date().getFullYear(),
+  });
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
@@ -145,14 +148,19 @@ export default function SeasonsPage() {
             </h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label htmlFor="name" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                <label
+                  htmlFor="name"
+                  className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                >
                   Nombre
                 </label>
                 <input
                   id="name"
                   type="text"
                   value={newSeason.name}
-                  onChange={(e) => setNewSeason({ ...newSeason, name: e.target.value })}
+                  onChange={(e) =>
+                    setNewSeason({ ...newSeason, name: e.target.value })
+                  }
                   required
                   placeholder="Ej: Temporada 1"
                   className="
@@ -165,14 +173,22 @@ export default function SeasonsPage() {
                 />
               </div>
               <div>
-                <label htmlFor="year" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                <label
+                  htmlFor="year"
+                  className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                >
                   Año
                 </label>
                 <input
                   id="year"
                   type="number"
                   value={newSeason.year}
-                  onChange={(e) => setNewSeason({ ...newSeason, year: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setNewSeason({
+                      ...newSeason,
+                      year: parseInt(e.target.value),
+                    })
+                  }
                   required
                   className="
                     w-full px-4 py-3

@@ -63,7 +63,10 @@ export default function SplitsPage() {
       } else {
         setSplits(data ?? []);
         // Update default split_order for new splits
-        setNewSplit((prev) => ({ ...prev, split_order: (data?.length ?? 0) + 1 }));
+        setNewSplit((prev) => ({
+          ...prev,
+          split_order: (data?.length ?? 0) + 1,
+        }));
       }
       setLoadingSplits(false);
     };
@@ -109,7 +112,12 @@ export default function SplitsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este split? Se eliminarán también sus divisiones.')) return;
+    if (
+      !confirm(
+        '¿Estás seguro de eliminar este split? Se eliminarán también sus divisiones.',
+      )
+    )
+      return;
 
     const { error } = await supabase.from('splits').delete().eq('id', id);
 
@@ -179,7 +187,10 @@ export default function SplitsPage() {
         <div className="flex items-center gap-4">
           {/* Season Selector */}
           <div className="flex items-center gap-3">
-            <label htmlFor="season-select" className="text-jacksons-purple-200 text-sm uppercase tracking-wide">
+            <label
+              htmlFor="season-select"
+              className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
+            >
               Temporada:
             </label>
             <select
@@ -240,14 +251,19 @@ export default function SplitsPage() {
             </h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label htmlFor="name" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                <label
+                  htmlFor="name"
+                  className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                >
                   Nombre
                 </label>
                 <input
                   id="name"
                   type="text"
                   value={newSplit.name}
-                  onChange={(e) => setNewSplit({ ...newSplit, name: e.target.value })}
+                  onChange={(e) =>
+                    setNewSplit({ ...newSplit, name: e.target.value })
+                  }
                   required
                   placeholder="Ej: Split 1"
                   className="
@@ -260,7 +276,10 @@ export default function SplitsPage() {
                 />
               </div>
               <div>
-                <label htmlFor="split_order" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                <label
+                  htmlFor="split_order"
+                  className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                >
                   Orden
                 </label>
                 <input
@@ -268,7 +287,12 @@ export default function SplitsPage() {
                   type="number"
                   min="1"
                   value={newSplit.split_order}
-                  onChange={(e) => setNewSplit({ ...newSplit, split_order: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setNewSplit({
+                      ...newSplit,
+                      split_order: parseInt(e.target.value),
+                    })
+                  }
                   required
                   className="
                     w-full px-4 py-3

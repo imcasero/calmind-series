@@ -1,8 +1,14 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { Season, Split, League, Trainer, LeagueParticipant } from '@/lib/types/database.types';
+import type {
+  League,
+  LeagueParticipant,
+  Season,
+  Split,
+  Trainer,
+} from '@/lib/types/database.types';
 
 type ParticipantWithTrainer = LeagueParticipant & { trainer: Trainer };
 
@@ -10,14 +16,20 @@ const ITEMS_PER_PAGE = 10;
 
 export default function ParticipantsPage() {
   // Tab state
-  const [activeTab, setActiveTab] = useState<'trainers' | 'assignments'>('trainers');
+  const [activeTab, setActiveTab] = useState<'trainers' | 'assignments'>(
+    'trainers',
+  );
 
   // Trainers state
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [loadingTrainers, setLoadingTrainers] = useState(true);
   const [showTrainerForm, setShowTrainerForm] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
-  const [trainerForm, setTrainerForm] = useState({ nickname: '', avatar_url: '', bio: '' });
+  const [trainerForm, setTrainerForm] = useState({
+    nickname: '',
+    avatar_url: '',
+    bio: '',
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -25,8 +37,12 @@ export default function ParticipantsPage() {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [splits, setSplits] = useState<Split[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
-  const [participants, setParticipants] = useState<ParticipantWithTrainer[]>([]);
-  const [pendingLivesChanges, setPendingLivesChanges] = useState<Record<string, number>>({});
+  const [participants, setParticipants] = useState<ParticipantWithTrainer[]>(
+    [],
+  );
+  const [pendingLivesChanges, setPendingLivesChanges] = useState<
+    Record<string, number>
+  >({});
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedSplitId, setSelectedSplitId] = useState<string | null>(null);
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
@@ -50,7 +66,7 @@ export default function ParticipantsPage() {
     return trainers.filter(
       (t) =>
         t.nickname.toLowerCase().includes(query) ||
-        (t.bio?.toLowerCase().includes(query) ?? false)
+        (t.bio?.toLowerCase().includes(query) ?? false),
     );
   }, [trainers, searchQuery]);
 
@@ -266,7 +282,12 @@ export default function ParticipantsPage() {
   };
 
   const handleDeleteTrainer = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este entrenador? Se eliminará de todas las divisiones.')) return;
+    if (
+      !confirm(
+        '¿Estás seguro de eliminar este entrenador? Se eliminará de todas las divisiones.',
+      )
+    )
+      return;
 
     const { error } = await supabase.from('trainers').delete().eq('id', id);
 
@@ -344,7 +365,11 @@ export default function ParticipantsPage() {
   };
 
   // Pending lives changes (local only)
-  const handleLocalLivesChange = (participantId: string, currentLives: number, delta: number) => {
+  const handleLocalLivesChange = (
+    participantId: string,
+    currentLives: number,
+    delta: number,
+  ) => {
     const newLives = Math.max(0, currentLives + delta);
     setPendingLivesChanges((prev) => ({
       ...prev,
@@ -360,7 +385,7 @@ export default function ParticipantsPage() {
     setError(null);
 
     const updates = Object.entries(pendingLivesChanges).map(([id, lives]) =>
-      supabase.from('league_participants').update({ lives }).eq('id', id)
+      supabase.from('league_participants').update({ lives }).eq('id', id),
     );
 
     const results = await Promise.all(updates);
@@ -381,7 +406,7 @@ export default function ParticipantsPage() {
 
   // Get trainers not already in selected league
   const availableTrainers = trainers.filter(
-    (t) => !participants.some((p) => p.trainer_id === t.id)
+    (t) => !participants.some((p) => p.trainer_id === t.id),
   );
 
   return (
@@ -397,7 +422,11 @@ export default function ParticipantsPage() {
       {error && (
         <div className="bg-red-600 border-4 border-red-800 p-4 text-white text-sm">
           {error}
-          <button type="button" onClick={() => setError(null)} className="ml-4 underline">
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="ml-4 underline"
+          >
             Cerrar
           </button>
         </div>
@@ -410,9 +439,10 @@ export default function ParticipantsPage() {
           onClick={() => setActiveTab('trainers')}
           className={`
             px-6 py-3 font-bold uppercase tracking-wide text-sm border-4 transition-all duration-100
-            ${activeTab === 'trainers'
-              ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
-              : 'bg-jacksons-purple-800 text-jacksons-purple-200 border-jacksons-purple-600 hover:bg-jacksons-purple-700'
+            ${
+              activeTab === 'trainers'
+                ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
+                : 'bg-jacksons-purple-800 text-jacksons-purple-200 border-jacksons-purple-600 hover:bg-jacksons-purple-700'
             }
           `}
         >
@@ -423,9 +453,10 @@ export default function ParticipantsPage() {
           onClick={() => setActiveTab('assignments')}
           className={`
             px-6 py-3 font-bold uppercase tracking-wide text-sm border-4 transition-all duration-100
-            ${activeTab === 'assignments'
-              ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
-              : 'bg-jacksons-purple-800 text-jacksons-purple-200 border-jacksons-purple-600 hover:bg-jacksons-purple-700'
+            ${
+              activeTab === 'assignments'
+                ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
+                : 'bg-jacksons-purple-800 text-jacksons-purple-200 border-jacksons-purple-600 hover:bg-jacksons-purple-700'
             }
           `}
         >
@@ -475,40 +506,61 @@ export default function ParticipantsPage() {
                 </h2>
                 <form onSubmit={handleSaveTrainer} className="space-y-4">
                   <div>
-                    <label htmlFor="nickname" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                    <label
+                      htmlFor="nickname"
+                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                    >
                       Nickname *
                     </label>
                     <input
                       id="nickname"
                       type="text"
                       value={trainerForm.nickname}
-                      onChange={(e) => setTrainerForm({ ...trainerForm, nickname: e.target.value })}
+                      onChange={(e) =>
+                        setTrainerForm({
+                          ...trainerForm,
+                          nickname: e.target.value,
+                        })
+                      }
                       required
                       placeholder="Ej: AshKetchum"
                       className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 placeholder-jacksons-purple-400"
                     />
                   </div>
                   <div>
-                    <label htmlFor="avatar_url" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                    <label
+                      htmlFor="avatar_url"
+                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                    >
                       Avatar URL
                     </label>
                     <input
                       id="avatar_url"
                       type="text"
                       value={trainerForm.avatar_url}
-                      onChange={(e) => setTrainerForm({ ...trainerForm, avatar_url: e.target.value })}
+                      onChange={(e) =>
+                        setTrainerForm({
+                          ...trainerForm,
+                          avatar_url: e.target.value,
+                        })
+                      }
                       placeholder="https://..."
                       className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 placeholder-jacksons-purple-400"
                     />
                   </div>
                   <div>
-                    <label htmlFor="bio" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">
+                    <label
+                      htmlFor="bio"
+                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                    >
                       Bio
                     </label>
                     <textarea
                       id="bio"
                       value={trainerForm.bio}
-                      onChange={(e) => setTrainerForm({ ...trainerForm, bio: e.target.value })}
+                      onChange={(e) =>
+                        setTrainerForm({ ...trainerForm, bio: e.target.value })
+                      }
                       placeholder="Descripción del entrenador..."
                       rows={3}
                       className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 placeholder-jacksons-purple-400 resize-none"
@@ -538,36 +590,59 @@ export default function ParticipantsPage() {
           {/* Trainers Table */}
           <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden">
             {loadingTrainers ? (
-              <div className="p-8 text-center text-jacksons-purple-300">Cargando entrenadores...</div>
+              <div className="p-8 text-center text-jacksons-purple-300">
+                Cargando entrenadores...
+              </div>
             ) : filteredTrainers.length === 0 ? (
               <div className="p-8 text-center text-jacksons-purple-300">
-                {searchQuery ? 'No se encontraron entrenadores.' : 'No hay entrenadores registrados.'}
+                {searchQuery
+                  ? 'No se encontraron entrenadores.'
+                  : 'No hay entrenadores registrados.'}
               </div>
             ) : (
               <>
                 <table className="w-full">
                   <thead>
                     <tr className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600">
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Avatar</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Nickname</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Bio</th>
-                      <th className="px-6 py-4 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Acciones</th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Avatar
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Nickname
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Bio
+                      </th>
+                      <th className="px-6 py-4 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedTrainers.map((trainer) => (
-                      <tr key={trainer.id} className="border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors">
+                      <tr
+                        key={trainer.id}
+                        className="border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors"
+                      >
                         <td className="px-6 py-4">
                           {trainer.avatar_url ? (
-                            <img src={trainer.avatar_url} alt={trainer.nickname} className="w-10 h-10 border-2 border-jacksons-purple-500 object-cover" />
+                            <img
+                              src={trainer.avatar_url}
+                              alt={trainer.nickname}
+                              className="w-10 h-10 border-2 border-jacksons-purple-500 object-cover"
+                            />
                           ) : (
                             <div className="w-10 h-10 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold">
                               {trainer.nickname.charAt(0).toUpperCase()}
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-white font-medium">{trainer.nickname}</td>
-                        <td className="px-6 py-4 text-jacksons-purple-300 text-sm max-w-xs truncate">{trainer.bio || '-'}</td>
+                        <td className="px-6 py-4 text-white font-medium">
+                          {trainer.nickname}
+                        </td>
+                        <td className="px-6 py-4 text-jacksons-purple-300 text-sm max-w-xs truncate">
+                          {trainer.bio || '-'}
+                        </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <button
@@ -595,12 +670,19 @@ export default function ParticipantsPage() {
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between px-6 py-4 bg-jacksons-purple-900 border-t-2 border-jacksons-purple-600">
                     <span className="text-jacksons-purple-300 text-sm">
-                      Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredTrainers.length)} de {filteredTrainers.length}
+                      Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
+                      {Math.min(
+                        currentPage * ITEMS_PER_PAGE,
+                        filteredTrainers.length,
+                      )}{' '}
+                      de {filteredTrainers.length}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
                         disabled={currentPage === 1}
                         className="px-3 py-1 bg-jacksons-purple-700 text-white border-2 border-jacksons-purple-600 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-jacksons-purple-600 transition-all"
                       >
@@ -611,7 +693,9 @@ export default function ParticipantsPage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        onClick={() =>
+                          setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        }
                         disabled={currentPage === totalPages}
                         className="px-3 py-1 bg-jacksons-purple-700 text-white border-2 border-jacksons-purple-600 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-jacksons-purple-600 transition-all"
                       >
@@ -630,7 +714,12 @@ export default function ParticipantsPage() {
           {/* Selectors */}
           <div className="flex items-center gap-4 flex-wrap bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-4 shadow-[4px_4px_0px_0px_#1a1a1a]">
             <div className="flex items-center gap-2">
-              <label htmlFor="season-select" className="text-jacksons-purple-200 text-sm uppercase tracking-wide">Temporada:</label>
+              <label
+                htmlFor="season-select"
+                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
+              >
+                Temporada:
+              </label>
               <select
                 id="season-select"
                 value={selectedSeasonId ?? ''}
@@ -639,13 +728,20 @@ export default function ParticipantsPage() {
               >
                 <option value="">Seleccionar</option>
                 {seasons.map((season) => (
-                  <option key={season.id} value={season.id}>{season.name} {season.is_active ? '★' : ''}</option>
+                  <option key={season.id} value={season.id}>
+                    {season.name} {season.is_active ? '★' : ''}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="flex items-center gap-2">
-              <label htmlFor="split-select" className="text-jacksons-purple-200 text-sm uppercase tracking-wide">Split:</label>
+              <label
+                htmlFor="split-select"
+                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
+              >
+                Split:
+              </label>
               <select
                 id="split-select"
                 value={selectedSplitId ?? ''}
@@ -653,15 +749,24 @@ export default function ParticipantsPage() {
                 disabled={!selectedSeasonId || loadingSplits}
                 className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer disabled:opacity-50"
               >
-                <option value="">{loadingSplits ? 'Cargando...' : 'Seleccionar'}</option>
+                <option value="">
+                  {loadingSplits ? 'Cargando...' : 'Seleccionar'}
+                </option>
                 {splits.map((split) => (
-                  <option key={split.id} value={split.id}>{split.name} {split.is_active ? '★' : ''}</option>
+                  <option key={split.id} value={split.id}>
+                    {split.name} {split.is_active ? '★' : ''}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="flex items-center gap-2">
-              <label htmlFor="league-select" className="text-jacksons-purple-200 text-sm uppercase tracking-wide">División:</label>
+              <label
+                htmlFor="league-select"
+                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
+              >
+                División:
+              </label>
               <select
                 id="league-select"
                 value={selectedLeagueId ?? ''}
@@ -669,9 +774,13 @@ export default function ParticipantsPage() {
                 disabled={!selectedSplitId || loadingLeagues}
                 className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer disabled:opacity-50"
               >
-                <option value="">{loadingLeagues ? 'Cargando...' : 'Seleccionar'}</option>
+                <option value="">
+                  {loadingLeagues ? 'Cargando...' : 'Seleccionar'}
+                </option>
                 {leagues.map((league) => (
-                  <option key={league.id} value={league.id}>{league.tier_name}</option>
+                  <option key={league.id} value={league.id}>
+                    {league.tier_name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -691,7 +800,8 @@ export default function ParticipantsPage() {
           {hasLivesChanges && (
             <div className="flex items-center justify-between bg-orange-600 border-4 border-orange-800 p-4 shadow-[4px_4px_0px_0px_#1a1a1a]">
               <span className="text-white font-bold">
-                ⚠️ Tienes {Object.keys(pendingLivesChanges).length} cambio(s) sin guardar
+                ⚠️ Tienes {Object.keys(pendingLivesChanges).length} cambio(s) sin
+                guardar
               </span>
               <div className="flex gap-2">
                 <button
@@ -717,10 +827,17 @@ export default function ParticipantsPage() {
           {showAssignForm && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 shadow-[4px_4px_0px_0px_#1a1a1a] w-full max-w-md">
-                <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-4">Asignar Entrenador</h2>
+                <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-4">
+                  Asignar Entrenador
+                </h2>
                 <form onSubmit={handleAssignTrainer} className="space-y-4">
                   <div>
-                    <label htmlFor="trainer-select" className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2">Entrenador</label>
+                    <label
+                      htmlFor="trainer-select"
+                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
+                    >
+                      Entrenador
+                    </label>
                     <select
                       id="trainer-select"
                       value={selectedTrainerId}
@@ -730,14 +847,19 @@ export default function ParticipantsPage() {
                     >
                       <option value="">Seleccionar entrenador</option>
                       {availableTrainers.map((trainer) => (
-                        <option key={trainer.id} value={trainer.id}>{trainer.nickname}</option>
+                        <option key={trainer.id} value={trainer.id}>
+                          {trainer.nickname}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div className="flex gap-4 pt-4">
                     <button
                       type="button"
-                      onClick={() => { setShowAssignForm(false); setSelectedTrainerId(''); }}
+                      onClick={() => {
+                        setShowAssignForm(false);
+                        setSelectedTrainerId('');
+                      }}
                       className="flex-1 px-4 py-3 bg-jacksons-purple-600 text-white border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm hover:bg-jacksons-purple-500 transition-all duration-100"
                     >
                       Cancelar
@@ -758,33 +880,54 @@ export default function ParticipantsPage() {
           {/* Participants Table */}
           {!selectedLeagueId ? (
             <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">Selecciona temporada, split y división para ver los participantes.</p>
+              <p className="text-jacksons-purple-300">
+                Selecciona temporada, split y división para ver los
+                participantes.
+              </p>
             </div>
           ) : loadingParticipants ? (
             <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">Cargando participantes...</p>
+              <p className="text-jacksons-purple-300">
+                Cargando participantes...
+              </p>
             </div>
           ) : (
             <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden">
               {participants.length === 0 ? (
-                <div className="p-8 text-center text-jacksons-purple-300">No hay participantes asignados a esta división.</div>
+                <div className="p-8 text-center text-jacksons-purple-300">
+                  No hay participantes asignados a esta división.
+                </div>
               ) : (
                 <table className="w-full">
                   <thead>
                     <tr className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600">
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Seed</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Entrenador</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Vidas</th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Estado</th>
-                      <th className="px-6 py-4 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">Acciones</th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Seed
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Entrenador
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Vidas
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Estado
+                      </th>
+                      <th className="px-6 py-4 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {participants.map((participant) => {
                       const currentLives = getCurrentLives(participant);
-                      const hasChange = pendingLivesChanges[participant.id] !== undefined;
+                      const hasChange =
+                        pendingLivesChanges[participant.id] !== undefined;
                       return (
-                        <tr key={participant.id} className={`border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors ${hasChange ? 'bg-orange-900/20' : ''}`}>
+                        <tr
+                          key={participant.id}
+                          className={`border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors ${hasChange ? 'bg-orange-900/20' : ''}`}
+                        >
                           <td className="px-6 py-4">
                             <span className="inline-flex items-center justify-center w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 text-white font-bold text-sm">
                               {participant.initial_seed ?? '-'}
@@ -793,31 +936,53 @@ export default function ParticipantsPage() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               {participant.trainer?.avatar_url ? (
-                                <img src={participant.trainer.avatar_url} alt={participant.trainer.nickname} className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover" />
+                                <img
+                                  src={participant.trainer.avatar_url}
+                                  alt={participant.trainer.nickname}
+                                  className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
+                                />
                               ) : (
                                 <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                                  {participant.trainer?.nickname?.charAt(0).toUpperCase() ?? '?'}
+                                  {participant.trainer?.nickname
+                                    ?.charAt(0)
+                                    .toUpperCase() ?? '?'}
                                 </div>
                               )}
-                              <span className="text-white font-medium">{participant.trainer?.nickname ?? 'Unknown'}</span>
+                              <span className="text-white font-medium">
+                                {participant.trainer?.nickname ?? 'Unknown'}
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
-                                onClick={() => handleLocalLivesChange(participant.id, currentLives, -1)}
+                                onClick={() =>
+                                  handleLocalLivesChange(
+                                    participant.id,
+                                    currentLives,
+                                    -1,
+                                  )
+                                }
                                 disabled={currentLives <= 0}
                                 className="w-7 h-7 bg-red-600 text-white border-2 border-red-800 font-bold text-sm hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                               >
                                 -
                               </button>
-                              <span className={`font-bold min-w-[3rem] text-center ${hasChange ? 'text-orange-400' : 'text-retro-gold-400'}`}>
+                              <span
+                                className={`font-bold min-w-[3rem] text-center ${hasChange ? 'text-orange-400' : 'text-retro-gold-400'}`}
+                              >
                                 ❤️ {currentLives}
                               </span>
                               <button
                                 type="button"
-                                onClick={() => handleLocalLivesChange(participant.id, currentLives, 1)}
+                                onClick={() =>
+                                  handleLocalLivesChange(
+                                    participant.id,
+                                    currentLives,
+                                    1,
+                                  )
+                                }
                                 className="w-7 h-7 bg-green-600 text-white border-2 border-green-800 font-bold text-sm hover:bg-green-500 transition-all"
                               >
                                 +
@@ -825,7 +990,9 @@ export default function ParticipantsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-2 py-1 text-xs font-bold uppercase border-2 ${participant.status === 'active' ? 'bg-green-600 border-green-800 text-white' : 'bg-jacksons-purple-600 border-jacksons-purple-800 text-jacksons-purple-200'}`}>
+                            <span
+                              className={`px-2 py-1 text-xs font-bold uppercase border-2 ${participant.status === 'active' ? 'bg-green-600 border-green-800 text-white' : 'bg-jacksons-purple-600 border-jacksons-purple-800 text-jacksons-purple-200'}`}
+                            >
                               {participant.status ?? 'active'}
                             </span>
                           </td>
@@ -833,7 +1000,9 @@ export default function ParticipantsPage() {
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 type="button"
-                                onClick={() => handleRemoveFromLeague(participant.id)}
+                                onClick={() =>
+                                  handleRemoveFromLeague(participant.id)
+                                }
                                 className="px-4 py-2 bg-red-600 text-white border-2 border-red-800 text-xs font-bold uppercase hover:bg-red-500 transition-all duration-100"
                               >
                                 Quitar

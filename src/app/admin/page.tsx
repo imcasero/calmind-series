@@ -17,19 +17,18 @@ export default function AdminPage() {
     setLoading(true);
     setError('');
 
-    try {
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      console.log('Login attempt:', { email, password });
-      redirect('/admin/dashboard');
-    } catch (error) {
-      setError(error as string);
-    } finally {
+    if (error) {
+      setError(error.message);
       setLoading(false);
+      return;
     }
+
+    redirect('/admin/dashboard');
   };
 
   const pixel3dEffect = {

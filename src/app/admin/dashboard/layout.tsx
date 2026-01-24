@@ -8,6 +8,7 @@ import { createClient as createBrowserClient } from '@/lib/supabase/client';
 const navItems = [
   { href: '/admin/dashboard', label: 'Panel', icon: '📊' },
   { href: '/admin/dashboard/seasons', label: 'Temporadas', icon: '🏆' },
+  { href: '/admin/dashboard/splits', label: 'Splits', icon: '📅' },
   { href: '/admin/dashboard/divisions', label: 'Divisiones', icon: '⚔️' },
   { href: '/admin/dashboard/participants', label: 'Participantes', icon: '👥' },
   { href: '/admin/dashboard/matches', label: 'Partidos', icon: '🎮' },

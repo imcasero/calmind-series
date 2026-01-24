@@ -36,7 +36,8 @@ export default function DivisionsPage() {
       } else {
         setSeasons(data ?? []);
         // Auto-select active season
-        const activeSeason = data?.find((s) => s.is_active) ?? data?.[0];
+        const activeSeason =
+          (data as Season[] | null)?.find((s) => s.is_active) ?? data?.[0];
         if (activeSeason) {
           setSelectedSeasonId(activeSeason.id);
         }
@@ -63,7 +64,7 @@ export default function DivisionsPage() {
       const { data, error } = await supabase
         .from('splits')
         .select('*')
-        .eq('season_id', selectedSeasonId)
+        .eq('season_id', selectedSeasonId as string)
         .order('split_order', { ascending: true });
 
       if (error) {
@@ -71,7 +72,8 @@ export default function DivisionsPage() {
       } else {
         setSplits(data ?? []);
         // Auto-select active split
-        const activeSplit = data?.find((s) => s.is_active) ?? data?.[0];
+        const activeSplit =
+          (data as Split[] | null)?.find((s) => s.is_active) ?? data?.[0];
         if (activeSplit) {
           setSelectedSplitId(activeSplit.id);
         }
@@ -95,7 +97,7 @@ export default function DivisionsPage() {
       const { data, error } = await supabase
         .from('leagues')
         .select('*')
-        .eq('split_id', selectedSplitId)
+        .eq('split_id', selectedSplitId as string)
         .order('tier_priority', { ascending: true });
 
       if (error) {
@@ -114,10 +116,12 @@ export default function DivisionsPage() {
   }, [selectedSplitId]);
 
   const refreshLeagues = async () => {
+    if (!selectedSplitId) return;
+
     const { data } = await supabase
       .from('leagues')
       .select('*')
-      .eq('split_id', selectedSplitId)
+      .eq('split_id', selectedSplitId as string)
       .order('tier_priority', { ascending: true });
 
     if (data) {
@@ -133,7 +137,7 @@ export default function DivisionsPage() {
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from('leagues').insert({
+    const { error } = await (supabase as any).from('leagues').insert({
       split_id: selectedSplitId,
       tier_name: newLeague.tier_name,
       tier_priority: newLeague.tier_priority,

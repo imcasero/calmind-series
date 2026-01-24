@@ -41,7 +41,7 @@ export default function SeasonsPage() {
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('seasons')
       .insert({ name: newSeason.name, year: newSeason.year, is_active: false });
 
@@ -71,7 +71,7 @@ export default function SeasonsPage() {
     setError(null);
 
     // First, deactivate all seasons
-    const { error: deactivateError } = await supabase
+    const { error: deactivateError } = await (supabase as any)
       .from('seasons')
       .update({ is_active: false })
       .neq('id', id);
@@ -82,7 +82,7 @@ export default function SeasonsPage() {
     }
 
     // Then activate the selected one
-    const { error: activateError } = await supabase
+    const { error: activateError } = await (supabase as any)
       .from('seasons')
       .update({ is_active: true })
       .eq('id', id);
@@ -95,7 +95,7 @@ export default function SeasonsPage() {
   };
 
   const handleDeactivate = async (id: string) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('seasons')
       .update({ is_active: false })
       .eq('id', id);

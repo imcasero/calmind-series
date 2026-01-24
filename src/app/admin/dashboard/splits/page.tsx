@@ -30,7 +30,8 @@ export default function SplitsPage() {
       } else {
         setSeasons(data ?? []);
         // Auto-select active season or first one
-        const activeSeason = data?.find((s) => s.is_active) ?? data?.[0];
+        const activeSeason =
+          (data as Season[] | null)?.find((s) => s.is_active) ?? data?.[0];
         if (activeSeason) {
           setSelectedSeasonId(activeSeason.id);
         }
@@ -55,7 +56,7 @@ export default function SplitsPage() {
       const { data, error } = await supabase
         .from('splits')
         .select('*')
-        .eq('season_id', selectedSeasonId)
+        .eq('season_id', selectedSeasonId as string)
         .order('split_order', { ascending: true });
 
       if (error) {
@@ -75,10 +76,12 @@ export default function SplitsPage() {
   }, [selectedSeasonId]);
 
   const refreshSplits = async () => {
+    if (!selectedSeasonId) return;
+
     const { data } = await supabase
       .from('splits')
       .select('*')
-      .eq('season_id', selectedSeasonId)
+      .eq('season_id', selectedSeasonId as string)
       .order('split_order', { ascending: true });
 
     if (data) {
@@ -94,7 +97,7 @@ export default function SplitsPage() {
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from('splits').insert({
+    const { error } = await (supabase as any).from('splits').insert({
       season_id: selectedSeasonId,
       name: newSplit.name,
       split_order: newSplit.split_order,
@@ -132,10 +135,10 @@ export default function SplitsPage() {
     setError(null);
 
     // First, deactivate all splits in this season
-    const { error: deactivateError } = await supabase
+    const { error: deactivateError } = await (supabase as any)
       .from('splits')
       .update({ is_active: false })
-      .eq('season_id', selectedSeasonId);
+      .eq('season_id', selectedSeasonId as string);
 
     if (deactivateError) {
       setError(deactivateError.message);
@@ -143,7 +146,7 @@ export default function SplitsPage() {
     }
 
     // Then activate the selected one
-    const { error: activateError } = await supabase
+    const { error: activateError } = await (supabase as any)
       .from('splits')
       .update({ is_active: true })
       .eq('id', id);
@@ -156,7 +159,7 @@ export default function SplitsPage() {
   };
 
   const handleDeactivate = async (id: string) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('splits')
       .update({ is_active: false })
       .eq('id', id);

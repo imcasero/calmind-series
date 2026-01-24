@@ -116,7 +116,8 @@ export default function ParticipantsPage() {
       setError(error.message);
     } else {
       setSeasons(data ?? []);
-      const activeSeason = data?.find((s) => s.is_active) ?? data?.[0];
+      const activeSeason =
+        (data as Season[] | null)?.find((s) => s.is_active) ?? data?.[0];
       if (activeSeason) {
         setSelectedSeasonId(activeSeason.id);
       }
@@ -147,14 +148,15 @@ export default function ParticipantsPage() {
       const { data, error } = await supabase
         .from('splits')
         .select('*')
-        .eq('season_id', selectedSeasonId)
+        .eq('season_id', selectedSeasonId as string)
         .order('split_order', { ascending: true });
 
       if (error) {
         setError(error.message);
       } else {
         setSplits(data ?? []);
-        const activeSplit = data?.find((s) => s.is_active) ?? data?.[0];
+        const activeSplit =
+          (data as Split[] | null)?.find((s) => s.is_active) ?? data?.[0];
         if (activeSplit) {
           setSelectedSplitId(activeSplit.id);
         }
@@ -182,7 +184,7 @@ export default function ParticipantsPage() {
       const { data, error } = await supabase
         .from('leagues')
         .select('*')
-        .eq('split_id', selectedSplitId)
+        .eq('split_id', selectedSplitId as string)
         .order('tier_priority', { ascending: true });
 
       if (error) {
@@ -190,7 +192,7 @@ export default function ParticipantsPage() {
       } else {
         setLeagues(data ?? []);
         if (data?.[0]) {
-          setSelectedLeagueId(data[0].id);
+          setSelectedLeagueId((data as League[])[0].id);
         }
       }
       setLoadingLeagues(false);
@@ -213,7 +215,7 @@ export default function ParticipantsPage() {
       const { data, error } = await supabase
         .from('league_participants')
         .select(`*, trainer:trainers(*)`)
-        .eq('league_id', selectedLeagueId)
+        .eq('league_id', selectedLeagueId as string)
         .order('initial_seed', { ascending: true });
 
       if (error) {
@@ -235,7 +237,7 @@ export default function ParticipantsPage() {
 
     if (editingTrainer) {
       // Update existing
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('trainers')
         .update({
           nickname: trainerForm.nickname,
@@ -254,7 +256,7 @@ export default function ParticipantsPage() {
       }
     } else {
       // Create new
-      const { error } = await supabase.from('trainers').insert({
+      const { error } = await (supabase as any).from('trainers').insert({
         nickname: trainerForm.nickname,
         avatar_url: trainerForm.avatar_url || null,
         bio: trainerForm.bio || null,
@@ -311,7 +313,7 @@ export default function ParticipantsPage() {
     const { data } = await supabase
       .from('league_participants')
       .select(`*, trainer:trainers(*)`)
-      .eq('league_id', selectedLeagueId)
+      .eq('league_id', selectedLeagueId as string)
       .order('initial_seed', { ascending: true });
 
     if (data) {
@@ -327,13 +329,15 @@ export default function ParticipantsPage() {
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from('league_participants').insert({
-      league_id: selectedLeagueId,
-      trainer_id: selectedTrainerId,
-      initial_seed: participants.length + 1,
-      status: 'active',
-      lives: 20,
-    });
+    const { error } = await (supabase as any)
+      .from('league_participants')
+      .insert({
+        league_id: selectedLeagueId,
+        trainer_id: selectedTrainerId,
+        initial_seed: participants.length + 1,
+        status: 'active',
+        lives: 20,
+      });
 
     if (error) {
       setError(error.message);
@@ -385,7 +389,10 @@ export default function ParticipantsPage() {
     setError(null);
 
     const updates = Object.entries(pendingLivesChanges).map(([id, lives]) =>
-      supabase.from('league_participants').update({ lives }).eq('id', id),
+      (supabase as any)
+        .from('league_participants')
+        .update({ lives })
+        .eq('id', id),
     );
 
     const results = await Promise.all(updates);

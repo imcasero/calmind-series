@@ -4,7 +4,7 @@ export default function StatsLegend() {
       {/* Stats abbreviations - hidden on smallest screens */}
       <div className="hidden xs:flex flex-wrap gap-2 xs:gap-3 sm:gap-4 justify-center">
         <span className="drop-shadow font-semibold">
-          <strong>PJ:</strong> Partidos
+          <strong>JJ:</strong> Jornadas Jugadas
         </span>
         <span className="drop-shadow font-semibold hidden sm:inline">
           <strong>Sets:</strong> Sets ganados

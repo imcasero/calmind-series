@@ -19,10 +19,10 @@ export async function createClient() {
             for (const { name, value, options } of cookiesToSet) {
               cookieStore.set(name, value, options);
             }
-          } catch (error) {
-            // Cookie setting can fail in Server Components during streaming
-            // This is expected behavior - cookies can only be set from Server Actions or Route Handlers
-            console.warn('[Supabase] Failed to set cookies:', error);
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored because `src/proxy.ts` (middleware replacement)
+            // is handling the session refresh and cookie setting.
           }
         },
       },

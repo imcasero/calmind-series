@@ -25,7 +25,7 @@ export default function ClassificationTable({
                 Entrenador
               </th>
               <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-retro-gold-300 drop-shadow font-bold text-center hidden xs:table-cell">
-                PJ
+                J
               </th>
               <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-retro-gold-300 drop-shadow font-bold text-center hidden sm:table-cell">
                 Sets

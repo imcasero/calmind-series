@@ -26,7 +26,6 @@ export default async function FinalPage({ params }: FinalPageProps) {
 
   if (!splitData) return <div>Split not found</div>;
 
-  
   const [{ data: leagues }, { data: j15Matches }] = await Promise.all([
     supabase
       .from('leagues')
@@ -73,7 +72,6 @@ export default async function FinalPage({ params }: FinalPageProps) {
     const loser = isHomeWinner ? match.away : match.home;
 
     const target = type === 'winner' ? winner : loser;
-    // @ts-expect-error
     return {
       nickname: target?.nickname || 'Unknown',
       position: 0,

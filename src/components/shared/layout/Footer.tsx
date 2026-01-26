@@ -7,28 +7,31 @@ export default async function Footer() {
   const activeSeason = await getActiveSeasonWithSplit();
 
   return (
-    <footer className="mt-auto w-full bg-jacksons-purple-900/50 border-t-4 border-jacksons-purple-600">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+    <footer className="mt-auto w-full relative bg-jacksons-purple-950/60 backdrop-blur-sm border-t-[3px] border-retro-cyan-500/30">
+      {/* Top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-retro-gold-500/50 to-transparent" />
+
+      <div className="max-w-7xl mx-auto px-6 xs:px-8 py-10 xs:py-12">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-8 xs:gap-10">
           {/* Info Section */}
-          <div className="text-center md:text-left">
-            <h3 className="pokemon-title text-base text-yellow-500 mb-2">
+          <div className="text-center md:text-left space-y-2">
+            <h3 className="pokemon-title text-sm xs:text-base text-retro-gold-400 drop-shadow-[0_2px_0_rgba(0,0,0,0.8)]">
               Pokemon Calmind Series
             </h3>
-            <p className="text-sm text-gray-300">
+            <p className="text-xs xs:text-sm text-white/60 uppercase tracking-wider font-semibold">
               Competición Amateur de Pokemon
             </p>
           </div>
 
           {/* Links Section */}
-          <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex flex-col md:flex-row gap-4 xs:gap-6 items-center">
             {activeSeason?.name && activeSeason?.activeSplit?.name && (
               <Link
                 href={ROUTES.season(
                   activeSeason.name,
                   activeSeason.activeSplit.name,
                 )}
-                className="text-base text-gray-300 hover:text-yellow-500 transition-colors"
+                className="text-sm xs:text-base text-white/70 hover:text-retro-gold-400 transition-all duration-300 uppercase tracking-wide font-semibold hover:drop-shadow-[0_0_8px_rgba(255,237,78,0.3)]"
               >
                 Temporada Actual
               </Link>
@@ -37,24 +40,24 @@ export default async function Footer() {
               href={EXTERNAL_ROUTES.NORMATIVA_PDF}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-base text-gray-300 hover:text-yellow-500 transition-colors"
+              className="text-sm xs:text-base text-white/70 hover:text-retro-cyan-300 transition-all duration-300 uppercase tracking-wide font-semibold hover:drop-shadow-[0_0_8px_rgba(155,143,255,0.3)]"
             >
               Normativa
             </a>
           </div>
 
           {/* Copyright */}
-          <div className="text-center md:text-right">
-            <p className="text-sm text-gray-400">
+          <div className="text-center md:text-right space-y-1.5">
+            <p className="text-xs xs:text-sm text-white/50 font-mono">
               &copy; {currentYear} Pokemon Calmind Series
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs text-white/30 font-mono">
               Desarrollado por{' '}
               <a
                 href="https://imcasero.dev/"
                 target="_blank"
                 rel="noopener"
-                className="hover:text-zinc-200 font-bold transition-all"
+                className="hover:text-retro-cyan-300 font-bold transition-all duration-300"
               >
                 @imcasero.dev
               </a>
@@ -62,6 +65,9 @@ export default async function Footer() {
           </div>
         </div>
       </div>
+
+      {/* Bottom decorative glow */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[60%] h-12 bg-retro-gold-500/5 blur-3xl pointer-events-none" />
     </footer>
   );
 }

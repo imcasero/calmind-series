@@ -1,56 +1,61 @@
 import type { RankingEntry } from '@/lib/queries';
 import StatsLegend from './StatsLegend';
-import TableHeader from './TableHeader';
 import TableRow from './TableRow';
 
 export interface ClassificationTableProps {
   rankings: RankingEntry[];
+  tierColor: 'gold' | 'cyan';
 }
 
 export default function ClassificationTable({
   rankings,
+  tierColor,
 }: ClassificationTableProps) {
-  return (
-    <div className="retro-border bg-jacksons-purple-800 border-2 xs:border-4 border-retro-gold-600 rounded-lg overflow-hidden shadow-2xl">
-      <TableHeader />
+  const borderColor = tierColor === 'gold' ? 'border-retro-gold-500' : 'border-retro-cyan-500';
+  const headerBg = tierColor === 'gold' ? 'bg-retro-gold-500/10' : 'bg-retro-cyan-500/10';
+  const headerText = tierColor === 'gold' ? 'text-retro-gold-400' : 'text-retro-cyan-300';
 
+  return (
+    <div className={`retro-border border-[3px] ${borderColor} overflow-hidden`}>
+      {/* Table Container */}
       <div className="overflow-x-auto">
         <table className="w-full text-xs xs:text-sm sm:text-base">
-          <thead className="bg-jacksons-purple-700">
-            <tr className="text-left border-b-2 xs:border-b-4 border-retro-gold-500">
-              <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-retro-gold-300 drop-shadow font-bold">
+          <thead className={headerBg}>
+            <tr className={`text-left border-b-[3px] ${borderColor}`}>
+              <th className={`px-3 xs:px-4 py-3 xs:py-4 ${headerText} drop-shadow-[0_1px_0_rgba(0,0,0,0.8)] font-black uppercase tracking-wider text-[10px] xs:text-xs`}>
                 #
               </th>
-              <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-retro-gold-300 drop-shadow font-bold">
+              <th className={`px-3 xs:px-4 py-3 xs:py-4 ${headerText} drop-shadow-[0_1px_0_rgba(0,0,0,0.8)] font-black uppercase tracking-wider text-[10px] xs:text-xs`}>
                 Entrenador
               </th>
-              <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-retro-gold-300 drop-shadow font-bold text-center hidden xs:table-cell">
-                JJ
+              <th className={`px-3 xs:px-4 py-3 xs:py-4 ${headerText} drop-shadow-[0_1px_0_rgba(0,0,0,0.8)] font-black uppercase tracking-wider text-center hidden xs:table-cell text-[10px] xs:text-xs`}>
+                J
               </th>
-              <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-retro-gold-300 drop-shadow font-bold text-center hidden sm:table-cell">
+              <th className={`px-3 xs:px-4 py-3 xs:py-4 ${headerText} drop-shadow-[0_1px_0_rgba(0,0,0,0.8)] font-black uppercase tracking-wider text-center hidden sm:table-cell text-[10px] xs:text-xs`}>
                 Sets
               </th>
-              <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-retro-gold-300 drop-shadow font-bold text-center hidden sm:table-cell">
+              <th className={`px-3 xs:px-4 py-3 xs:py-4 ${headerText} drop-shadow-[0_1px_0_rgba(0,0,0,0.8)] font-black uppercase tracking-wider text-center hidden sm:table-cell text-[10px] xs:text-xs`}>
                 Diff
               </th>
-              <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 text-retro-gold-300 drop-shadow font-bold text-center">
+              <th className={`px-3 xs:px-4 py-3 xs:py-4 ${headerText} drop-shadow-[0_1px_0_rgba(0,0,0,0.8)] font-black uppercase tracking-wider text-center text-[10px] xs:text-xs`}>
                 Pts
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-jacksons-purple-950/40">
             {rankings.map((ranking, index) => (
               <TableRow
                 key={ranking.trainerId}
                 ranking={ranking}
                 index={index}
+                tierColor={tierColor}
               />
             ))}
           </tbody>
         </table>
       </div>
 
-      <StatsLegend />
+      <StatsLegend tierColor={tierColor} />
     </div>
   );
 }

@@ -15,91 +15,81 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
   const awayInitials =
     match.awayTrainer?.nickname.slice(0, 2).toUpperCase() ?? '??';
 
+  const homeWon = match.played && match.homeSets > match.awaySets;
+  const awayWon = match.played && match.awaySets > match.homeSets;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      whileHover={{ scale: 1.01, backgroundColor: 'rgba(61, 53, 128, 0.7)' }}
-      className="flex items-center justify-between gap-3 p-3 bg-jacksons-purple-700/50 rounded cursor-default"
+      className="border-2 border-white/10 bg-jacksons-purple-950/30"
     >
-      {/* Home Trainer */}
-      <div className="flex items-center gap-2.5 flex-1 min-w-0">
-        {match.homeTrainer?.avatarUrl ? (
-          <Image
-            src={match.homeTrainer.avatarUrl}
-            alt={match.homeTrainer.nickname}
-            width={36}
-            height={36}
-            className="w-9 h-9 rounded-full object-cover shrink-0"
-          />
-        ) : (
-          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs bg-linear-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
-            {homeInitials}
-          </div>
-        )}
-        <span className="text-white font-semibold text-sm whitespace-nowrap">
-          {match.homeTrainer?.nickname ?? 'TBD'}
-        </span>
-      </div>
-
-      {/* Score */}
-      <div className="flex items-center gap-1.5 shrink-0 px-3 justify-center">
-        {match.played ? (
-          <>
-            <motion.span
-              initial={{ scale: 1 }}
-              animate={
-                match.homeSets > match.awaySets ? { scale: [1, 1.2, 1] } : {}
-              }
-              transition={{ duration: 0.3 }}
-              className={`text-base font-bold ${
-                match.homeSets > match.awaySets
-                  ? 'text-retro-gold-400'
-                  : 'text-white/60'
-              }`}
-            >
+        {/* Home Trainer Row */}
+        <div className={`flex items-center justify-between px-4 py-3 border-b border-white/10 ${homeWon ? 'bg-retro-gold-500/10' : ''}`}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {match.homeTrainer?.avatarUrl ? (
+            <Image
+              src={match.homeTrainer.avatarUrl}
+              alt={match.homeTrainer.nickname}
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br from-jacksons-purple-500 to-snuff-500 shrink-0 border border-white/20">
+              {homeInitials}
+            </div>
+          )}
+          <span className={`font-bold text-sm truncate ${homeWon ? 'text-retro-gold-400' : 'text-white/90'}`}>
+            {match.homeTrainer?.nickname ?? 'TBD'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {match.played ? (
+            <span className={`font-black text-lg w-6 text-center ${homeWon ? 'text-retro-gold-400' : 'text-white/50'}`}>
               {match.homeSets}
-            </motion.span>
-            <span className="text-white/40 text-sm">-</span>
-            <motion.span
-              initial={{ scale: 1 }}
-              animate={
-                match.awaySets > match.homeSets ? { scale: [1, 1.2, 1] } : {}
-              }
-              transition={{ duration: 0.3 }}
-              className={`text-base font-bold ${
-                match.awaySets > match.homeSets
-                  ? 'text-retro-gold-400'
-                  : 'text-white/60'
-              }`}
-            >
-              {match.awaySets}
-            </motion.span>
-          </>
-        ) : (
-          <span className="text-white/40 text-sm">vs</span>
-        )}
+            </span>
+          ) : (
+            <span className="text-white/30 text-xs font-mono w-6 text-center">-</span>
+          )}
+        </div>
       </div>
 
-      {/* Away Trainer */}
-      <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
-        <span className="text-white font-semibold text-sm whitespace-nowrap">
-          {match.awayTrainer?.nickname ?? 'TBD'}
-        </span>
-        {match.awayTrainer?.avatarUrl ? (
-          <Image
-            src={match.awayTrainer.avatarUrl}
-            alt={match.awayTrainer.nickname}
-            width={36}
-            height={36}
-            className="w-9 h-9 rounded-full object-cover shrink-0"
-          />
-        ) : (
-          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs bg-linear-to-br from-jacksons-purple-500 to-snuff-500 shrink-0">
-            {awayInitials}
-          </div>
-        )}
+      {/* VS Divider */}
+      <div className="flex items-center justify-center py-1.5 bg-white/5">
+        <span className="text-white/30 text-[10px] font-mono uppercase tracking-widest">vs</span>
+      </div>
+
+      {/* Away Trainer Row */}
+      <div className={`flex items-center justify-between px-4 py-3 border-t border-white/10 ${awayWon ? 'bg-retro-gold-500/10' : ''}`}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {match.awayTrainer?.avatarUrl ? (
+            <Image
+              src={match.awayTrainer.avatarUrl}
+              alt={match.awayTrainer.nickname}
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br from-jacksons-purple-500 to-snuff-500 shrink-0 border border-white/20">
+              {awayInitials}
+            </div>
+          )}
+          <span className={`font-bold text-sm truncate ${awayWon ? 'text-retro-gold-400' : 'text-white/90'}`}>
+            {match.awayTrainer?.nickname ?? 'TBD'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {match.played ? (
+            <span className={`font-black text-lg w-6 text-center ${awayWon ? 'text-retro-gold-400' : 'text-white/50'}`}>
+              {match.awaySets}
+            </span>
+          ) : (
+            <span className="text-white/30 text-xs font-mono w-6 text-center">-</span>
+          )}
+        </div>
       </div>
     </motion.div>
   );
@@ -120,10 +110,12 @@ function LeagueMatchesList({
     gold: {
       title: 'text-retro-gold-400',
       border: 'border-retro-gold-500',
+      bg: 'bg-retro-gold-500/10',
     },
     cyan: {
       title: 'text-retro-cyan-300',
       border: 'border-retro-cyan-500',
+      bg: 'bg-retro-cyan-500/10',
     },
   };
 
@@ -131,13 +123,29 @@ function LeagueMatchesList({
 
   return (
     <section className="w-full">
-      <h3
-        className={`${colors.title} font-bold text-sm xs:text-base uppercase tracking-wide mb-3 xs:mb-4 text-center`}
-      >
-        {leagueName}
-      </h3>
+      {/* League Header with Pokéball */}
+      <div className="flex items-center gap-4 mb-6 xs:mb-8 justify-center">
+        <div className={`w-5 h-5 rounded-full border-2 ${colors.border} bg-gradient-to-b from-white to-gray-300 relative overflow-hidden shadow-lg`}>
+          <div className={`absolute bottom-0 left-0 right-0 h-1/2 ${accentColor === 'gold' ? 'bg-retro-gold-500' : 'bg-jacksons-purple-500'}`} />
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-jacksons-purple-900 -translate-y-1/2" />
+          <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 rounded-full bg-white border border-jacksons-purple-900 -translate-x-1/2 -translate-y-1/2" />
+        </div>
+
+        <h3
+          className={`${colors.title} font-pokemon font-black text-base xs:text-lg sm:text-xl uppercase tracking-[0.2em] drop-shadow-[0_2px_0_rgba(0,0,0,1)]`}
+        >
+          {leagueName}
+        </h3>
+
+        <div className={`w-5 h-5 rounded-full border-2 ${colors.border} bg-gradient-to-b from-white to-gray-300 relative overflow-hidden shadow-lg`}>
+          <div className={`absolute bottom-0 left-0 right-0 h-1/2 ${accentColor === 'gold' ? 'bg-retro-gold-500' : 'bg-jacksons-purple-500'}`} />
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-jacksons-purple-900 -translate-y-1/2" />
+          <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 rounded-full bg-white border border-jacksons-purple-900 -translate-x-1/2 -translate-y-1/2" />
+        </div>
+      </div>
+
       <div
-        className={`retro-border border-2 ${colors.border} bg-jacksons-purple-800/80 p-3 xs:p-4`}
+        className={`retro-border border-[3px] ${colors.border} p-4 xs:p-5 ${colors.bg}`}
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -148,7 +156,7 @@ function LeagueMatchesList({
             transition={{ duration: 0.2 }}
           >
             {matches.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 {matches.map((match, index) => (
                   <MatchCard key={match.id} match={match} index={index} />
                 ))}
@@ -171,21 +179,21 @@ function EmptyState() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
-      className="retro-border border-2 border-jacksons-purple-600 bg-jacksons-purple-800/80 p-6 xs:p-8 text-center"
+      className="retro-border border-[3px] border-retro-gold-500 bg-retro-gold-500/10 p-8 xs:p-10 text-center"
     >
       <motion.div
         animate={{ y: [0, -5, 0] }}
         transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-        className="text-4xl mb-4"
+        className="text-4xl mb-6"
       >
         <span role="img" aria-label="calendar">
-          &#128197;
+          📅
         </span>
       </motion.div>
-      <h3 className="text-retro-gold-400 font-bold text-sm xs:text-base uppercase tracking-wide mb-2">
+      <h3 className="text-retro-gold-400 font-pokemon font-black text-base xs:text-lg uppercase tracking-[0.2em] mb-3 drop-shadow-[0_2px_0_rgba(0,0,0,1)]">
         Próximamente
       </h3>
-      <p className="text-white/60 text-xs xs:text-sm">
+      <p className="text-white/60 text-xs xs:text-sm font-mono uppercase tracking-wide">
         Los enfrentamientos de este split aún no han sido programados.
       </p>
     </motion.div>
@@ -251,76 +259,77 @@ export default function MatchesSection({ matches }: MatchesSectionProps) {
   return (
     <div className="w-full">
       {/* Round Navigation */}
-      <div className="flex items-center justify-center gap-4 mb-4">
+      <div className="flex items-center justify-center gap-6 xs:gap-8 mb-8 xs:mb-10">
         <motion.button
           type="button"
           onClick={handlePrev}
           disabled={!canGoPrev}
-          whileHover={canGoPrev ? { scale: 1.2 } : {}}
           whileTap={canGoPrev ? { scale: 0.9 } : {}}
-          className={`text-xl font-bold transition-colors ${
+          className={`retro-border border-2 w-10 h-10 flex items-center justify-center font-pokemon text-xl transition-all ${
             canGoPrev
-              ? 'text-retro-gold-400 hover:text-retro-gold-300 cursor-pointer'
-              : 'text-white/20 cursor-not-allowed'
+              ? 'border-retro-gold-500 text-retro-gold-400 cursor-pointer hover:-translate-y-0.5'
+              : 'border-white/10 text-white/20 cursor-not-allowed'
           }`}
           aria-label="Jornada anterior"
         >
-          &#8249;
+          ◀
         </motion.button>
 
         <AnimatePresence mode="wait">
-          <motion.h3
+          <motion.div
             key={currentRound.round}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.15 }}
-            className="text-retro-gold-400 font-bold text-sm xs:text-base uppercase tracking-wide min-w-[140px] text-center"
+            className="flex items-center gap-4"
           >
-            Jornada {currentRound.round}
-          </motion.h3>
+            <div className="h-px w-12 bg-gradient-to-r from-transparent to-retro-gold-500/30" />
+            <h3 className="text-retro-gold-400 font-pokemon font-black text-base xs:text-lg sm:text-xl uppercase tracking-[0.2em] drop-shadow-[0_2px_0_rgba(0,0,0,1)] min-w-[140px] xs:min-w-[180px] text-center">
+              Jornada {currentRound.round}
+            </h3>
+            <div className="h-px w-12 bg-gradient-to-l from-transparent to-retro-gold-500/30" />
+          </motion.div>
         </AnimatePresence>
 
         <motion.button
           type="button"
           onClick={handleNext}
           disabled={!canGoNext}
-          whileHover={canGoNext ? { scale: 1.2 } : {}}
           whileTap={canGoNext ? { scale: 0.9 } : {}}
-          className={`text-xl font-bold transition-colors ${
+          className={`retro-border border-2 w-10 h-10 flex items-center justify-center font-pokemon text-xl transition-all ${
             canGoNext
-              ? 'text-retro-gold-400 hover:text-retro-gold-300 cursor-pointer'
-              : 'text-white/20 cursor-not-allowed'
+              ? 'border-retro-gold-500 text-retro-gold-400 cursor-pointer hover:-translate-y-0.5'
+              : 'border-white/10 text-white/20 cursor-not-allowed'
           }`}
           aria-label="Jornada siguiente"
         >
-          &#8250;
+          ▶
         </motion.button>
       </div>
 
-      {/* Round indicator */}
-      <div className="flex justify-center gap-1.5 mb-6">
+      {/* Round indicator dots */}
+      <div className="flex justify-center gap-2 mb-8 xs:mb-10">
         {matches.map((_, idx) => (
           <motion.button
             key={matches[idx].round}
             type="button"
             onClick={() => setCurrentRoundIndex(idx)}
-            whileHover={{ scale: 1.3 }}
             whileTap={{ scale: 0.9 }}
             animate={
               idx === currentRoundIndex
-                ? { scale: 1.2, backgroundColor: 'var(--color-retro-gold-400)' }
-                : { scale: 1, backgroundColor: 'rgba(255,255,255,0.2)' }
+                ? { width: '32px', backgroundColor: 'var(--color-retro-gold-400)' }
+                : { width: '8px', backgroundColor: 'rgba(255,255,255,0.2)' }
             }
             transition={{ duration: 0.2 }}
-            className="w-2.5 h-2.5 rounded-full cursor-pointer"
+            className="h-2 rounded-full cursor-pointer"
             aria-label={`Ir a jornada ${matches[idx].round}`}
           />
         ))}
       </div>
 
-      {/* Two-column layout for leagues - fixed height to prevent resizing */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 w-full">
+      {/* Two-column layout for leagues */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 xs:gap-8 md:gap-10 lg:gap-16 xl:gap-24 w-full">
         <LeagueMatchesList
           leagueName="Primera División"
           matches={primeraMatches}

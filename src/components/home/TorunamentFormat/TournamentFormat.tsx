@@ -1,12 +1,17 @@
 export const TournamentFormat = () => {
   return (
     <section id="formato" className="w-full">
-      <div className="mx-auto max-w-5xl px-1 xs:px-2 sm:px-4 py-8 xs:py-10 sm:py-14 md:py-20">
-        <h2 className="pokemon-title text-center text-retro-gold-400 font-extrabold text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-2 xs:mb-3 sm:mb-4">
-          Formato del Torneo
-        </h2>
-        <div className="text-center mb-4 xs:mb-6 sm:mb-10">
-          <span className="text-retro-cyan-300/80 text-[10px] xs:text-xs sm:text-sm uppercase tracking-wider font-semibold">
+      <div className="mx-auto max-w-5xl px-1 xs:px-2 sm:px-4 py-12 xs:py-16 sm:py-20 md:py-28">
+        {/* Section Header with decorative lines - matching cruces style */}
+        <div className="flex items-center gap-6 mb-6 xs:mb-8">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-retro-cyan-500/30" />
+          <h2 className="pokemon-title text-center text-retro-gold-400 font-extrabold text-lg xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase tracking-[0.2em]">
+            Formato del Torneo
+          </h2>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-retro-cyan-500/30" />
+        </div>
+        <div className="text-center mb-8 xs:mb-10 sm:mb-14">
+          <span className="text-retro-cyan-300/80 text-[10px] xs:text-xs sm:text-sm uppercase tracking-[0.3em] font-semibold">
             Sistema de Splits por Temporada
           </span>
         </div>

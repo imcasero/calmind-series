@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
+import { createClient } from '@/lib/supabase/server';
+import { CrucesBracket } from '@/components/cross/CrucesBracket';
+
 
 interface FinalPageProps {
   params: Promise<{
@@ -11,282 +14,234 @@ interface FinalPageProps {
 
 export default async function FinalPage({ params }: FinalPageProps) {
   const { season, split } = await params;
+  const supabase = await createClient();
 
-  // Mock data - will be replaced with API call
-  const mockGrandFinal = {
-    tag: 'grand_final',
-    home: { name: 'Ganador Semi 1', from: 'J15 Semi 1' },
-    away: { name: 'Ganador Semi 2', from: 'J15 Semi 2' },
-    winner: null,
+  // 1. Get split ID
+  const { data: splitData } = await supabase
+    .from('splits')
+    .select('id')
+    .eq('name', split)
+    .single();
+
+  if (!splitData) return <div>Split not found</div>;
+
+  // 2. Get leagues
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, tier_name')
+    .eq('split_id', splitData.id);
+
+  const primeraLeague = leagues?.find((l) => l.tier_name === 'primera');
+  const segundaLeague = leagues?.find((l) => l.tier_name === 'segunda');
+
+  // 3. Get J15 Matches (Cruces) to determine participants
+  const { data: j15Matches } = await supabase
+    .from('matches')
+    .select(`
+      id, league_id, match_group, match_tag, 
+      home_trainer_id, away_trainer_id, 
+      home_sets, away_sets, played,
+      home:trainers!matches_home_trainer_id_fkey(nickname, avatar_url),
+      away:trainers!matches_away_trainer_id_fkey(nickname, avatar_url)
+    `)
+    .eq('split_id', splitData.id)
+    .eq('round', 15);
+
+  // Helper to get winner/loser from a J15 match tag
+  const getFromJ15 = (
+    leagueId: string | undefined,
+    tag: string,
+    type: 'winner' | 'loser',
+  ) => {
+    const match = j15Matches?.find(
+      (m) => m.league_id === leagueId && m.match_tag === tag,
+    );
+    if (!match) return { nickname: 'TBD', position: 0 };
+
+    if (!match.played) {
+      const label = type === 'winner' ? 'Ganador' : 'Perdedor';
+      // Map tag to readable name
+      const tagName = tag
+        .replace('semi_', 'Semi ')
+        .replace('survival_', 'Superv. ');
+      return { nickname: `${label} ${tagName}`, position: 0 };
+    }
+
+    const isHomeWinner = (match.home_sets || 0) > (match.away_sets || 0);
+    const winner = isHomeWinner ? match.home : match.away;
+    const loser = isHomeWinner ? match.away : match.home;
+
+    const target = type === 'winner' ? winner : loser;
+    // @ts-ignore
+    return {
+      nickname: target?.nickname || 'Unknown',
+      position: 0,
+      avatar_url: target?.avatar_url,
+    };
   };
 
-  const mockThirdPlace = {
-    tag: 'third_place',
-    home: { name: 'Perdedor Semi 1', from: 'J15 Semi 1' },
-    away: { name: 'Perdedor Semi 2', from: 'J15 Semi 2' },
-    winner: null,
-  };
+  // --- PRIMERA DIVISION LOGIC ---
+  const primeraFinals = [
+    {
+      title: 'Grand Final',
+      home: getFromJ15(primeraLeague?.id, 'semi_1', 'winner'), // Winner Semi 1
+      away: getFromJ15(primeraLeague?.id, 'semi_2', 'winner'), // Winner Semi 2
+    },
+    {
+      title: '3rd Place',
+      home: getFromJ15(primeraLeague?.id, 'semi_1', 'loser'), // Loser Semi 1
+      away: getFromJ15(primeraLeague?.id, 'semi_2', 'loser'), // Loser Semi 2
+    },
+  ];
 
-  const mockFifthPlace = {
-    tag: 'fifth_place',
-    home: { name: 'Ganador Surv. 1', from: 'J15 Supervivencia 1' },
-    away: { name: 'Ganador Surv. 2', from: 'J15 Supervivencia 2' },
-    winner: null,
-  };
+  const primeraRelegation = [
+    {
+      title: 'Lucha por Permanencia',
+      home: getFromJ15(primeraLeague?.id, 'survival_1', 'winner'), // Winner Surv 1
+      away: getFromJ15(primeraLeague?.id, 'survival_2', 'winner'), // Winner Surv 2
+    },
+    {
+      title: 'Morir de Pie',
+      home: getFromJ15(primeraLeague?.id, 'survival_1', 'loser'), // Loser Surv 1
+      away: getFromJ15(primeraLeague?.id, 'survival_2', 'loser'), // Loser Surv 2
+    },
+  ];
 
-  const mockRelegation = {
-    tag: 'relegation_final',
-    home: { name: 'Perdedor Surv. 1', from: 'J15 Supervivencia 1' },
-    away: { name: 'Perdedor Surv. 2', from: 'J15 Supervivencia 2' },
-    winner: null,
-  };
+  // --- SEGUNDA DIVISION LOGIC ---
+  const segundaFinals = [
+    {
+      title: 'Final Segunda',
+      home: getFromJ15(segundaLeague?.id, 'semi_1', 'winner'), // Winner Semi 1
+      away: getFromJ15(segundaLeague?.id, 'semi_2', 'winner'), // Winner Semi 2
+    },
+    {
+      title: 'La Oportunidad',
+      home: getFromJ15(segundaLeague?.id, 'semi_1', 'loser'), // Loser Semi 1
+      away: getFromJ15(segundaLeague?.id, 'semi_2', 'loser'), // Loser Semi 2
+    },
+  ];
 
-  const mockOlympus = {
-    tag: 'promotion_playoff',
-    home: { name: 'Perdedor Relegation', from: '1ª División' },
-    away: { name: 'Campeón', from: '2ª División' },
-    winner: null,
-  };
+  const segundaBottom = [
+    {
+      title: 'Last Chance',
+      home: getFromJ15(segundaLeague?.id, 'survival_1', 'winner'), // Winner Surv 1
+      away: getFromJ15(segundaLeague?.id, 'survival_2', 'winner'), // Winner Surv 2
+    },
+    {
+      title: 'El Combate del Honor',
+      home: getFromJ15(segundaLeague?.id, 'survival_1', 'loser'), // Loser Surv 1
+      away: getFromJ15(segundaLeague?.id, 'survival_2', 'loser'), // Loser Surv 2
+    },
+  ];
+
+  // --- EL OLIMPO ---
+  // Loser of "Lucha por Permanencia" (Primera) vs Winner of "La Oportunidad" (Segunda)
+  // Since "Lucha por Permanencia" is a J16 match, we theoretically need J16 results.
+  // BUT this page IS J16. So El Olimpo is usually played AFTER or if this is the view FOR J16,
+  // we show the participants who *qualified* for it.
+  // Wait, the prompt says "el que pierte ira al combate llamado EL OLIMPO".
+  // This implies El Olimpo is a separate event *after* J16 results? Or maybe it's displayed here as the *destination*?
+  // "este combate el ganador sera el elegido e ira al combate llamado EL OLIMPO"
+  // If J16 contains "Lucha por Permanencia" and "La Oportunidad", then El Olimpo cannot happen in J16 effectively unless it's a double header?
+  // Let's assume for this page we display the brackets OF J16. El Olimpo might be a future match.
+  // HOWEVER, I will include a placeholder section for "El Olimpo Qualifiers" to show who is fighting for it.
 
   return (
     <>
       <Navbar />
-      <div className="max-w-4xl mx-auto px-2 xs:px-3 sm:px-4 py-6 xs:py-8">
-        {/* Header */}
-        <section className="text-center mb-6 xs:mb-8">
-          <Link
-            href={`/${season}/${split}`}
-            className="text-retro-cyan-300/60 text-xs uppercase tracking-wider hover:text-retro-cyan-300 transition-colors"
-          >
-            ← {split.replace('split', 'Split ')}
-          </Link>
-          <h1 className="pokemon-title text-retro-gold-400 text-xl xs:text-2xl sm:text-3xl mt-2 mb-1">
-            J16 - The Finals
-          </h1>
-          <p className="text-white/60 text-xs xs:text-sm">
-            Finales y Promoción - {season.toUpperCase()}{' '}
-            {split.replace('split', 'Split ')}
-          </p>
-        </section>
+      <div className="max-w-7xl mx-auto px-4 xs:px-6 sm:px-8 py-10 xs:py-16 relative overflow-hidden">
+        {/* Background Aesthetic Decorations */}
+        <div className="fixed inset-0 pointer-events-none -z-10">
+          <div className="absolute top-1/4 left-0 w-[500px] h-[500px] bg-retro-gold-500/5 blur-[120px] rounded-full" />
+          <div className="absolute bottom-1/4 right-0 w-[500px] h-[500px] bg-snuff-500/5 blur-[120px] rounded-full" />
+        </div>
 
-        {/* Navigation to J15 */}
-        <section className="mb-6 xs:mb-8 text-center">
+        {/* Header */}
+        <section className="text-center mb-16 xs:mb-24">
           <Link
             href={ROUTES.cruces(season, split)}
-            className="inline-block text-retro-cyan-300/70 text-xs uppercase tracking-wide hover:text-retro-cyan-300 transition-colors"
+            className="inline-flex items-center gap-2 text-retro-cyan-300/40 text-[10px] uppercase tracking-[0.3em] hover:text-retro-cyan-300 transition-colors font-pokemon border border-white/5 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full"
           >
-            ← Ver J15 - Los Cruces
+            ← Volver a J15
           </Link>
-        </section>
-
-        {/* GRAN FINAL */}
-        <section className="mb-6 xs:mb-8">
-          <div className="retro-border border-3 xs:border-4 border-retro-gold-500 bg-gradient-to-br from-jacksons-purple-800 to-jacksons-purple-900 p-4 xs:p-6 shadow-lg">
-            <div className="flex items-center justify-center gap-2 mb-4 xs:mb-6">
-              <span className="text-retro-gold-400 text-lg xs:text-xl">🏆</span>
-              <h2 className="text-retro-gold-400 font-bold text-base xs:text-lg uppercase tracking-wide text-center">
-                Gran Final
-              </h2>
-              <span className="text-retro-gold-400 text-lg xs:text-xl">🏆</span>
-            </div>
-
-            <div className="retro-border border-2 xs:border-3 border-retro-gold-400/50 bg-jacksons-purple-900/50 p-3 xs:p-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between bg-jacksons-purple-700 px-3 xs:px-4 py-2.5 xs:py-3">
-                  <span className="text-white font-bold text-sm xs:text-base">
-                    {mockGrandFinal.home.name}
-                  </span>
-                  <span className="text-white/50 text-[10px] xs:text-xs">
-                    {mockGrandFinal.home.from}
-                  </span>
-                </div>
-                <div className="text-center text-retro-gold-400 font-bold text-xs xs:text-sm">
-                  VS
-                </div>
-                <div className="flex items-center justify-between bg-jacksons-purple-700 px-3 xs:px-4 py-2.5 xs:py-3">
-                  <span className="text-white font-bold text-sm xs:text-base">
-                    {mockGrandFinal.away.name}
-                  </span>
-                  <span className="text-white/50 text-[10px] xs:text-xs">
-                    {mockGrandFinal.away.from}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-4 text-center">
-                <span className="text-retro-gold-400 text-[10px] xs:text-xs uppercase tracking-wide">
-                  Ganador → Campeón del Split
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 3rd Place & 5th Place */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 xs:gap-6 mb-6 xs:mb-8">
-          {/* 3rd Place Match */}
-          <div className="retro-border border-3 xs:border-4 border-retro-cyan-500 bg-jacksons-purple-800 p-4 xs:p-5">
-            <h3 className="text-retro-cyan-300 font-bold text-xs xs:text-sm uppercase tracking-wide mb-3 xs:mb-4 text-center">
-              🥉 3er Puesto
-            </h3>
-            <div className="retro-border border-2 border-retro-cyan-500/30 bg-jacksons-purple-900/50 p-2 xs:p-3">
-              <div className="space-y-2">
-                <div className="bg-jacksons-purple-700 px-2 xs:px-3 py-1.5 xs:py-2">
-                  <span className="text-white text-xs xs:text-sm block">
-                    {mockThirdPlace.home.name}
-                  </span>
-                  <span className="text-white/40 text-[9px] xs:text-[10px]">
-                    {mockThirdPlace.home.from}
-                  </span>
-                </div>
-                <div className="text-center text-white/40 text-[10px] xs:text-xs">
-                  VS
-                </div>
-                <div className="bg-jacksons-purple-700 px-2 xs:px-3 py-1.5 xs:py-2">
-                  <span className="text-white text-xs xs:text-sm block">
-                    {mockThirdPlace.away.name}
-                  </span>
-                  <span className="text-white/40 text-[9px] xs:text-[10px]">
-                    {mockThirdPlace.away.from}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 5th Place Match */}
-          <div className="retro-border border-3 xs:border-4 border-jacksons-purple-500 bg-jacksons-purple-800 p-4 xs:p-5">
-            <h3 className="text-jacksons-purple-300 font-bold text-xs xs:text-sm uppercase tracking-wide mb-3 xs:mb-4 text-center">
-              5º Puesto
-            </h3>
-            <div className="retro-border border-2 border-jacksons-purple-500/30 bg-jacksons-purple-900/50 p-2 xs:p-3">
-              <div className="space-y-2">
-                <div className="bg-jacksons-purple-700 px-2 xs:px-3 py-1.5 xs:py-2">
-                  <span className="text-white text-xs xs:text-sm block">
-                    {mockFifthPlace.home.name}
-                  </span>
-                  <span className="text-white/40 text-[9px] xs:text-[10px]">
-                    {mockFifthPlace.home.from}
-                  </span>
-                </div>
-                <div className="text-center text-white/40 text-[10px] xs:text-xs">
-                  VS
-                </div>
-                <div className="bg-jacksons-purple-700 px-2 xs:px-3 py-1.5 xs:py-2">
-                  <span className="text-white text-xs xs:text-sm block">
-                    {mockFifthPlace.away.name}
-                  </span>
-                  <span className="text-white/40 text-[9px] xs:text-[10px]">
-                    {mockFifthPlace.away.from}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Relegation Final */}
-        <section className="mb-6 xs:mb-8">
-          <div className="retro-border border-3 xs:border-4 border-snuff-500 bg-jacksons-purple-800 p-4 xs:p-5">
-            <h3 className="text-snuff-400 font-bold text-xs xs:text-sm uppercase tracking-wide mb-3 xs:mb-4 text-center">
-              ⚔️ Lucha por Permanencia
-            </h3>
-            <div className="retro-border border-2 border-snuff-500/30 bg-jacksons-purple-900/50 p-3 xs:p-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between bg-jacksons-purple-700 px-2 xs:px-3 py-2 xs:py-2.5">
-                  <span className="text-white text-xs xs:text-sm">
-                    {mockRelegation.home.name}
-                  </span>
-                  <span className="text-white/40 text-[9px] xs:text-[10px]">
-                    {mockRelegation.home.from}
-                  </span>
-                </div>
-                <div className="text-center text-white/40 text-[10px] xs:text-xs">
-                  VS
-                </div>
-                <div className="flex items-center justify-between bg-jacksons-purple-700 px-2 xs:px-3 py-2 xs:py-2.5">
-                  <span className="text-white text-xs xs:text-sm">
-                    {mockRelegation.away.name}
-                  </span>
-                  <span className="text-white/40 text-[9px] xs:text-[10px]">
-                    {mockRelegation.away.from}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-white/10 text-center">
-                <span className="text-snuff-400/80 text-[10px] xs:text-xs">
-                  Perdedor → El Olimpo (Play-off de Promoción)
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* El Olimpo */}
-        <section>
-          <div className="retro-border border-3 xs:border-4 border-retro-cyan-400 bg-gradient-to-br from-jacksons-purple-900 to-jacksons-purple-950 p-4 xs:p-6">
-            <div className="flex items-center justify-center gap-2 mb-4 xs:mb-6">
-              <span className="text-retro-cyan-300 text-lg xs:text-xl">⚡</span>
-              <h2 className="text-retro-cyan-300 font-bold text-base xs:text-lg uppercase tracking-wide text-center">
-                El Olimpo
-              </h2>
-              <span className="text-retro-cyan-300 text-lg xs:text-xl">⚡</span>
-            </div>
-            <p className="text-white/60 text-xs xs:text-sm text-center mb-4 xs:mb-6">
-              Play-off de Promoción entre Divisiones
+          <h1 className="pokemon-title animate-in fade-in zoom-in duration-700 text-retro-gold-400 text-3xl xs:text-4xl sm:text-6xl mt-8 mb-4 tracking-tighter">
+            J16 - THE FINALS
+          </h1>
+          <div className="flex items-center justify-center gap-4 opacity-50">
+            <div className="h-px w-12 bg-linear-to-r from-transparent to-white/20" />
+            <p className="text-white/60 text-xs xs:text-sm font-pokemon uppercase tracking-[0.4em]">
+              Glory & Redemption
             </p>
-
-            <div className="retro-border border-2 xs:border-3 border-retro-cyan-400/50 bg-jacksons-purple-800/50 p-3 xs:p-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between bg-snuff-900/50 border border-snuff-500/30 px-3 xs:px-4 py-2.5 xs:py-3">
-                  <div>
-                    <span className="text-snuff-400 font-bold text-sm xs:text-base block">
-                      El Exiliado
-                    </span>
-                    <span className="text-white/50 text-[9px] xs:text-[10px]">
-                      {mockOlympus.home.from}
-                    </span>
-                  </div>
-                  <span className="text-snuff-400/60 text-[10px] xs:text-xs">
-                    Perdedor Permanencia
-                  </span>
-                </div>
-                <div className="text-center text-retro-cyan-300 font-bold text-xs xs:text-sm">
-                  VS
-                </div>
-                <div className="flex items-center justify-between bg-retro-gold-900/30 border border-retro-gold-500/30 px-3 xs:px-4 py-2.5 xs:py-3">
-                  <div>
-                    <span className="text-retro-gold-400 font-bold text-sm xs:text-base block">
-                      El Elegido
-                    </span>
-                    <span className="text-white/50 text-[9px] xs:text-[10px]">
-                      {mockOlympus.away.from}
-                    </span>
-                  </div>
-                  <span className="text-retro-gold-400/60 text-[10px] xs:text-xs">
-                    Campeón 2ª Div
-                  </span>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-2 xs:gap-4 text-center">
-                <div className="bg-retro-gold-500/20 border border-retro-gold-500/30 p-2 xs:p-3">
-                  <span className="text-retro-gold-400 text-[10px] xs:text-xs uppercase tracking-wide block">
-                    Ganador
-                  </span>
-                  <span className="text-white text-xs xs:text-sm font-bold">
-                    1ª División
-                  </span>
-                </div>
-                <div className="bg-snuff-500/20 border border-snuff-500/30 p-2 xs:p-3">
-                  <span className="text-snuff-400 text-[10px] xs:text-xs uppercase tracking-wide block">
-                    Perdedor
-                  </span>
-                  <span className="text-white text-xs xs:text-sm font-bold">
-                    2ª División
-                  </span>
-                </div>
-              </div>
-            </div>
+            <div className="h-px w-12 bg-linear-to-l from-transparent to-white/20" />
           </div>
+        </section>
+
+        {/* PRIMERA DIVISIÓN */}
+        <div className="mb-20 xs:mb-32">
+          <div className="flex items-center gap-6 mb-12">
+            <div className="h-px flex-1 bg-linear-to-r from-transparent to-retro-gold-500/30" />
+            <h2 className="font-pokemon text-retro-gold-400 text-lg xs:text-2xl uppercase tracking-[0.3em] font-black italic drop-shadow-[0_0_10px_rgba(255,237,78,0.2)]">
+              Primera <span className="text-white/20">División</span>
+            </h2>
+            <div className="h-px flex-1 bg-linear-to-l from-transparent to-retro-gold-500/30" />
+          </div>
+
+          <CrucesBracket
+            title="THE FINALS"
+            subtitle="Championship & 3rd Place"
+            matchups={primeraFinals}
+            accentColor="var(--color-retro-gold-500)"
+            innerAccentColor="var(--color-retro-gold-400)"
+            footerNote="Ganador Final → CAMPEÓN | Ganador 3er → Podio"
+          />
+
+          <CrucesBracket
+            title="THE LAST STAND"
+            subtitle="Permanencia & Honor"
+            matchups={primeraRelegation}
+            accentColor="var(--color-snuff-500)"
+            innerAccentColor="var(--color-snuff-400)"
+            footerNote="Ganador Perm. → Se queda en 1ª | Perdedor Perm. → El Olimpo (vs Elegido)"
+          />
+        </div>
+
+        {/* SEGUNDA DIVISIÓN */}
+        <div className="mb-20 xs:mb-32">
+          <div className="flex items-center gap-6 mb-12">
+            <div className="h-px flex-1 bg-linear-to-r from-transparent to-snuff-500/30" />
+            <h2 className="font-pokemon text-snuff-400 text-lg xs:text-2xl uppercase tracking-[0.3em] font-black italic drop-shadow-[0_0_10px_rgba(247,42,155,0.2)]">
+              Segunda <span className="text-white/20">División</span>
+            </h2>
+            <div className="h-px flex-1 bg-linear-to-l from-transparent to-snuff-500/30" />
+          </div>
+
+          <CrucesBracket
+            title="ASCENSION FINALS"
+            subtitle="Title & Opportunity"
+            matchups={segundaFinals}
+            accentColor="var(--color-retro-gold-500)"
+            innerAccentColor="var(--color-retro-gold-400)"
+            footerNote="Ganador Final → Campeón 2ª | Perdedor Oportunidad → Se queda en 2ª"
+          />
+
+          <CrucesBracket
+            title="BOTTOM SECTOR"
+            subtitle="Last Chance & Honor"
+            matchups={segundaBottom}
+            accentColor="var(--color-snuff-500)"
+            innerAccentColor="var(--color-snuff-400)"
+            footerNote="Ganador Last Chance → Se queda en 2ª | Todos los demás → Qualifier"
+          />
+        </div>
+
+        {/* EL OLIMPO TEASER */}
+        <section className="mt-20 border-t border-white/10 pt-16 text-center opacity-60 hover:opacity-100 transition-opacity">
+          <h3 className="font-pokemon text-white/40 text-xl tracking-[0.5em] mb-4">
+            NEXT EVENT: EL OLIMPO
+          </h3>
+          <p className="text-xs text-white/30 max-w-md mx-auto font-mono">
+            Perdedor [Lucha por Permanencia] vs Ganador [La Oportunidad]
+          </p>
         </section>
       </div>
     </>

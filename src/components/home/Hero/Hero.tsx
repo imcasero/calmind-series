@@ -56,7 +56,7 @@ export const Hero = () => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="mx-auto max-w-5xl px-1 xs:px-2 sm:px-4 pt-8 pb-8 xs:pt-10 xs:pb-10 sm:pt-16 sm:pb-12 md:pt-24 md:pb-16 text-center relative z-10"
+        className="mx-auto max-w-5xl px-1 xs:px-2 sm:px-4 pt-12 pb-16 xs:pt-16 xs:pb-20 sm:pt-20 sm:pb-24 md:pt-28 md:pb-32 text-center relative z-10"
       >
         {/* Main Title with embedded Pokeballs */}
         <motion.div variants={titleVariants} className="relative inline-block">
@@ -104,14 +104,14 @@ export const Hero = () => {
               />
             </motion.div>
           </motion.div>
-          <h1 className="pokemon-title text-retro-gold-400 drop-shadow-md font-black tracking-wide text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-tight">
+          <h1 className="pokemon-title text-retro-gold-400 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] font-black tracking-wide text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-tight">
             POKEMON
           </h1>
           <motion.h2
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
-            className="pokemon-title text-retro-cyan-300 drop-shadow font-extrabold text-base xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl mt-1"
+            className="pokemon-title text-retro-cyan-300 drop-shadow-[0_3px_6px_rgba(0,0,0,0.7)] font-extrabold text-base xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl mt-2"
           >
             CALMIND SERIES
           </motion.h2>

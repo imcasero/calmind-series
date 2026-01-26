@@ -1,16 +1,23 @@
-export default function StatsLegend() {
+interface StatsLegendProps {
+  tierColor: 'gold' | 'cyan';
+}
+
+export default function StatsLegend({ tierColor }: StatsLegendProps) {
+  const borderColor = tierColor === 'gold' ? 'border-retro-gold-500' : 'border-retro-cyan-500';
+  const bgColor = tierColor === 'gold' ? 'bg-retro-gold-500/10' : 'bg-retro-cyan-500/10';
+
   return (
-    <div className="bg-jacksons-purple-900 p-2 xs:p-3 sm:p-4 text-[10px] xs:text-xs sm:text-sm text-white/90 border-t-2 xs:border-t-4 border-retro-gold-500">
-      {/* Stats abbreviations - hidden on smallest screens */}
-      <div className="hidden xs:flex flex-wrap gap-2 xs:gap-3 sm:gap-4 justify-center">
-        <span className="drop-shadow font-semibold">
-          <strong>JJ:</strong> Jornadas Jugadas
+    <div className={`${bgColor} p-3 xs:p-4 text-[10px] xs:text-xs text-white/70 border-t-[3px] ${borderColor}`}>
+      {/* Stats abbreviations */}
+      <div className="hidden xs:flex flex-wrap gap-3 xs:gap-4 justify-center font-mono uppercase tracking-wide">
+        <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-semibold">
+          <strong className="text-white/90">J:</strong> Jornadas Jugadas
         </span>
-        <span className="drop-shadow font-semibold hidden sm:inline">
-          <strong>Sets:</strong> Sets ganados
+        <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-semibold hidden sm:inline">
+          <strong className="text-white/90">Sets:</strong> Sets ganados
         </span>
-        <span className="drop-shadow font-semibold hidden sm:inline">
-          <strong>Diff:</strong> Balance
+        <span className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-semibold hidden sm:inline">
+          <strong className="text-white/90">Diff:</strong> Balance
         </span>
       </div>
     </div>

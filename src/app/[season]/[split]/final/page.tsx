@@ -1,9 +1,8 @@
 import Link from 'next/link';
+import { CrucesBracket } from '@/components/cross/CrucesBracket';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import { createClient } from '@/lib/supabase/server';
-import { CrucesBracket } from '@/components/cross/CrucesBracket';
-
 
 interface FinalPageProps {
   params: Promise<{
@@ -72,7 +71,7 @@ export default async function FinalPage({ params }: FinalPageProps) {
     const loser = isHomeWinner ? match.away : match.home;
 
     const target = type === 'winner' ? winner : loser;
-    // @ts-ignore
+    // @ts-expect-error
     return {
       nickname: target?.nickname || 'Unknown',
       position: 0,

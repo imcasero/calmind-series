@@ -54,7 +54,7 @@ export default function Tabs({ children, defaultIndex = 0 }: TabsProps) {
   return (
     <div className="w-full">
       {/* Tab buttons */}
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
+      <div className="flex flex-wrap justify-center gap-3 xs:gap-4 mb-10 xs:mb-12">
         {panels.map((panel, index) => {
           const isActive = activeIndex === index;
           return (
@@ -65,9 +65,9 @@ export default function Tabs({ children, defaultIndex = 0 }: TabsProps) {
               whileHover={!isActive ? { scale: 1.02 } : {}}
               whileTap={{ scale: 0.98 }}
               className={cn(
-                'px-3 xs:px-4 py-2 font-bold uppercase text-[10px] xs:text-xs sm:text-sm tracking-wide',
+                'px-5 xs:px-6 sm:px-8 py-3 xs:py-4 font-pokemon font-black uppercase text-xs xs:text-sm sm:text-base tracking-[0.15em]',
                 'border-3 xs:border-4 border-[#1a1a1a] cursor-pointer',
-                'transition-all duration-100',
+                'transition-all duration-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]',
                 isActive
                   ? [
                       'bg-retro-gold-500 text-jacksons-purple-950',

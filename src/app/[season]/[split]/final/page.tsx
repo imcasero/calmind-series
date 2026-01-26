@@ -11,6 +11,8 @@ interface FinalPageProps {
   }>;
 }
 
+export const revalidate = 60;
+
 export default async function FinalPage({ params }: FinalPageProps) {
   const { season, split } = await params;
   const supabase = await createClient();
@@ -24,27 +26,27 @@ export default async function FinalPage({ params }: FinalPageProps) {
 
   if (!splitData) return <div>Split not found</div>;
 
-  // 2. Get leagues
-  const { data: leagues } = await supabase
-    .from('leagues')
-    .select('id, tier_name')
-    .eq('split_id', splitData.id);
+  
+  const [{ data: leagues }, { data: j15Matches }] = await Promise.all([
+    supabase
+      .from('leagues')
+      .select('id, tier_name')
+      .eq('split_id', splitData.id),
+    supabase
+      .from('matches')
+      .select(`
+        id, league_id, match_group, match_tag,
+        home_trainer_id, away_trainer_id,
+        home_sets, away_sets, played,
+        home:trainers!matches_home_trainer_id_fkey(nickname, avatar_url),
+        away:trainers!matches_away_trainer_id_fkey(nickname, avatar_url)
+      `)
+      .eq('split_id', splitData.id)
+      .eq('round', 15),
+  ]);
 
   const primeraLeague = leagues?.find((l) => l.tier_name === 'primera');
   const segundaLeague = leagues?.find((l) => l.tier_name === 'segunda');
-
-  // 3. Get J15 Matches (Cruces) to determine participants
-  const { data: j15Matches } = await supabase
-    .from('matches')
-    .select(`
-      id, league_id, match_group, match_tag, 
-      home_trainer_id, away_trainer_id, 
-      home_sets, away_sets, played,
-      home:trainers!matches_home_trainer_id_fkey(nickname, avatar_url),
-      away:trainers!matches_away_trainer_id_fkey(nickname, avatar_url)
-    `)
-    .eq('split_id', splitData.id)
-    .eq('round', 15);
 
   // Helper to get winner/loser from a J15 match tag
   const getFromJ15 = (

@@ -82,3 +82,10 @@ h1.pokemon-title {
 .retro-button:active {
   transform: translateY(0px);
 }
+
+/* Pixelated image rendering */
+.image-pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}

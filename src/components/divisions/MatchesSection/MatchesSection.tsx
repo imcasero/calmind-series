@@ -61,7 +61,9 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
               <div className="relative shrink-0">
                 {match.homeTrainer?.avatarUrl ? (
                   <div className="relative">
-                    <div className={`absolute inset-0 border-[3px] ${homeWon ? 'border-retro-gold-500' : 'border-jacksons-purple-600'}`} />
+                    <div
+                      className={`absolute inset-0 border-[3px] ${homeWon ? 'border-retro-gold-500' : 'border-jacksons-purple-600'}`}
+                    />
                     <Image
                       src={match.homeTrainer.avatarUrl}
                       alt={match.homeTrainer.nickname}
@@ -71,7 +73,9 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
                     />
                   </div>
                 ) : (
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-white font-black text-sm border-[3px] ${homeWon ? 'border-retro-gold-500 bg-retro-gold-900' : 'border-jacksons-purple-600 bg-gradient-to-br from-jacksons-purple-600 to-snuff-600'}`}>
+                  <div
+                    className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-white font-black text-sm border-[3px] ${homeWon ? 'border-retro-gold-500 bg-retro-gold-900' : 'border-jacksons-purple-600 bg-gradient-to-br from-jacksons-purple-600 to-snuff-600'}`}
+                  >
                     {homeInitials}
                   </div>
                 )}
@@ -79,7 +83,9 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
 
               {/* Trainer Info */}
               <div className="flex-1 min-w-0">
-                <div className={`font-pokemon text-xs sm:text-sm uppercase tracking-wider truncate ${homeWon ? 'text-retro-gold-300' : 'text-white'} drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)]`}>
+                <div
+                  className={`font-pokemon text-xs sm:text-sm uppercase tracking-wider truncate ${homeWon ? 'text-retro-gold-300' : 'text-white'} drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)]`}
+                >
                   {match.homeTrainer?.nickname ?? 'TBD'}
                 </div>
                 {match.played && (
@@ -91,7 +97,11 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
                   >
                     <motion.div
                       initial={{ scaleX: 0 }}
-                      animate={{ scaleX: homeWon ? 1 : (match.homeSets / (match.homeSets + match.awaySets)) }}
+                      animate={{
+                        scaleX: homeWon
+                          ? 1
+                          : match.homeSets / (match.homeSets + match.awaySets),
+                      }}
                       transition={{ duration: 0.8, delay: index * 0.08 + 0.4 }}
                       className={`h-full origin-left ${homeWon ? 'bg-retro-gold-500' : 'bg-jacksons-purple-500'}`}
                       style={{ transformOrigin: 'left' }}
@@ -108,7 +118,11 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
             <motion.div
               initial={{ scale: 0, rotate: 180 }}
               animate={{ scale: 1, rotate: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.08 + 0.15, type: 'spring' }}
+              transition={{
+                duration: 0.5,
+                delay: index * 0.08 + 0.15,
+                type: 'spring',
+              }}
               className="relative"
             >
               {/* Pokéball-style VS badge */}
@@ -139,11 +153,15 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
                 transition={{ duration: 0.4, delay: index * 0.08 + 0.5 }}
                 className="mt-2 flex items-center gap-1 px-2 py-1 bg-jacksons-purple-900 border-[2px] border-jacksons-purple-700 rounded"
               >
-                <span className={`font-black text-lg sm:text-xl ${homeWon ? 'text-retro-gold-400' : isDraw ? 'text-retro-cyan-400' : 'text-white/50'}`}>
+                <span
+                  className={`font-black text-lg sm:text-xl ${homeWon ? 'text-retro-gold-400' : isDraw ? 'text-retro-cyan-400' : 'text-white/50'}`}
+                >
                   {match.homeSets}
                 </span>
                 <span className="text-white/30 text-xs font-mono">-</span>
-                <span className={`font-black text-lg sm:text-xl ${awayWon ? 'text-retro-gold-400' : isDraw ? 'text-retro-cyan-400' : 'text-white/50'}`}>
+                <span
+                  className={`font-black text-lg sm:text-xl ${awayWon ? 'text-retro-gold-400' : isDraw ? 'text-retro-cyan-400' : 'text-white/50'}`}
+                >
                   {match.awaySets}
                 </span>
               </motion.div>
@@ -188,7 +206,9 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
               <div className="relative shrink-0">
                 {match.awayTrainer?.avatarUrl ? (
                   <div className="relative">
-                    <div className={`absolute inset-0 border-[3px] ${awayWon ? 'border-retro-gold-500' : 'border-jacksons-purple-600'}`} />
+                    <div
+                      className={`absolute inset-0 border-[3px] ${awayWon ? 'border-retro-gold-500' : 'border-jacksons-purple-600'}`}
+                    />
                     <Image
                       src={match.awayTrainer.avatarUrl}
                       alt={match.awayTrainer.nickname}
@@ -198,7 +218,9 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
                     />
                   </div>
                 ) : (
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-white font-black text-sm border-[3px] ${awayWon ? 'border-retro-gold-500 bg-retro-gold-900' : 'border-jacksons-purple-600 bg-gradient-to-br from-jacksons-purple-600 to-snuff-600'}`}>
+                  <div
+                    className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-white font-black text-sm border-[3px] ${awayWon ? 'border-retro-gold-500 bg-retro-gold-900' : 'border-jacksons-purple-600 bg-gradient-to-br from-jacksons-purple-600 to-snuff-600'}`}
+                  >
                     {awayInitials}
                   </div>
                 )}
@@ -206,7 +228,9 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
 
               {/* Trainer Info */}
               <div className="flex-1 min-w-0 text-right">
-                <div className={`font-pokemon text-xs sm:text-sm uppercase tracking-wider truncate ${awayWon ? 'text-retro-gold-300' : 'text-white'} drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)]`}>
+                <div
+                  className={`font-pokemon text-xs sm:text-sm uppercase tracking-wider truncate ${awayWon ? 'text-retro-gold-300' : 'text-white'} drop-shadow-[2px_2px_0_rgba(0,0,0,0.8)]`}
+                >
                   {match.awayTrainer?.nickname ?? 'TBD'}
                 </div>
                 {match.played && (
@@ -218,7 +242,11 @@ function MatchCard({ match, index }: { match: MatchEntry; index: number }) {
                   >
                     <motion.div
                       initial={{ scaleX: 0 }}
-                      animate={{ scaleX: awayWon ? 1 : (match.awaySets / (match.homeSets + match.awaySets)) }}
+                      animate={{
+                        scaleX: awayWon
+                          ? 1
+                          : match.awaySets / (match.homeSets + match.awaySets),
+                      }}
                       transition={{ duration: 0.8, delay: index * 0.08 + 0.4 }}
                       className={`h-full origin-right ${awayWon ? 'bg-retro-gold-500' : 'bg-retro-cyan-500'}`}
                       style={{ transformOrigin: 'right' }}
@@ -277,10 +305,16 @@ function LeagueMatchesList({
         {/* Left Pokéball */}
         <motion.div
           animate={{ rotate: [0, 360] }}
-          transition={{ duration: 4, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
+          transition={{
+            duration: 4,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: 'linear',
+          }}
           className={`w-6 h-6 rounded-full border-[3px] ${colors.border} bg-gradient-to-b from-white to-gray-300 relative overflow-hidden ${colors.glow}`}
         >
-          <div className={`absolute bottom-0 left-0 right-0 h-1/2 ${accentColor === 'gold' ? 'bg-retro-gold-500' : 'bg-retro-cyan-600'}`} />
+          <div
+            className={`absolute bottom-0 left-0 right-0 h-1/2 ${accentColor === 'gold' ? 'bg-retro-gold-500' : 'bg-retro-cyan-600'}`}
+          />
           <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-jacksons-purple-900 -translate-y-1/2" />
           <div className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-white border-[2px] border-jacksons-purple-900 -translate-x-1/2 -translate-y-1/2" />
         </motion.div>
@@ -294,10 +328,16 @@ function LeagueMatchesList({
         {/* Right Pokéball */}
         <motion.div
           animate={{ rotate: [360, 0] }}
-          transition={{ duration: 4, repeat: Number.POSITIVE_INFINITY, ease: 'linear' }}
+          transition={{
+            duration: 4,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: 'linear',
+          }}
           className={`w-6 h-6 rounded-full border-[3px] ${colors.border} bg-gradient-to-b from-white to-gray-300 relative overflow-hidden ${colors.glow}`}
         >
-          <div className={`absolute bottom-0 left-0 right-0 h-1/2 ${accentColor === 'gold' ? 'bg-retro-gold-500' : 'bg-retro-cyan-600'}`} />
+          <div
+            className={`absolute bottom-0 left-0 right-0 h-1/2 ${accentColor === 'gold' ? 'bg-retro-gold-500' : 'bg-retro-cyan-600'}`}
+          />
           <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-jacksons-purple-900 -translate-y-1/2" />
           <div className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-white border-[2px] border-jacksons-purple-900 -translate-x-1/2 -translate-y-1/2" />
         </motion.div>
@@ -456,7 +496,13 @@ export default function MatchesSection({ matches }: MatchesSectionProps) {
             <div className="h-px w-16 bg-gradient-to-r from-transparent via-retro-gold-500 to-transparent" />
             <div className="relative">
               <motion.div
-                animate={{ boxShadow: ['0 0 20px rgba(255,215,0,0.3)', '0 0 30px rgba(255,215,0,0.5)', '0 0 20px rgba(255,215,0,0.3)'] }}
+                animate={{
+                  boxShadow: [
+                    '0 0 20px rgba(255,215,0,0.3)',
+                    '0 0 30px rgba(255,215,0,0.5)',
+                    '0 0 20px rgba(255,215,0,0.3)',
+                  ],
+                }}
                 transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
                 className="retro-border border-[3px] border-retro-gold-500 bg-gradient-to-b from-retro-gold-900 to-jacksons-purple-900 px-6 py-3"
               >
@@ -500,12 +546,12 @@ export default function MatchesSection({ matches }: MatchesSectionProps) {
                 ? {
                     width: '40px',
                     backgroundColor: 'var(--color-retro-gold-400)',
-                    boxShadow: '0 0 15px rgba(255, 215, 0, 0.6)'
+                    boxShadow: '0 0 15px rgba(255, 215, 0, 0.6)',
                   }
                 : {
                     width: '10px',
                     backgroundColor: 'rgba(255,255,255,0.2)',
-                    boxShadow: '0 0 0px rgba(255, 215, 0, 0)'
+                    boxShadow: '0 0 0px rgba(255, 215, 0, 0)',
                   }
             }
             transition={{ duration: 0.3 }}

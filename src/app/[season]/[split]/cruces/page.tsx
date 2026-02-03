@@ -1,15 +1,11 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
-import { createClient } from '@/lib/supabase/server';
+import { getDivisionPreview, getSplitByNames } from '@/lib/queries';
+import type { RankingEntry } from '@/lib/types/schemas';
 import { CrucesBracket } from '../../../../components/cross/CrucesBracket';
-
-interface RankingRow {
-  league_id: string | null;
-  nickname: string | null;
-  position: number | null;
-  trainer_id: string | null;
-}
 
 interface CrucesPageProps {
   params: Promise<{
@@ -18,56 +14,42 @@ interface CrucesPageProps {
   }>;
 }
 
+export async function generateMetadata({
+  params,
+}: CrucesPageProps): Promise<Metadata> {
+  const { season, split } = await params;
+  const seasonName = season.toUpperCase();
+  const splitName = split.replace('split', 'Split ');
+
+  return {
+    title: `J15 - Los Cruces - ${splitName} ${seasonName}`,
+    description: `Cruces de playoffs y supervivencia del ${splitName} de la temporada ${seasonName}. Semifinales y batallas por el descenso en Pokemon Calmind Series.`,
+    openGraph: {
+      title: `J15 - Los Cruces - ${splitName} ${seasonName} | Pokemon Calmind Series`,
+      description: `Playoffs y supervivencia del ${splitName}. Enfrentamientos de la jornada 15.`,
+    },
+  };
+}
+
 export default async function CrucesPage({ params }: CrucesPageProps) {
   const { season, split } = await params;
-  const supabase = await createClient();
 
-  // 1. Get split ID based on the split name (s1, etc)
-  const { data: splitData } = await supabase
-    .from('splits')
-    .select('id')
-    .eq('name', split)
-    .single();
+  // Get split info using the existing query (follows Next.js best practices)
+  const splitInfo = await getSplitByNames(season, split);
 
-  if (!splitData) {
-    return <div>Split not found</div>;
+  if (!splitInfo) {
+    notFound();
   }
 
-  // 2. Get leagues for this split
-  const { data: leagues } = await supabase
-    .from('leagues')
-    .select('id, tier_name')
-    .eq('split_id', splitData.id);
+  // Get rankings with tiebreaker rules already applied
+  const rankings = await getDivisionPreview(splitInfo.split.id);
 
-  if (!leagues || leagues.length === 0) {
-    return <div>Leagues not found for this split</div>;
-  }
+  const primeraRanks = rankings.primera;
+  const segundaRanks = rankings.segunda;
 
-  const primeraLeague = leagues.find((l) => l.tier_name === 'primera');
-  const segundaLeague = leagues.find((l) => l.tier_name === 'segunda');
-
-  // 3. Get rankings for both leagues
-  const { data: rankings } = await supabase
-    .from('league_rankings')
-    .select('league_id, nickname, position, trainer_id')
-    .in(
-      'league_id',
-      leagues.map((l) => l.id),
-    )
-    .order('position', { ascending: true });
-
-  const getRankData = (leagueId?: string): RankingRow[] => {
-    if (!leagueId) return [];
-    return (
-      (rankings?.filter((r) => r.league_id === leagueId) as RankingRow[]) || []
-    );
-  };
-
-  const primeraRanks = getRankData(primeraLeague?.id);
-  const segundaRanks = getRankData(segundaLeague?.id);
-
-  function buildMatchups(ranks: RankingRow[]) {
+  function buildMatchups(ranks: RankingEntry[]) {
     const getTeam = (pos: number) => {
+      // Positions are now guaranteed to be unique thanks to tiebreaker rules
       const team = ranks.find((r) => r.position === pos);
       return {
         nickname: team?.nickname || `TBD (${pos}º)`,

@@ -14,6 +14,7 @@ export type RankingEntry = {
   matchesPlayed: number;
   totalSetsWon: number;
   trainerId: string;
+  lives: number;
 };
 
 /**

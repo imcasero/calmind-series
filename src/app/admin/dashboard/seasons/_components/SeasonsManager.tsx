@@ -180,7 +180,7 @@ export default function SeasonsManager({
                   onChange={(e) =>
                     setNewSeason({
                       ...newSeason,
-                      year: parseInt(e.target.value),
+                      year: parseInt(e.target.value, 10),
                     })
                   }
                   required

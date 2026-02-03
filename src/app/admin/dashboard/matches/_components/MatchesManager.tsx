@@ -127,7 +127,7 @@ export default function MatchesManager({
     };
 
     fetchSplits();
-  }, [selectedSeasonId, activeTab]);
+  }, [selectedSeasonId, activeTab, selectedSplitId, supabase.from]);
 
   // Fetch leagues when split changes
   useEffect(() => {
@@ -163,7 +163,7 @@ export default function MatchesManager({
     };
 
     fetchLeagues();
-  }, [activeSplitInfo?.split.id, selectedSplitId, activeTab]);
+  }, [activeSplitInfo?.split.id, selectedSplitId, activeTab, supabase.from]);
 
   // Fetch matches when league changes
   useEffect(() => {
@@ -199,7 +199,7 @@ export default function MatchesManager({
     };
 
     fetchMatches();
-  }, [resultsLeagueId, selectedLeagueId, activeTab]);
+  }, [resultsLeagueId, selectedLeagueId, activeTab, supabase.from]);
 
   // Fetch participants for planning tab
   useEffect(() => {
@@ -226,7 +226,7 @@ export default function MatchesManager({
     };
 
     fetchParticipants();
-  }, [selectedLeagueId, activeTab]);
+  }, [selectedLeagueId, activeTab, supabase.from]);
 
   // Refresh matches
   const refreshMatches = async () => {
@@ -591,7 +591,8 @@ export default function MatchesManager({
                                   onChange={(e) =>
                                     setResultForm({
                                       ...resultForm,
-                                      home_sets: parseInt(e.target.value) || 0,
+                                      home_sets:
+                                        parseInt(e.target.value, 10) || 0,
                                     })
                                   }
                                   className="w-12 h-10 text-center bg-jacksons-purple-950 text-white border-2 border-jacksons-purple-500 font-bold"
@@ -607,7 +608,8 @@ export default function MatchesManager({
                                   onChange={(e) =>
                                     setResultForm({
                                       ...resultForm,
-                                      away_sets: parseInt(e.target.value) || 0,
+                                      away_sets:
+                                        parseInt(e.target.value, 10) || 0,
                                     })
                                   }
                                   className="w-12 h-10 text-center bg-jacksons-purple-950 text-white border-2 border-jacksons-purple-500 font-bold"
@@ -795,15 +797,20 @@ export default function MatchesManager({
                 <select
                   id="round-select"
                   value={selectedRound}
-                  onChange={(e) => setSelectedRound(parseInt(e.target.value))}
+                  onChange={(e) =>
+                    setSelectedRound(parseInt(e.target.value, 10))
+                  }
                   className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer"
                 >
-                  {[...Array(20)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      Jornada {i + 1}
-                      {availableRounds.includes(i + 1) ? ' ●' : ''}
-                    </option>
-                  ))}
+                  {[...Array(20)].map((_, i) => {
+                    const round = i + 1;
+                    return (
+                      <option key={`round-${round}`} value={round}>
+                        Jornada {round}
+                        {availableRounds.includes(round) ? ' ●' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -913,7 +920,7 @@ export default function MatchesManager({
                         onChange={(e) =>
                           setMatchForm({
                             ...matchForm,
-                            round: parseInt(e.target.value) || 1,
+                            round: parseInt(e.target.value, 10) || 1,
                           })
                         }
                         required

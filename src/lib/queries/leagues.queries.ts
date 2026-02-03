@@ -12,6 +12,7 @@ import {
   type RankingEntry,
   RankingEntrySchema,
 } from '@/lib/types/schemas';
+import { applyTiebreakerRules } from '@/lib/utils/ranking';
 
 export type {
   DivisionPreview,
@@ -53,24 +54,48 @@ export const getRankingsByLeague = cache(
   async (leagueId: string): Promise<RankingEntry[]> => {
     const supabase = await createClient();
 
-    // Get rankings from view
-    const { data, error } = await supabase
-      .from('league_rankings')
-      .select('*')
-      .eq('league_id', leagueId)
-      .not('position', 'is', null)
-      .not('nickname', 'is', null)
-      .order('position', { ascending: true });
+    // Fetch rankings and lives in parallel (Next.js best practice)
+    const [
+      { data: rankingsData, error: rankingsError },
+      { data: participantsData, error: participantsError },
+    ] = await Promise.all([
+      supabase
+        .from('league_rankings')
+        .select('*')
+        .eq('league_id', leagueId)
+        .not('position', 'is', null)
+        .not('nickname', 'is', null)
+        .order('position', { ascending: true }),
+      supabase
+        .from('league_participants')
+        .select('trainer_id, lives')
+        .eq('league_id', leagueId),
+    ]);
 
-    if (error) {
-      console.error('[getRankingsByLeague] Error:', error.message);
+    if (rankingsError) {
+      console.error('[getRankingsByLeague] Error:', rankingsError.message);
       return [];
     }
+
+    if (participantsError) {
+      console.error(
+        '[getRankingsByLeague] Error fetching lives:',
+        participantsError.message,
+      );
+      return [];
+    }
+
+    // Create a map of trainer_id to lives
+    const livesMap = new Map(
+      (participantsData ?? []).map((p) => [p.trainer_id, p.lives]),
+    );
 
     // Use Zod to validate and format the rankings
     const rankings: RankingEntry[] = [];
 
-    for (const ranking of (data ?? []) as LeagueRanking[]) {
+    for (const ranking of (rankingsData ?? []) as LeagueRanking[]) {
+      const lives = livesMap.get(ranking.trainer_id ?? '') ?? 0;
+
       const result = RankingEntrySchema.safeParse({
         position: ranking.position,
         nickname: ranking.nickname,
@@ -80,6 +105,7 @@ export const getRankingsByLeague = cache(
         matchesPlayed: ranking.matches_played ?? 0,
         totalSetsWon: ranking.total_sets_won ?? 0,
         trainerId: ranking.trainer_id,
+        lives,
       });
 
       if (!result.success) {
@@ -99,7 +125,7 @@ export const getRankingsByLeague = cache(
 
 /**
  * Gets both divisions with their rankings for a split.
- * Returns data formatted and ready for UI display.
+ * Returns data formatted and ready for UI display with tiebreaker rules applied.
  */
 export const getDivisionPreview = cache(
   async (splitId: string): Promise<DivisionPreview> => {
@@ -113,15 +139,37 @@ export const getDivisionPreview = cache(
     const primeraLeague = leagues.find((l) => l.tier_priority === 1);
     const segundaLeague = leagues.find((l) => l.tier_priority === 2);
 
-    // Fetch rankings in parallel
-    const [primera, segunda] = await Promise.all([
-      primeraLeague
-        ? getRankingsByLeague(primeraLeague.id)
-        : Promise.resolve([]),
-      segundaLeague
-        ? getRankingsByLeague(segundaLeague.id)
-        : Promise.resolve([]),
-    ]);
+    // Fetch rankings and matches in parallel
+    const [primeraRankings, segundaRankings, matchesByRound] =
+      await Promise.all([
+        primeraLeague
+          ? getRankingsByLeague(primeraLeague.id)
+          : Promise.resolve([]),
+        segundaLeague
+          ? getRankingsByLeague(segundaLeague.id)
+          : Promise.resolve([]),
+        getMatchesByRound(splitId),
+      ]);
+
+    // Extract all matches from the grouped structure
+    const allMatches = matchesByRound.flatMap((round) => round.matches);
+
+    // Filter matches by league and apply tiebreaker rules
+    const primeraMatches = primeraLeague
+      ? allMatches.filter((m) => m.leagueId === primeraLeague.id)
+      : [];
+    const segundaMatches = segundaLeague
+      ? allMatches.filter((m) => m.leagueId === segundaLeague.id)
+      : [];
+
+    const primera =
+      primeraRankings.length > 0
+        ? applyTiebreakerRules(primeraRankings, primeraMatches)
+        : [];
+    const segunda =
+      segundaRankings.length > 0
+        ? applyTiebreakerRules(segundaRankings, segundaMatches)
+        : [];
 
     return { primera, segunda };
   },

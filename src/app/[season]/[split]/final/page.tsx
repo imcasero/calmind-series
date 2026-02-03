@@ -1,7 +1,10 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { CrucesBracket } from '@/components/cross/CrucesBracket';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
+import { getSplitByNames } from '@/lib/queries';
 import { createClient } from '@/lib/supabase/server';
 
 interface FinalPageProps {
@@ -13,24 +16,41 @@ interface FinalPageProps {
 
 export const revalidate = 60;
 
+export async function generateMetadata({
+  params,
+}: FinalPageProps): Promise<Metadata> {
+  const { season, split } = await params;
+  const seasonName = season.toUpperCase();
+  const splitName = split.replace('split', 'Split ');
+
+  return {
+    title: `J16 - The Finals - ${splitName} ${seasonName}`,
+    description: `Finales y combates por la permanencia del ${splitName} de la temporada ${seasonName}. Gran final, tercer puesto y El Olimpo en Pokemon Calmind Series.`,
+    openGraph: {
+      title: `J16 - The Finals - ${splitName} ${seasonName} | Pokemon Calmind Series`,
+      description: `Finales de gloria y redención del ${splitName}. Jornada 16.`,
+    },
+  };
+}
+
 export default async function FinalPage({ params }: FinalPageProps) {
   const { season, split } = await params;
+
+  // Get split info using existing query (Next.js best practice)
+  const splitInfo = await getSplitByNames(season, split);
+
+  if (!splitInfo) {
+    notFound();
+  }
+
   const supabase = await createClient();
 
-  // 1. Get split ID
-  const { data: splitData } = await supabase
-    .from('splits')
-    .select('id')
-    .eq('name', split)
-    .single();
-
-  if (!splitData) return <div>Split not found</div>;
-
+  // Fetch leagues and J15 matches in parallel (Next.js best practice)
   const [{ data: leagues }, { data: j15Matches }] = await Promise.all([
     supabase
       .from('leagues')
       .select('id, tier_name')
-      .eq('split_id', splitData.id),
+      .eq('split_id', splitInfo.split.id),
     supabase
       .from('matches')
       .select(`
@@ -40,7 +60,7 @@ export default async function FinalPage({ params }: FinalPageProps) {
         home:trainers!matches_home_trainer_id_fkey(nickname, avatar_url),
         away:trainers!matches_away_trainer_id_fkey(nickname, avatar_url)
       `)
-      .eq('split_id', splitData.id)
+      .eq('split_id', splitInfo.split.id)
       .eq('round', 15),
   ]);
 

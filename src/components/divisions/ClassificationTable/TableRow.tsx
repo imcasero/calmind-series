@@ -50,7 +50,9 @@ export default function TableRow({ ranking, index, tierColor }: TableRowProps) {
       >
         {ranking.setBalance > 0 ? `+${ranking.setBalance}` : ranking.setBalance}
       </td>
-      <td className={`px-3 xs:px-4 py-3 xs:py-4 text-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-black text-base xs:text-lg ${tierColor === 'gold' ? 'text-retro-gold-400' : 'text-retro-cyan-300'}`}>
+      <td
+        className={`px-3 xs:px-4 py-3 xs:py-4 text-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] font-black text-base xs:text-lg ${tierColor === 'gold' ? 'text-retro-gold-400' : 'text-retro-cyan-300'}`}
+      >
         {ranking.totalPoints}
       </td>
     </motion.tr>

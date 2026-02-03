@@ -74,6 +74,7 @@ export const RankingEntrySchema = z.object({
   matchesPlayed: z.number(),
   totalSetsWon: z.number(),
   trainerId: z.string(),
+  lives: z.number(),
 });
 
 export const LeagueInfoSchema = LeagueSchema.pick({

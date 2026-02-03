@@ -3,12 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type {
-  Database,
-  League,
-  Season,
-  Split,
-} from '@/lib/types/database.types';
+import type { League, Season, Split } from '@/lib/types/database.types';
 
 interface DivisionsManagerProps {
   initialSeasons: Season[];
@@ -73,7 +68,7 @@ export default function DivisionsManager({
     };
 
     fetchSplits();
-  }, [selectedSeasonId]);
+  }, [selectedSeasonId, supabase.from]);
 
   // Fetch leagues when split changes
   useEffect(() => {
@@ -104,7 +99,7 @@ export default function DivisionsManager({
     };
 
     fetchLeagues();
-  }, [selectedSplitId]);
+  }, [selectedSplitId, supabase.from]);
 
   const refreshLeagues = async () => {
     if (!selectedSplitId) return;
@@ -312,7 +307,7 @@ export default function DivisionsManager({
                   onChange={(e) =>
                     setNewLeague({
                       ...newLeague,
-                      tier_priority: parseInt(e.target.value),
+                      tier_priority: parseInt(e.target.value, 10),
                     })
                   }
                   required

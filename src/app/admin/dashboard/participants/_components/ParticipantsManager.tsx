@@ -148,7 +148,7 @@ export default function ParticipantsManager({
     };
 
     fetchSplits();
-  }, [selectedSeasonId]);
+  }, [selectedSeasonId, supabase.from]);
 
   // Fetch leagues when split changes
   useEffect(() => {
@@ -184,7 +184,7 @@ export default function ParticipantsManager({
     };
 
     fetchLeagues();
-  }, [selectedSplitId]);
+  }, [selectedSplitId, supabase.from]);
 
   // Fetch participants when league changes
   useEffect(() => {
@@ -213,7 +213,7 @@ export default function ParticipantsManager({
     };
 
     fetchParticipants();
-  }, [selectedLeagueId]);
+  }, [selectedLeagueId, supabase.from]);
 
   // Trainer handlers
   const handleSaveTrainer = async (e: React.FormEvent) => {

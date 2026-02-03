@@ -56,7 +56,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
     };
 
     fetchSplits();
-  }, [selectedSeasonId]);
+  }, [selectedSeasonId, supabase.from]);
 
   const refreshSplits = async () => {
     if (!selectedSeasonId) return;
@@ -279,7 +279,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
                   onChange={(e) =>
                     setNewSplit({
                       ...newSplit,
-                      split_order: parseInt(e.target.value),
+                      split_order: parseInt(e.target.value, 10),
                     })
                   }
                   required

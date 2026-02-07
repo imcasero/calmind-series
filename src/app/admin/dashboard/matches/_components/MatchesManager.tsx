@@ -83,11 +83,65 @@ export default function MatchesManager({
   const [editingResultId, setEditingResultId] = useState<string | null>(null);
   const [resultForm, setResultForm] = useState({ home_sets: 0, away_sets: 0 });
 
+  // Special rounds (J15/J16)
+  const [generatingSpecialMatches, setGeneratingSpecialMatches] =
+    useState(false);
+
   // Common state
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
+
+  // Helper functions for J15/J16 generation
+  const fetchRankingsByLeague = async (leagueId: string) => {
+    const { data, error } = await supabase
+      .from('league_rankings')
+      .select('trainer_id, position, nickname')
+      .eq('league_id', leagueId)
+      .not('position', 'is', null)
+      .order('position', { ascending: true })
+      .limit(8);
+
+    if (error) throw error;
+    return data ?? [];
+  };
+
+  const fetchJ15Matches = async (leagueId: string) => {
+    const { data, error } = await supabase
+      .from('matches')
+      .select(
+        'id, match_tag, played, home_trainer_id, away_trainer_id, home_sets, away_sets',
+      )
+      .eq('league_id', leagueId)
+      .eq('round', 15);
+
+    if (error) throw error;
+    return data ?? [];
+  };
+
+  const getMatchOutcome = (
+    match: {
+      played: boolean | null;
+      home_trainer_id: string | null;
+      away_trainer_id: string | null;
+      home_sets: number | null;
+      away_sets: number | null;
+    },
+    type: 'winner' | 'loser',
+  ): string | null => {
+    if (!match.played) return null;
+    const homeWins = (match.home_sets || 0) > (match.away_sets || 0);
+    if (type === 'winner') {
+      return homeWins ? match.home_trainer_id : match.away_trainer_id;
+    }
+    return homeWins ? match.away_trainer_id : match.home_trainer_id;
+  };
+
+  const getLeagueTier = (leagueId: string): 'primera' | 'segunda' => {
+    const league = leagues.find((l) => l.id === leagueId);
+    return league?.tier_priority === 1 ? 'primera' : 'segunda';
+  };
 
   // Get unique rounds from matches
   const availableRounds = useMemo(() => {
@@ -409,6 +463,222 @@ export default function MatchesManager({
       router.refresh();
     }
     setSaving(false);
+  };
+
+  // J15 Generation Handler
+  const handleGenerateJ15Matches = async () => {
+    if (!selectedLeagueId || !selectedSplitId) return;
+
+    setGeneratingSpecialMatches(true);
+    setError(null);
+
+    try {
+      // Fetch top 8 from rankings
+      const rankings = await fetchRankingsByLeague(selectedLeagueId);
+
+      if (rankings.length < 8) {
+        throw new Error(
+          'Se necesitan al menos 8 participantes con posición en el ranking.',
+        );
+      }
+
+      // Validate all trainer_ids exist
+      for (let i = 0; i < 8; i++) {
+        if (!rankings[i].trainer_id) {
+          throw new Error(
+            `El participante en posición ${i + 1} no tiene trainer_id válido.`,
+          );
+        }
+      }
+
+      // Build the 4 matches
+      const matchesToCreate = [
+        {
+          league_id: selectedLeagueId,
+          split_id: selectedSplitId,
+          round: 15,
+          match_group: 'top_4',
+          match_tag: 'semi_1',
+          home_trainer_id: rankings[0].trainer_id,
+          away_trainer_id: rankings[3].trainer_id,
+          played: false,
+        },
+        {
+          league_id: selectedLeagueId,
+          split_id: selectedSplitId,
+          round: 15,
+          match_group: 'top_4',
+          match_tag: 'semi_2',
+          home_trainer_id: rankings[1].trainer_id,
+          away_trainer_id: rankings[2].trainer_id,
+          played: false,
+        },
+        {
+          league_id: selectedLeagueId,
+          split_id: selectedSplitId,
+          round: 15,
+          match_group: 'bottom_4',
+          match_tag: 'survival_1',
+          home_trainer_id: rankings[4].trainer_id,
+          away_trainer_id: rankings[7].trainer_id,
+          played: false,
+        },
+        {
+          league_id: selectedLeagueId,
+          split_id: selectedSplitId,
+          round: 15,
+          match_group: 'bottom_4',
+          match_tag: 'survival_2',
+          home_trainer_id: rankings[5].trainer_id,
+          away_trainer_id: rankings[6].trainer_id,
+          played: false,
+        },
+      ];
+
+      // Insert all matches
+      const { error } = await supabase.from('matches').insert(matchesToCreate);
+
+      if (error) throw error;
+
+      await refreshMatches();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error generando J15');
+    } finally {
+      setGeneratingSpecialMatches(false);
+    }
+  };
+
+  // J16 Generation Handler
+  const handleGenerateJ16Matches = async () => {
+    if (!selectedLeagueId || !selectedSplitId) return;
+
+    setGeneratingSpecialMatches(true);
+    setError(null);
+
+    try {
+      // Fetch J15 matches
+      const j15Matches = await fetchJ15Matches(selectedLeagueId);
+
+      if (j15Matches.length !== 4) {
+        throw new Error('No se encontraron los 4 partidos de J15 para esta liga.');
+      }
+
+      // Get matches by tag
+      const semi1 = j15Matches.find((m) => m.match_tag === 'semi_1');
+      const semi2 = j15Matches.find((m) => m.match_tag === 'semi_2');
+      const surv1 = j15Matches.find((m) => m.match_tag === 'survival_1');
+      const surv2 = j15Matches.find((m) => m.match_tag === 'survival_2');
+
+      if (!semi1 || !semi2 || !surv1 || !surv2) {
+        throw new Error(
+          'Faltan partidos de J15 (semi_1, semi_2, survival_1, survival_2)',
+        );
+      }
+
+      // Determine league tier
+      const tier = getLeagueTier(selectedLeagueId);
+
+      // Build J16 matches based on tier
+      const matchesToCreate =
+        tier === 'primera'
+          ? [
+              {
+                league_id: selectedLeagueId,
+                split_id: selectedSplitId,
+                round: 16,
+                match_group: 'top_4',
+                match_tag: 'grand_final',
+                home_trainer_id: getMatchOutcome(semi1, 'winner'),
+                away_trainer_id: getMatchOutcome(semi2, 'winner'),
+                played: false,
+              },
+              {
+                league_id: selectedLeagueId,
+                split_id: selectedSplitId,
+                round: 16,
+                match_group: 'top_4',
+                match_tag: '3rd_place',
+                home_trainer_id: getMatchOutcome(semi1, 'loser'),
+                away_trainer_id: getMatchOutcome(semi2, 'loser'),
+                played: false,
+              },
+              {
+                league_id: selectedLeagueId,
+                split_id: selectedSplitId,
+                round: 16,
+                match_group: 'bottom_4',
+                match_tag: 'relegation_battle',
+                home_trainer_id: getMatchOutcome(surv1, 'winner'),
+                away_trainer_id: getMatchOutcome(surv2, 'winner'),
+                played: false,
+              },
+              {
+                league_id: selectedLeagueId,
+                split_id: selectedSplitId,
+                round: 16,
+                match_group: 'bottom_4',
+                match_tag: 'honor_battle',
+                home_trainer_id: getMatchOutcome(surv1, 'loser'),
+                away_trainer_id: getMatchOutcome(surv2, 'loser'),
+                played: false,
+              },
+            ]
+          : [
+              {
+                league_id: selectedLeagueId,
+                split_id: selectedSplitId,
+                round: 16,
+                match_group: 'top_4',
+                match_tag: 'segunda_final',
+                home_trainer_id: getMatchOutcome(semi1, 'winner'),
+                away_trainer_id: getMatchOutcome(semi2, 'winner'),
+                played: false,
+              },
+              {
+                league_id: selectedLeagueId,
+                split_id: selectedSplitId,
+                round: 16,
+                match_group: 'top_4',
+                match_tag: 'opportunity',
+                home_trainer_id: getMatchOutcome(semi1, 'loser'),
+                away_trainer_id: getMatchOutcome(semi2, 'loser'),
+                played: false,
+              },
+              {
+                league_id: selectedLeagueId,
+                split_id: selectedSplitId,
+                round: 16,
+                match_group: 'bottom_4',
+                match_tag: 'last_chance',
+                home_trainer_id: getMatchOutcome(surv1, 'winner'),
+                away_trainer_id: getMatchOutcome(surv2, 'winner'),
+                played: false,
+              },
+              {
+                league_id: selectedLeagueId,
+                split_id: selectedSplitId,
+                round: 16,
+                match_group: 'bottom_4',
+                match_tag: 'honor_segunda',
+                home_trainer_id: getMatchOutcome(surv1, 'loser'),
+                away_trainer_id: getMatchOutcome(surv2, 'loser'),
+                played: false,
+              },
+            ];
+
+      // Insert all matches
+      const { error } = await supabase.from('matches').insert(matchesToCreate);
+
+      if (error) throw error;
+
+      await refreshMatches();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error generando J16');
+    } finally {
+      setGeneratingSpecialMatches(false);
+    }
   };
 
   // Get available trainers for match form
@@ -824,14 +1094,42 @@ export default function MatchesManager({
                   Importar CSV
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleOpenMatchForm()}
-                  disabled={participants.length < 2}
-                  className="px-4 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100"
-                >
-                  + Nuevo Partido
-                </button>
+                {selectedRound === 15 ? (
+                  <button
+                    type="button"
+                    onClick={handleGenerateJ15Matches}
+                    disabled={
+                      generatingSpecialMatches || matchesByRound.length > 0
+                    }
+                    className="px-4 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100"
+                  >
+                    {generatingSpecialMatches
+                      ? 'Generando...'
+                      : 'Generar Cruces J15'}
+                  </button>
+                ) : selectedRound === 16 ? (
+                  <button
+                    type="button"
+                    onClick={handleGenerateJ16Matches}
+                    disabled={
+                      generatingSpecialMatches || matchesByRound.length > 0
+                    }
+                    className="px-4 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100"
+                  >
+                    {generatingSpecialMatches
+                      ? 'Generando...'
+                      : 'Generar Finales J16'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMatchForm()}
+                    disabled={participants.length < 2}
+                    className="px-4 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100"
+                  >
+                    + Nuevo Partido
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1007,12 +1305,186 @@ export default function MatchesManager({
             <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
               <p className="text-jacksons-purple-300">Cargando...</p>
             </div>
-          ) : participants.length < 2 ? (
+          ) : participants.length < 2 && selectedRound !== 15 && selectedRound !== 16 ? (
             <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
               <p className="text-jacksons-purple-300">
                 Se necesitan al menos 2 participantes en esta division para
                 crear partidos.
               </p>
+            </div>
+          ) : selectedRound === 15 || selectedRound === 16 ? (
+            /* Grouped Display for J15/J16 */
+            <div className="space-y-6">
+              {matchesByRound.length === 0 ? (
+                <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
+                  <p className="text-jacksons-purple-300">
+                    No hay partidos en esta jornada. Usa el botón "Generar{' '}
+                    {selectedRound === 15 ? 'Cruces J15' : 'Finales J16'}" para
+                    crearlos automáticamente.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {['top_4', 'bottom_4'].map((group) => {
+                    const groupMatches = matchesByRound.filter(
+                      (m) => m.match_group === group,
+                    );
+                    if (groupMatches.length === 0) return null;
+
+                    const groupTitle =
+                      group === 'top_4'
+                        ? selectedRound === 16
+                          ? 'FINALES Y PLAYOFFS'
+                          : 'PLAYOFFS - TOP 4'
+                        : 'SUPERVIVENCIA - BOTTOM 4';
+
+                    return (
+                      <div
+                        key={group}
+                        className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden"
+                      >
+                        <div className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600 px-6 py-3">
+                          <h4 className="text-retro-gold-500 font-bold uppercase tracking-wider text-sm">
+                            {groupTitle}
+                          </h4>
+                        </div>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-jacksons-purple-900/50 border-b-2 border-jacksons-purple-600">
+                              <th className="px-6 py-3 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                                Local
+                              </th>
+                              <th className="px-6 py-3 text-center text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                                VS
+                              </th>
+                              <th className="px-6 py-3 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                                Visitante
+                              </th>
+                              <th className="px-6 py-3 text-center text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                                Estado
+                              </th>
+                              <th className="px-6 py-3 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
+                                Acciones
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {groupMatches.map((match) => (
+                              <tr
+                                key={match.id}
+                                className="border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors"
+                              >
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    {match.home_trainer?.avatar_url ? (
+                                      <img
+                                        src={match.home_trainer.avatar_url}
+                                        alt=""
+                                        className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                                        {match.home_trainer?.nickname?.charAt(
+                                          0,
+                                        ) ?? '?'}
+                                      </div>
+                                    )}
+                                    <span className="text-white font-medium">
+                                      {match.home_trainer?.nickname ?? 'TBD'}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  {match.played ? (
+                                    <span className="text-retro-gold-400 font-bold">
+                                      {match.home_sets} - {match.away_sets}
+                                    </span>
+                                  ) : (
+                                    <span className="text-jacksons-purple-400 font-bold">
+                                      VS
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    {match.away_trainer?.avatar_url ? (
+                                      <img
+                                        src={match.away_trainer.avatar_url}
+                                        alt=""
+                                        className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                                        {match.away_trainer?.nickname?.charAt(
+                                          0,
+                                        ) ?? '?'}
+                                      </div>
+                                    )}
+                                    <span className="text-white font-medium">
+                                      {match.away_trainer?.nickname ?? 'TBD'}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <span
+                                    className={`px-2 py-1 text-xs font-bold uppercase border-2 ${
+                                      match.played
+                                        ? 'bg-green-600 border-green-800 text-white'
+                                        : 'bg-jacksons-purple-600 border-jacksons-purple-800 text-jacksons-purple-200'
+                                    }`}
+                                  >
+                                    {match.played ? 'Jugado' : 'Pendiente'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenMatchForm(match)}
+                                      className="px-3 py-2 bg-retro-cyan-500 text-white border-2 border-retro-cyan-700 text-xs font-bold uppercase hover:bg-retro-cyan-400 transition-all"
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteMatch(match.id)}
+                                      className="px-3 py-2 bg-red-600 text-white border-2 border-red-800 text-xs font-bold uppercase hover:bg-red-500 transition-all"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
+
+                  {/* El Olimpo Notice for J16 */}
+                  {selectedRound === 16 && (
+                    <div className="mt-6 p-4 bg-retro-gold-500/10 border-2 border-retro-gold-500/30 rounded">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-retro-gold-400 font-bold text-xs uppercase tracking-wider">
+                          Próximo Evento
+                        </span>
+                      </div>
+                      <p className="text-jacksons-purple-200 text-sm">
+                        <span className="font-bold text-retro-gold-400">
+                          El Olimpo:
+                        </span>{' '}
+                        Perdedor [Lucha por Permanencia] vs Ganador [La
+                        Oportunidad]
+                      </p>
+                      <p className="text-jacksons-purple-400 text-xs mt-1">
+                        Este combate determina el ascenso/descenso entre Primera
+                        y Segunda División
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ) : (
             <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden">

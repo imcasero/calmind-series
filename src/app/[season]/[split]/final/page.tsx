@@ -67,6 +67,15 @@ export default async function FinalPage({ params }: FinalPageProps) {
   const primeraLeague = leagues?.find((l) => l.tier_name === 'primera');
   const segundaLeague = leagues?.find((l) => l.tier_name === 'segunda');
 
+  // Fetch J16 matches to show results if they exist
+  const { data: j16Matches } = await supabase
+    .from('matches')
+    .select(
+      'id, league_id, match_tag, home_trainer_id, away_trainer_id, home_sets, away_sets, played',
+    )
+    .eq('split_id', splitInfo.split.id)
+    .eq('round', 16);
+
   // Helper to get winner/loser from a J15 match tag
   const getFromJ15 = (
     leagueId: string | undefined,
@@ -99,57 +108,158 @@ export default async function FinalPage({ params }: FinalPageProps) {
     };
   };
 
+  // Helper to get J16 match result
+  const getJ16Match = (leagueId: string | undefined, tag: string) => {
+    return j16Matches?.find(
+      (m) => m.league_id === leagueId && m.match_tag === tag,
+    );
+  };
+
   // --- PRIMERA DIVISION LOGIC ---
+  const grandFinalMatch = getJ16Match(primeraLeague?.id, 'grand_final');
+  const thirdPlaceMatch = getJ16Match(primeraLeague?.id, '3rd_place');
+  const relegationMatch = getJ16Match(primeraLeague?.id, 'relegation_battle');
+  const honorMatch = getJ16Match(primeraLeague?.id, 'honor_battle');
+
   const primeraFinals = [
     {
       title: 'Grand Final',
-      home: getFromJ15(primeraLeague?.id, 'semi_1', 'winner'), // Winner Semi 1
-      away: getFromJ15(primeraLeague?.id, 'semi_2', 'winner'), // Winner Semi 2
+      home: {
+        ...getFromJ15(primeraLeague?.id, 'semi_1', 'winner'),
+        sets: grandFinalMatch?.played
+          ? grandFinalMatch.home_sets ?? 0
+          : undefined,
+      },
+      away: {
+        ...getFromJ15(primeraLeague?.id, 'semi_2', 'winner'),
+        sets: grandFinalMatch?.played
+          ? grandFinalMatch.away_sets ?? 0
+          : undefined,
+      },
+      played: grandFinalMatch?.played ?? false,
     },
     {
       title: '3rd Place',
-      home: getFromJ15(primeraLeague?.id, 'semi_1', 'loser'), // Loser Semi 1
-      away: getFromJ15(primeraLeague?.id, 'semi_2', 'loser'), // Loser Semi 2
+      home: {
+        ...getFromJ15(primeraLeague?.id, 'semi_1', 'loser'),
+        sets: thirdPlaceMatch?.played
+          ? thirdPlaceMatch.home_sets ?? 0
+          : undefined,
+      },
+      away: {
+        ...getFromJ15(primeraLeague?.id, 'semi_2', 'loser'),
+        sets: thirdPlaceMatch?.played
+          ? thirdPlaceMatch.away_sets ?? 0
+          : undefined,
+      },
+      played: thirdPlaceMatch?.played ?? false,
     },
   ];
 
   const primeraRelegation = [
     {
       title: 'Lucha por Permanencia',
-      home: getFromJ15(primeraLeague?.id, 'survival_1', 'winner'), // Winner Surv 1
-      away: getFromJ15(primeraLeague?.id, 'survival_2', 'winner'), // Winner Surv 2
+      home: {
+        ...getFromJ15(primeraLeague?.id, 'survival_1', 'winner'),
+        sets: relegationMatch?.played
+          ? relegationMatch.home_sets ?? 0
+          : undefined,
+      },
+      away: {
+        ...getFromJ15(primeraLeague?.id, 'survival_2', 'winner'),
+        sets: relegationMatch?.played
+          ? relegationMatch.away_sets ?? 0
+          : undefined,
+      },
+      played: relegationMatch?.played ?? false,
     },
     {
       title: 'Morir de Pie',
-      home: getFromJ15(primeraLeague?.id, 'survival_1', 'loser'), // Loser Surv 1
-      away: getFromJ15(primeraLeague?.id, 'survival_2', 'loser'), // Loser Surv 2
+      home: {
+        ...getFromJ15(primeraLeague?.id, 'survival_1', 'loser'),
+        sets: honorMatch?.played ? honorMatch.home_sets ?? 0 : undefined,
+      },
+      away: {
+        ...getFromJ15(primeraLeague?.id, 'survival_2', 'loser'),
+        sets: honorMatch?.played ? honorMatch.away_sets ?? 0 : undefined,
+      },
+      played: honorMatch?.played ?? false,
     },
   ];
 
   // --- SEGUNDA DIVISION LOGIC ---
+  const segundaFinalMatch = getJ16Match(segundaLeague?.id, 'segunda_final');
+  const opportunityMatch = getJ16Match(segundaLeague?.id, 'opportunity');
+  const lastChanceMatch = getJ16Match(segundaLeague?.id, 'last_chance');
+  const honorSegundaMatch = getJ16Match(segundaLeague?.id, 'honor_segunda');
+
   const segundaFinals = [
     {
       title: 'Final Segunda',
-      home: getFromJ15(segundaLeague?.id, 'semi_1', 'winner'), // Winner Semi 1
-      away: getFromJ15(segundaLeague?.id, 'semi_2', 'winner'), // Winner Semi 2
+      home: {
+        ...getFromJ15(segundaLeague?.id, 'semi_1', 'winner'),
+        sets: segundaFinalMatch?.played
+          ? segundaFinalMatch.home_sets ?? 0
+          : undefined,
+      },
+      away: {
+        ...getFromJ15(segundaLeague?.id, 'semi_2', 'winner'),
+        sets: segundaFinalMatch?.played
+          ? segundaFinalMatch.away_sets ?? 0
+          : undefined,
+      },
+      played: segundaFinalMatch?.played ?? false,
     },
     {
       title: 'La Oportunidad',
-      home: getFromJ15(segundaLeague?.id, 'semi_1', 'loser'), // Loser Semi 1
-      away: getFromJ15(segundaLeague?.id, 'semi_2', 'loser'), // Loser Semi 2
+      home: {
+        ...getFromJ15(segundaLeague?.id, 'semi_1', 'loser'),
+        sets: opportunityMatch?.played
+          ? opportunityMatch.home_sets ?? 0
+          : undefined,
+      },
+      away: {
+        ...getFromJ15(segundaLeague?.id, 'semi_2', 'loser'),
+        sets: opportunityMatch?.played
+          ? opportunityMatch.away_sets ?? 0
+          : undefined,
+      },
+      played: opportunityMatch?.played ?? false,
     },
   ];
 
   const segundaBottom = [
     {
       title: 'Last Chance',
-      home: getFromJ15(segundaLeague?.id, 'survival_1', 'winner'), // Winner Surv 1
-      away: getFromJ15(segundaLeague?.id, 'survival_2', 'winner'), // Winner Surv 2
+      home: {
+        ...getFromJ15(segundaLeague?.id, 'survival_1', 'winner'),
+        sets: lastChanceMatch?.played
+          ? lastChanceMatch.home_sets ?? 0
+          : undefined,
+      },
+      away: {
+        ...getFromJ15(segundaLeague?.id, 'survival_2', 'winner'),
+        sets: lastChanceMatch?.played
+          ? lastChanceMatch.away_sets ?? 0
+          : undefined,
+      },
+      played: lastChanceMatch?.played ?? false,
     },
     {
       title: 'El Combate del Honor',
-      home: getFromJ15(segundaLeague?.id, 'survival_1', 'loser'), // Loser Surv 1
-      away: getFromJ15(segundaLeague?.id, 'survival_2', 'loser'), // Loser Surv 2
+      home: {
+        ...getFromJ15(segundaLeague?.id, 'survival_1', 'loser'),
+        sets: honorSegundaMatch?.played
+          ? honorSegundaMatch.home_sets ?? 0
+          : undefined,
+      },
+      away: {
+        ...getFromJ15(segundaLeague?.id, 'survival_2', 'loser'),
+        sets: honorSegundaMatch?.played
+          ? honorSegundaMatch.away_sets ?? 0
+          : undefined,
+      },
+      played: honorSegundaMatch?.played ?? false,
     },
   ];
 

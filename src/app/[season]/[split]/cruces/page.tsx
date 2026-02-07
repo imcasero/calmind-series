@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { CrucesBracket } from '@/components/cross/CrucesBracket';
 import { Navbar } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import { getDivisionPreview, getSplitByNames } from '@/lib/queries';
+import { createClient } from '@/lib/supabase/server';
 import type { RankingEntry } from '@/lib/types/schemas';
-import { CrucesBracket } from '../../../../components/cross/CrucesBracket';
 
 interface CrucesPageProps {
   params: Promise<{
@@ -47,30 +48,133 @@ export default async function CrucesPage({ params }: CrucesPageProps) {
   const primeraRanks = rankings.primera;
   const segundaRanks = rankings.segunda;
 
-  function buildMatchups(ranks: RankingEntry[]) {
+  // Fetch J15 matches to show results if they exist
+  const supabase = await createClient();
+  const [{ data: leagues }, { data: j15Matches }] = await Promise.all([
+    supabase
+      .from('leagues')
+      .select('id, tier_name, tier_priority')
+      .eq('split_id', splitInfo.split.id),
+    supabase
+      .from('matches')
+      .select(
+        'id, league_id, match_tag, home_trainer_id, away_trainer_id, home_sets, away_sets, played',
+      )
+      .eq('split_id', splitInfo.split.id)
+      .eq('round', 15),
+  ]);
+
+  const primeraLeague = leagues?.find((l) => l.tier_priority === 1);
+  const segundaLeague = leagues?.find((l) => l.tier_priority === 2);
+
+  type J15Match = {
+    id: string;
+    league_id: string | null;
+    match_tag: string;
+    home_trainer_id: string | null;
+    away_trainer_id: string | null;
+    home_sets: number | null;
+    away_sets: number | null;
+    played: boolean | null;
+  };
+
+  function buildMatchups(ranks: RankingEntry[], leagueId?: string) {
     const getTeam = (pos: number) => {
       // Positions are now guaranteed to be unique thanks to tiebreaker rules
       const team = ranks.find((r) => r.position === pos);
       return {
         nickname: team?.nickname || `TBD (${pos}º)`,
         position: pos,
+        trainerId: team?.trainerId,
       };
     };
 
+    // Helper to get match result for a specific tag
+    const getMatchResult = (tag: string) => {
+      const match = (j15Matches as J15Match[] | null)?.find(
+        (m) => m.league_id === leagueId && m.match_tag === tag,
+      );
+      return match;
+    };
+
+    // Semifinal 1: 1º vs 4º
+    const semi1Match = getMatchResult('semi_1');
+    const semi1Home = getTeam(1);
+    const semi1Away = getTeam(4);
+
+    // Semifinal 2: 2º vs 3º
+    const semi2Match = getMatchResult('semi_2');
+    const semi2Home = getTeam(2);
+    const semi2Away = getTeam(3);
+
+    // Survival 1: 5º vs 8º
+    const surv1Match = getMatchResult('survival_1');
+    const surv1Home = getTeam(5);
+    const surv1Away = getTeam(8);
+
+    // Survival 2: 6º vs 7º
+    const surv2Match = getMatchResult('survival_2');
+    const surv2Home = getTeam(6);
+    const surv2Away = getTeam(7);
+
     return {
       top4: [
-        { title: 'Semifinal 1', home: getTeam(1), away: getTeam(4) },
-        { title: 'Semifinal 2', home: getTeam(2), away: getTeam(3) },
+        {
+          title: 'Semifinal 1',
+          home: {
+            ...semi1Home,
+            sets: semi1Match?.played ? semi1Match.home_sets ?? 0 : undefined,
+          },
+          away: {
+            ...semi1Away,
+            sets: semi1Match?.played ? semi1Match.away_sets ?? 0 : undefined,
+          },
+          played: semi1Match?.played ?? false,
+        },
+        {
+          title: 'Semifinal 2',
+          home: {
+            ...semi2Home,
+            sets: semi2Match?.played ? semi2Match.home_sets ?? 0 : undefined,
+          },
+          away: {
+            ...semi2Away,
+            sets: semi2Match?.played ? semi2Match.away_sets ?? 0 : undefined,
+          },
+          played: semi2Match?.played ?? false,
+        },
       ],
       bottom4: [
-        { title: 'Supervivencia 1', home: getTeam(5), away: getTeam(8) },
-        { title: 'Supervivencia 2', home: getTeam(6), away: getTeam(7) },
+        {
+          title: 'Supervivencia 1',
+          home: {
+            ...surv1Home,
+            sets: surv1Match?.played ? surv1Match.home_sets ?? 0 : undefined,
+          },
+          away: {
+            ...surv1Away,
+            sets: surv1Match?.played ? surv1Match.away_sets ?? 0 : undefined,
+          },
+          played: surv1Match?.played ?? false,
+        },
+        {
+          title: 'Supervivencia 2',
+          home: {
+            ...surv2Home,
+            sets: surv2Match?.played ? surv2Match.home_sets ?? 0 : undefined,
+          },
+          away: {
+            ...surv2Away,
+            sets: surv2Match?.played ? surv2Match.away_sets ?? 0 : undefined,
+          },
+          played: surv2Match?.played ?? false,
+        },
       ],
     };
   }
 
-  const primeraMatchups = buildMatchups(primeraRanks);
-  const segundaMatchups = buildMatchups(segundaRanks);
+  const primeraMatchups = buildMatchups(primeraRanks, primeraLeague?.id);
+  const segundaMatchups = buildMatchups(segundaRanks, segundaLeague?.id);
 
   return (
     <>

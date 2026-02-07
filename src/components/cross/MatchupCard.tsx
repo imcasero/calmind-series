@@ -5,6 +5,8 @@ import { motion } from 'motion/react';
 interface Team {
   nickname: string;
   position: number;
+  sets?: number; // Optional: sets won
+  avatar_url?: string | null; // Optional: avatar URL
 }
 
 interface MatchupCardProps {
@@ -12,6 +14,7 @@ interface MatchupCardProps {
   away: Team;
   matchTitle: string;
   accentColor?: string; // e.g., 'var(--color-retro-gold-400)'
+  played?: boolean; // Optional: whether the match has been played
 }
 
 export const MatchupCard = ({
@@ -19,7 +22,10 @@ export const MatchupCard = ({
   away,
   matchTitle,
   accentColor = 'var(--color-retro-gold-400)',
+  played = false,
 }: MatchupCardProps) => {
+  const homeWon = played && (home.sets ?? 0) > (away.sets ?? 0);
+  const awayWon = played && (away.sets ?? 0) > (home.sets ?? 0);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -53,7 +59,13 @@ export const MatchupCard = ({
         <div className="space-y-3">
           {/* Home Team */}
           <div className="relative overflow-hidden rounded-sm group/team">
-            <div className="flex items-center justify-between bg-jacksons-purple-800/80 border border-white/5 px-3 py-2.5 transition-all group-hover/team:bg-jacksons-purple-700/90">
+            <div
+              className={`flex items-center justify-between bg-jacksons-purple-800/80 border px-3 py-2.5 transition-all group-hover/team:bg-jacksons-purple-700/90 ${
+                homeWon
+                  ? 'border-retro-gold-500/50 bg-retro-gold-500/10'
+                  : 'border-white/5'
+              }`}
+            >
               <div className="flex items-center gap-3">
                 <div
                   className="font-black text-xs xs:text-sm w-6 h-6 flex items-center justify-center rounded-xs bg-black/40 border border-white/10"
@@ -61,10 +73,24 @@ export const MatchupCard = ({
                 >
                   #{home.position}
                 </div>
-                <span className="text-white text-xs xs:text-sm font-pokemon tracking-tight truncate max-w-[140px] xs:max-w-[180px]">
+                <span
+                  className={`text-xs xs:text-sm font-pokemon tracking-tight truncate max-w-[140px] xs:max-w-[180px] ${
+                    homeWon ? 'text-retro-gold-400 font-bold' : 'text-white'
+                  }`}
+                >
                   {home.nickname}
                 </span>
               </div>
+
+              {played && home.sets !== undefined && (
+                <div
+                  className={`font-black text-lg xs:text-xl ${
+                    homeWon ? 'text-retro-gold-400' : 'text-white/40'
+                  }`}
+                >
+                  {home.sets}
+                </div>
+              )}
 
               {/* Corner Accent */}
               <div
@@ -76,15 +102,25 @@ export const MatchupCard = ({
 
           <div className="flex items-center gap-4 py-1">
             <div className="h-px flex-1 bg-white/5" />
-            <div className="text-center text-white/20 text-[10px] font-pokemon uppercase tracking-tighter">
-              VS
+            <div
+              className={`text-center text-[10px] font-pokemon uppercase tracking-tighter ${
+                played ? 'text-retro-gold-400' : 'text-white/20'
+              }`}
+            >
+              {played ? 'FINAL' : 'VS'}
             </div>
             <div className="h-px flex-1 bg-white/5" />
           </div>
 
           {/* Away Team */}
           <div className="relative overflow-hidden rounded-sm group/team">
-            <div className="flex items-center justify-between bg-jacksons-purple-800/80 border border-white/5 px-3 py-2.5 transition-all group-hover/team:bg-jacksons-purple-700/90">
+            <div
+              className={`flex items-center justify-between bg-jacksons-purple-800/80 border px-3 py-2.5 transition-all group-hover/team:bg-jacksons-purple-700/90 ${
+                awayWon
+                  ? 'border-retro-gold-500/50 bg-retro-gold-500/10'
+                  : 'border-white/5'
+              }`}
+            >
               <div className="flex items-center gap-3">
                 <div
                   className="font-black text-xs xs:text-sm w-6 h-6 flex items-center justify-center rounded-xs bg-black/40 border border-white/10"
@@ -92,10 +128,24 @@ export const MatchupCard = ({
                 >
                   #{away.position}
                 </div>
-                <span className="text-white text-xs xs:text-sm font-pokemon tracking-tight truncate max-w-[140px] xs:max-w-[180px]">
+                <span
+                  className={`text-xs xs:text-sm font-pokemon tracking-tight truncate max-w-[140px] xs:max-w-[180px] ${
+                    awayWon ? 'text-retro-gold-400 font-bold' : 'text-white'
+                  }`}
+                >
                   {away.nickname}
                 </span>
               </div>
+
+              {played && away.sets !== undefined && (
+                <div
+                  className={`font-black text-lg xs:text-xl ${
+                    awayWon ? 'text-retro-gold-400' : 'text-white/40'
+                  }`}
+                >
+                  {away.sets}
+                </div>
+              )}
 
               {/* Corner Accent */}
               <div

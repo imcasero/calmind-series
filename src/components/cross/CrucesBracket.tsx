@@ -6,6 +6,8 @@ import { MatchupCard } from './MatchupCard';
 interface Team {
   nickname: string;
   position: number;
+  sets?: number;
+  avatar_url?: string | null;
 }
 
 interface BracketProps {
@@ -15,6 +17,7 @@ interface BracketProps {
     title: string;
     home: Team;
     away: Team;
+    played?: boolean;
   }[];
   accentColor: string; // e.g., 'var(--color-retro-gold-500)'
   innerAccentColor: string; // e.g., 'var(--color-retro-gold-400)'
@@ -101,6 +104,7 @@ export const CrucesBracket = ({
               home={match.home}
               away={match.away}
               accentColor={innerAccentColor}
+              played={match.played}
             />
           ))}
         </div>

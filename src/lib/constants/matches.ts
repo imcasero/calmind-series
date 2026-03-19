@@ -31,4 +31,4 @@ export const MATCH_TAGS = {
   HONOR_SEGUNDA: 'honor_segunda',
 } as const;
 
-export type MatchTag = typeof MATCH_TAGS[keyof typeof MATCH_TAGS];
+export type MatchTag = (typeof MATCH_TAGS)[keyof typeof MATCH_TAGS];

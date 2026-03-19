@@ -20,7 +20,9 @@ export function PageHeader({
   backHref,
   showDecorativeLines = true,
 }: PageHeaderProps) {
-  const defaultBackText = split ? `${split.toUpperCase()} Standings` : season.toUpperCase();
+  const defaultBackText = split
+    ? `${split.toUpperCase()} Standings`
+    : season.toUpperCase();
   const defaultBackHref = split ? ROUTES.season(season, split) : `/${season}`;
 
   return (

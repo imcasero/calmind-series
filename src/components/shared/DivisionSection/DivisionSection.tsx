@@ -1,22 +1,13 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { CrucesBracket } from '@/components/cross/CrucesBracket';
 import type { Matchup } from '@/lib/types/matches';
 
 interface DivisionSectionProps {
   title: string;
-  subtitle: string;
-  accentColor: string;
-  innerAccentColor: string;
   children: ReactNode;
 }
 
-export function DivisionSection({
-  title,
-  subtitle,
-  accentColor,
-  innerAccentColor,
-  children,
-}: DivisionSectionProps) {
+export function DivisionSection({ title, children }: DivisionSectionProps) {
   return (
     <div className="mb-20 xs:mb-32">
       <div className="flex items-center gap-6 mb-12">

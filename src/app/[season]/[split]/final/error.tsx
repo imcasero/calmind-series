@@ -25,8 +25,8 @@ export default function FinalError({ error, reset }: ErrorProps) {
           Error en The Finals
         </h1>
         <p className="text-white/70 text-sm mb-6">
-          No se pudo cargar la información de las finales. Esto puede ser un problema
-          temporal.
+          No se pudo cargar la información de las finales. Esto puede ser un
+          problema temporal.
         </p>
         <div className="flex flex-col xs:flex-row gap-3 justify-center">
           <button

@@ -10,6 +10,15 @@ export interface J15Match {
   home_sets: number | null;
   away_sets: number | null;
   played: boolean | null;
+  // Optional nested trainer data when fetched with joins
+  home?: {
+    nickname: string;
+    avatar_url?: string | null;
+  } | null;
+  away?: {
+    nickname: string;
+    avatar_url?: string | null;
+  } | null;
 }
 
 export interface J16Match {

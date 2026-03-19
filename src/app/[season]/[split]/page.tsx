@@ -2,14 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import SplitContent from '@/components/divisions/SplitContent/SplitContent';
+import SplitDataProvider from '@/components/divisions/SplitDataProvider/SplitDataProvider';
 import { Navbar, PageHeader } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
-import {
-  getDivisionPreview,
-  getMatchesByRound,
-  getParticipantsBySplit,
-  getSplitByNames,
-} from '@/lib/queries';
+import { getSplitByNames } from '@/lib/queries';
 
 interface SplitPageProps {
   params: Promise<{
@@ -45,13 +41,6 @@ export default async function SplitPage({ params }: SplitPageProps) {
     notFound();
   }
 
-  // Get rankings, participants and matches in parallel
-  const [rankings, participants, matches] = await Promise.all([
-    getDivisionPreview(splitInfo.split.id),
-    getParticipantsBySplit(splitInfo.split.id),
-    getMatchesByRound(splitInfo.split.id),
-  ]);
-
   return (
     <>
       <Navbar />
@@ -64,12 +53,18 @@ export default async function SplitPage({ params }: SplitPageProps) {
           subtitle={`Temporada ${season.toUpperCase()}`}
         />
 
-        {/* Tabs: Clasificación / Participantes / Enfrentamientos */}
-        <SplitContent
-          rankings={rankings}
-          participants={participants}
-          matches={matches}
-        />
+        <SplitDataProvider splitId={splitInfo.split.id}>
+          {({ rankings, participants, matches }) => (
+            <>
+              {/* Tabs: Clasificación / Participantes / Enfrentamientos */}
+              <SplitContent
+                rankings={rankings}
+                participants={participants}
+                matches={matches}
+              />
+            </>
+          )}
+        </SplitDataProvider>
 
         {/* J15 & J16 Action Buttons */}
         <section className="mt-12 xs:mt-16 sm:mt-20">

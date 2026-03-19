@@ -25,8 +25,8 @@ export default function CrucesError({ error, reset }: ErrorProps) {
           Error en Los Cruces
         </h1>
         <p className="text-white/70 text-sm mb-6">
-          No se pudo cargar la información de los cruces. Esto puede ser un problema
-          temporal.
+          No se pudo cargar la información de los cruces. Esto puede ser un
+          problema temporal.
         </p>
         <div className="flex flex-col xs:flex-row gap-3 justify-center">
           <button

@@ -561,7 +561,9 @@ export default function MatchesManager({
       const j15Matches = await fetchJ15Matches(selectedLeagueId);
 
       if (j15Matches.length !== 4) {
-        throw new Error('No se encontraron los 4 partidos de J15 para esta liga.');
+        throw new Error(
+          'No se encontraron los 4 partidos de J15 para esta liga.',
+        );
       }
 
       // Get matches by tag
@@ -1305,7 +1307,9 @@ export default function MatchesManager({
             <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
               <p className="text-jacksons-purple-300">Cargando...</p>
             </div>
-          ) : participants.length < 2 && selectedRound !== 15 && selectedRound !== 16 ? (
+          ) : participants.length < 2 &&
+            selectedRound !== 15 &&
+            selectedRound !== 16 ? (
             <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
               <p className="text-jacksons-purple-300">
                 Se necesitan al menos 2 participantes en esta division para
@@ -1447,7 +1451,9 @@ export default function MatchesManager({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleDeleteMatch(match.id)}
+                                      onClick={() =>
+                                        handleDeleteMatch(match.id)
+                                      }
                                       className="px-3 py-2 bg-red-600 text-white border-2 border-red-800 text-xs font-bold uppercase hover:bg-red-500 transition-all"
                                     >
                                       Eliminar

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Navbar } from '@/components/shared';
+import { Navbar, PageHeader } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import { getSeasonByName } from '@/lib/queries';
 
@@ -44,14 +44,12 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
       <Navbar />
       <div className="max-w-4xl mx-auto px-2 xs:px-3 sm:px-4 py-8">
         {/* Season Header */}
-        <section className="text-center mb-8 xs:mb-12">
-          <h1 className="pokemon-title text-retro-gold-400 text-2xl xs:text-3xl sm:text-4xl mb-2">
-            {season.toUpperCase()}
-          </h1>
-          <p className="text-retro-cyan-300/80 text-xs xs:text-sm uppercase tracking-wider">
-            Pokemon Calmind Series
-          </p>
-        </section>
+        <PageHeader
+          season={season}
+          title={season.toUpperCase()}
+          subtitle="Pokemon Calmind Series"
+          showDecorativeLines={false}
+        />
 
         {/* Splits Grid */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 xs:gap-6">

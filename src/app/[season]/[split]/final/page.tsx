@@ -2,10 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CrucesBracket } from '@/components/cross/CrucesBracket';
-import { Navbar } from '@/components/shared';
+import { Navbar, PageHeader, DivisionSection, DivisionBracket } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
+import { MATCH_TAGS, ROUNDS, TIER_NAMES } from '@/lib/constants/matches';
 import { getSplitByNames } from '@/lib/queries';
 import { createClient } from '@/lib/supabase/server';
+import type { J16Match } from '@/lib/types/matches';
+import { MatchService } from '@/lib/services/matchService';
 
 interface FinalPageProps {
   params: Promise<{
@@ -61,11 +64,11 @@ export default async function FinalPage({ params }: FinalPageProps) {
         away:trainers!matches_away_trainer_id_fkey(nickname, avatar_url)
       `)
       .eq('split_id', splitInfo.split.id)
-      .eq('round', 15),
+      .eq('round', ROUNDS.J15),
   ]);
 
-  const primeraLeague = leagues?.find((l) => l.tier_name === 'primera');
-  const segundaLeague = leagues?.find((l) => l.tier_name === 'segunda');
+  const primeraLeague = leagues?.find((l) => l.tier_name === TIER_NAMES.PRIMERA);
+  const segundaLeague = leagues?.find((l) => l.tier_name === TIER_NAMES.SEGUNDA);
 
   // Fetch J16 matches to show results if they exist
   const { data: j16Matches } = await supabase
@@ -74,64 +77,26 @@ export default async function FinalPage({ params }: FinalPageProps) {
       'id, league_id, match_tag, home_trainer_id, away_trainer_id, home_sets, away_sets, played',
     )
     .eq('split_id', splitInfo.split.id)
-    .eq('round', 16);
+    .eq('round', ROUNDS.J16);
 
-  // Helper to get winner/loser from a J15 match tag
-  const getFromJ15 = (
-    leagueId: string | undefined,
-    tag: string,
-    type: 'winner' | 'loser',
-  ) => {
-    const match = j15Matches?.find(
-      (m) => m.league_id === leagueId && m.match_tag === tag,
-    );
-    if (!match) return { nickname: 'TBD', position: 0 };
-
-    if (!match.played) {
-      const label = type === 'winner' ? 'Ganador' : 'Perdedor';
-      // Map tag to readable name
-      const tagName = tag
-        .replace('semi_', 'Semi ')
-        .replace('survival_', 'Superv. ');
-      return { nickname: `${label} ${tagName}`, position: 0 };
-    }
-
-    const isHomeWinner = (match.home_sets || 0) > (match.away_sets || 0);
-    const winner = isHomeWinner ? match.home : match.away;
-    const loser = isHomeWinner ? match.away : match.home;
-
-    const target = type === 'winner' ? winner : loser;
-    return {
-      nickname: target?.nickname || 'Unknown',
-      position: 0,
-      avatar_url: target?.avatar_url,
-    };
-  };
-
-  // Helper to get J16 match result
-  const getJ16Match = (leagueId: string | undefined, tag: string) => {
-    return j16Matches?.find(
-      (m) => m.league_id === leagueId && m.match_tag === tag,
-    );
-  };
 
   // --- PRIMERA DIVISION LOGIC ---
-  const grandFinalMatch = getJ16Match(primeraLeague?.id, 'grand_final');
-  const thirdPlaceMatch = getJ16Match(primeraLeague?.id, '3rd_place');
-  const relegationMatch = getJ16Match(primeraLeague?.id, 'relegation_battle');
-  const honorMatch = getJ16Match(primeraLeague?.id, 'honor_battle');
+  const grandFinalMatch = MatchService.getJ16Match(j16Matches, primeraLeague?.id, MATCH_TAGS.GRAND_FINAL);
+  const thirdPlaceMatch = MatchService.getJ16Match(j16Matches, primeraLeague?.id, MATCH_TAGS.THIRD_PLACE);
+  const relegationMatch = MatchService.getJ16Match(j16Matches, primeraLeague?.id, MATCH_TAGS.RELEGATION_BATTLE);
+  const honorMatch = MatchService.getJ16Match(j16Matches, primeraLeague?.id, MATCH_TAGS.HONOR_BATTLE);
 
   const primeraFinals = [
     {
       title: 'Grand Final',
       home: {
-        ...getFromJ15(primeraLeague?.id, 'semi_1', 'winner'),
+        ...MatchService.getFromJ15Match(j15Matches, primeraLeague?.id, MATCH_TAGS.SEMI_1, 'winner'),
         sets: grandFinalMatch?.played
           ? grandFinalMatch.home_sets ?? 0
           : undefined,
       },
       away: {
-        ...getFromJ15(primeraLeague?.id, 'semi_2', 'winner'),
+        ...MatchService.getFromJ15Match(j15Matches, primeraLeague?.id, MATCH_TAGS.SEMI_2, 'winner'),
         sets: grandFinalMatch?.played
           ? grandFinalMatch.away_sets ?? 0
           : undefined,
@@ -141,13 +106,13 @@ export default async function FinalPage({ params }: FinalPageProps) {
     {
       title: '3rd Place',
       home: {
-        ...getFromJ15(primeraLeague?.id, 'semi_1', 'loser'),
+        ...MatchService.getFromJ15Match(j15Matches, primeraLeague?.id, MATCH_TAGS.SEMI_1, 'loser'),
         sets: thirdPlaceMatch?.played
           ? thirdPlaceMatch.home_sets ?? 0
           : undefined,
       },
       away: {
-        ...getFromJ15(primeraLeague?.id, 'semi_2', 'loser'),
+        ...MatchService.getFromJ15Match(j15Matches, primeraLeague?.id, MATCH_TAGS.SEMI_2, 'loser'),
         sets: thirdPlaceMatch?.played
           ? thirdPlaceMatch.away_sets ?? 0
           : undefined,
@@ -160,13 +125,13 @@ export default async function FinalPage({ params }: FinalPageProps) {
     {
       title: 'Lucha por Permanencia',
       home: {
-        ...getFromJ15(primeraLeague?.id, 'survival_1', 'winner'),
+        ...MatchService.getFromJ15Match(j15Matches, primeraLeague?.id, MATCH_TAGS.SURVIVAL_1, 'winner'),
         sets: relegationMatch?.played
           ? relegationMatch.home_sets ?? 0
           : undefined,
       },
       away: {
-        ...getFromJ15(primeraLeague?.id, 'survival_2', 'winner'),
+        ...MatchService.getFromJ15Match(j15Matches, primeraLeague?.id, MATCH_TAGS.SURVIVAL_2, 'winner'),
         sets: relegationMatch?.played
           ? relegationMatch.away_sets ?? 0
           : undefined,
@@ -176,11 +141,11 @@ export default async function FinalPage({ params }: FinalPageProps) {
     {
       title: 'Morir de Pie',
       home: {
-        ...getFromJ15(primeraLeague?.id, 'survival_1', 'loser'),
+        ...MatchService.getFromJ15Match(j15Matches, primeraLeague?.id, MATCH_TAGS.SURVIVAL_1, 'loser'),
         sets: honorMatch?.played ? honorMatch.home_sets ?? 0 : undefined,
       },
       away: {
-        ...getFromJ15(primeraLeague?.id, 'survival_2', 'loser'),
+        ...MatchService.getFromJ15Match(j15Matches, primeraLeague?.id, MATCH_TAGS.SURVIVAL_2, 'loser'),
         sets: honorMatch?.played ? honorMatch.away_sets ?? 0 : undefined,
       },
       played: honorMatch?.played ?? false,
@@ -188,22 +153,22 @@ export default async function FinalPage({ params }: FinalPageProps) {
   ];
 
   // --- SEGUNDA DIVISION LOGIC ---
-  const segundaFinalMatch = getJ16Match(segundaLeague?.id, 'segunda_final');
-  const opportunityMatch = getJ16Match(segundaLeague?.id, 'opportunity');
-  const lastChanceMatch = getJ16Match(segundaLeague?.id, 'last_chance');
-  const honorSegundaMatch = getJ16Match(segundaLeague?.id, 'honor_segunda');
+  const segundaFinalMatch = MatchService.getJ16Match(j16Matches, segundaLeague?.id, MATCH_TAGS.SEGUNDA_FINAL);
+  const opportunityMatch = MatchService.getJ16Match(j16Matches, segundaLeague?.id, MATCH_TAGS.OPPORTUNITY);
+  const lastChanceMatch = MatchService.getJ16Match(j16Matches, segundaLeague?.id, MATCH_TAGS.LAST_CHANCE);
+  const honorSegundaMatch = MatchService.getJ16Match(j16Matches, segundaLeague?.id, MATCH_TAGS.HONOR_SEGUNDA);
 
   const segundaFinals = [
     {
       title: 'Final Segunda',
       home: {
-        ...getFromJ15(segundaLeague?.id, 'semi_1', 'winner'),
+        ...MatchService.getFromJ15Match(j15Matches, segundaLeague?.id, MATCH_TAGS.SEMI_1, 'winner'),
         sets: segundaFinalMatch?.played
           ? segundaFinalMatch.home_sets ?? 0
           : undefined,
       },
       away: {
-        ...getFromJ15(segundaLeague?.id, 'semi_2', 'winner'),
+        ...MatchService.getFromJ15Match(j15Matches, segundaLeague?.id, MATCH_TAGS.SEMI_2, 'winner'),
         sets: segundaFinalMatch?.played
           ? segundaFinalMatch.away_sets ?? 0
           : undefined,
@@ -213,13 +178,13 @@ export default async function FinalPage({ params }: FinalPageProps) {
     {
       title: 'La Oportunidad',
       home: {
-        ...getFromJ15(segundaLeague?.id, 'semi_1', 'loser'),
+        ...MatchService.getFromJ15Match(j15Matches, segundaLeague?.id, MATCH_TAGS.SEMI_1, 'loser'),
         sets: opportunityMatch?.played
           ? opportunityMatch.home_sets ?? 0
           : undefined,
       },
       away: {
-        ...getFromJ15(segundaLeague?.id, 'semi_2', 'loser'),
+        ...MatchService.getFromJ15Match(j15Matches, segundaLeague?.id, MATCH_TAGS.SEMI_2, 'loser'),
         sets: opportunityMatch?.played
           ? opportunityMatch.away_sets ?? 0
           : undefined,
@@ -232,13 +197,13 @@ export default async function FinalPage({ params }: FinalPageProps) {
     {
       title: 'Last Chance',
       home: {
-        ...getFromJ15(segundaLeague?.id, 'survival_1', 'winner'),
+        ...MatchService.getFromJ15Match(j15Matches, segundaLeague?.id, MATCH_TAGS.SURVIVAL_1, 'winner'),
         sets: lastChanceMatch?.played
           ? lastChanceMatch.home_sets ?? 0
           : undefined,
       },
       away: {
-        ...getFromJ15(segundaLeague?.id, 'survival_2', 'winner'),
+        ...MatchService.getFromJ15Match(j15Matches, segundaLeague?.id, MATCH_TAGS.SURVIVAL_2, 'winner'),
         sets: lastChanceMatch?.played
           ? lastChanceMatch.away_sets ?? 0
           : undefined,
@@ -248,13 +213,13 @@ export default async function FinalPage({ params }: FinalPageProps) {
     {
       title: 'El Combate del Honor',
       home: {
-        ...getFromJ15(segundaLeague?.id, 'survival_1', 'loser'),
+        ...MatchService.getFromJ15Match(j15Matches, segundaLeague?.id, MATCH_TAGS.SURVIVAL_1, 'loser'),
         sets: honorSegundaMatch?.played
           ? honorSegundaMatch.home_sets ?? 0
           : undefined,
       },
       away: {
-        ...getFromJ15(segundaLeague?.id, 'survival_2', 'loser'),
+        ...MatchService.getFromJ15Match(j15Matches, segundaLeague?.id, MATCH_TAGS.SURVIVAL_2, 'loser'),
         sets: honorSegundaMatch?.played
           ? honorSegundaMatch.away_sets ?? 0
           : undefined,
@@ -286,36 +251,23 @@ export default async function FinalPage({ params }: FinalPageProps) {
         </div>
 
         {/* Header */}
-        <section className="text-center mb-16 xs:mb-24">
-          <Link
-            href={ROUTES.cruces(season, split)}
-            className="inline-flex items-center gap-2 text-retro-cyan-300/40 text-[10px] uppercase tracking-[0.3em] hover:text-retro-cyan-300 transition-colors font-pokemon border border-white/5 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full"
-          >
-            ← Volver a J15
-          </Link>
-          <h1 className="pokemon-title animate-in fade-in zoom-in duration-700 text-retro-gold-400 text-3xl xs:text-4xl sm:text-6xl mt-8 mb-4 tracking-tighter">
-            J16 - THE FINALS
-          </h1>
-          <div className="flex items-center justify-center gap-4 opacity-50">
-            <div className="h-px w-12 bg-linear-to-r from-transparent to-white/20" />
-            <p className="text-white/60 text-xs xs:text-sm font-pokemon uppercase tracking-[0.4em]">
-              Glory & Redemption
-            </p>
-            <div className="h-px w-12 bg-linear-to-l from-transparent to-white/20" />
-          </div>
-        </section>
+        <PageHeader
+          season={season}
+          split={split}
+          title="J16 - THE FINALS"
+          subtitle="Glory & Redemption"
+          backText="Volver a J15"
+          backHref={ROUTES.cruces(season, split)}
+        />
 
         {/* PRIMERA DIVISIÓN */}
-        <div className="mb-20 xs:mb-32">
-          <div className="flex items-center gap-6 mb-12">
-            <div className="h-px flex-1 bg-linear-to-r from-transparent to-retro-gold-500/30" />
-            <h2 className="font-pokemon text-retro-gold-400 text-lg xs:text-2xl uppercase tracking-[0.3em] font-black italic drop-shadow-[0_0_10px_rgba(255,237,78,0.2)]">
-              Primera <span className="text-white/20">División</span>
-            </h2>
-            <div className="h-px flex-1 bg-linear-to-l from-transparent to-retro-gold-500/30" />
-          </div>
-
-          <CrucesBracket
+        <DivisionSection
+          title="Primera División"
+          subtitle=""
+          accentColor="var(--color-retro-gold-500)"
+          innerAccentColor="var(--color-retro-gold-400)"
+        >
+          <DivisionBracket
             title="THE FINALS"
             subtitle="Championship & 3rd Place"
             matchups={primeraFinals}
@@ -324,7 +276,7 @@ export default async function FinalPage({ params }: FinalPageProps) {
             footerNote="Ganador Final → CAMPEÓN | Ganador 3er → Podio"
           />
 
-          <CrucesBracket
+          <DivisionBracket
             title="THE LAST STAND"
             subtitle="Permanencia & Honor"
             matchups={primeraRelegation}
@@ -332,19 +284,16 @@ export default async function FinalPage({ params }: FinalPageProps) {
             innerAccentColor="var(--color-snuff-400)"
             footerNote="Ganador Perm. → Se queda en 1ª | Perdedor Perm. → El Olimpo (vs Elegido)"
           />
-        </div>
+        </DivisionSection>
 
         {/* SEGUNDA DIVISIÓN */}
-        <div className="mb-20 xs:mb-32">
-          <div className="flex items-center gap-6 mb-12">
-            <div className="h-px flex-1 bg-linear-to-r from-transparent to-snuff-500/30" />
-            <h2 className="font-pokemon text-snuff-400 text-lg xs:text-2xl uppercase tracking-[0.3em] font-black italic drop-shadow-[0_0_10px_rgba(247,42,155,0.2)]">
-              Segunda <span className="text-white/20">División</span>
-            </h2>
-            <div className="h-px flex-1 bg-linear-to-l from-transparent to-snuff-500/30" />
-          </div>
-
-          <CrucesBracket
+        <DivisionSection
+          title="Segunda División"
+          subtitle=""
+          accentColor="var(--color-snuff-500)"
+          innerAccentColor="var(--color-snuff-400)"
+        >
+          <DivisionBracket
             title="ASCENSION FINALS"
             subtitle="Title & Opportunity"
             matchups={segundaFinals}
@@ -353,7 +302,7 @@ export default async function FinalPage({ params }: FinalPageProps) {
             footerNote="Ganador Final → Campeón 2ª | Perdedor Oportunidad → Se queda en 2ª"
           />
 
-          <CrucesBracket
+          <DivisionBracket
             title="BOTTOM SECTOR"
             subtitle="Last Chance & Honor"
             matchups={segundaBottom}
@@ -361,7 +310,7 @@ export default async function FinalPage({ params }: FinalPageProps) {
             innerAccentColor="var(--color-snuff-400)"
             footerNote="Ganador Last Chance → Se queda en 2ª | Todos los demás → Qualifier"
           />
-        </div>
+        </DivisionSection>
 
         {/* EL OLIMPO TEASER */}
         <section className="mt-20 border-t border-white/10 pt-16 text-center opacity-60 hover:opacity-100 transition-opacity">

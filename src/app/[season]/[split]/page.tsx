@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import SplitContent from '@/components/divisions/SplitContent/SplitContent';
-import { Navbar } from '@/components/shared';
+import { Navbar, PageHeader } from '@/components/shared';
 import { ROUTES } from '@/lib/constants/routes';
 import {
   getDivisionPreview,
@@ -57,30 +57,12 @@ export default async function SplitPage({ params }: SplitPageProps) {
       <Navbar />
       <div className="max-w-[1800px] mx-auto px-4 xs:px-6 sm:px-8 lg:px-16 xl:px-20 py-10 xs:py-12 sm:py-16">
         {/* Header with decorative lines */}
-        <section className="text-center mb-10 xs:mb-14 sm:mb-20">
-          <Link
-            href={`/${season}`}
-            className="inline-flex items-center gap-2 text-retro-cyan-300/40 text-[10px] uppercase tracking-[0.3em] hover:text-retro-cyan-300 transition-colors font-pokemon border border-white/5 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full mb-8"
-          >
-            ← {season.toUpperCase()}
-          </Link>
-
-          <div className="flex items-center gap-6 justify-center mb-4">
-            <div className="h-px flex-1 max-w-[200px] bg-gradient-to-r from-transparent to-retro-gold-500/30" />
-            <h1 className="pokemon-title text-retro-gold-400 text-2xl xs:text-3xl sm:text-4xl md:text-5xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase tracking-[0.15em]">
-              {split.replace('split', 'Split ')}
-            </h1>
-            <div className="h-px flex-1 max-w-[200px] bg-gradient-to-l from-transparent to-retro-gold-500/30" />
-          </div>
-
-          <div className="flex items-center justify-center gap-4 opacity-50">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-white/20" />
-            <p className="text-white/60 text-xs xs:text-sm font-pokemon uppercase tracking-[0.4em]">
-              Temporada {season.toUpperCase()}
-            </p>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-white/20" />
-          </div>
-        </section>
+        <PageHeader
+          season={season}
+          split={split}
+          title={split.replace('split', 'Split ')}
+          subtitle={`Temporada ${season.toUpperCase()}`}
+        />
 
         {/* Tabs: Clasificación / Participantes / Enfrentamientos */}
         <SplitContent

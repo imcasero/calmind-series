@@ -17,7 +17,7 @@ export const ROUTES = {
  */
 export const EXTERNAL_ROUTES = {
   INSCRIPTION_FORM: 'https://forms.gle/Ai7mZvu38nj85NiZ8',
-  NORMATIVA_PDF: '/normativa_pokemon_calmind_series.pdf',
+  NORMATIVA_PDF: 'https://htiokxxdtffxhkdiysda.supabase.co/storage/v1/object/public/normativas/public/normativa_pokemon_calmind_series.pdf',
   TWITTER: 'https://x.com/calmind_team',
 } as const;
 

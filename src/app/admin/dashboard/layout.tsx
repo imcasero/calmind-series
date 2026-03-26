@@ -12,6 +12,7 @@ const navItems = [
   { href: '/admin/dashboard/divisions', label: 'Divisiones', icon: '⚔️' },
   { href: '/admin/dashboard/participants', label: 'Participantes', icon: '👥' },
   { href: '/admin/dashboard/matches', label: 'Partidos', icon: '🎮' },
+  { href: '/admin/dashboard/normativa', label: 'Normativa', icon: '📄' },
   { href: '/admin/dashboard/settings', label: 'Configuración', icon: '⚙️' },
 ];
 

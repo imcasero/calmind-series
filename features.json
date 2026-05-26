@@ -1,0 +1,108 @@
+{
+  "project": "calmind-series",
+  "source": "ARCHITECTURE_REVIEW.html",
+  "updated": "2026-05-26",
+  "statusLegend": ["pending", "spec_ready", "in_progress", "done"],
+  "activeBatch": ["F0", "F1"],
+  "features": [
+    {
+      "id": "F0",
+      "phase": "Fase 0 — Bugs reales",
+      "effort": "~30 min",
+      "status": "spec_ready",
+      "spec": "specs/",
+      "dependsOn": [],
+      "items": [
+        "Fix client-side redirect() in src/app/admin/page.tsx:31 -> router.push()",
+        "Make SeasonsManager.handleActivate atomic via Supabase RPC (optional, low risk today)"
+      ]
+    },
+    {
+      "id": "F1",
+      "phase": "Fase 1 — Activar plataforma",
+      "effort": "~30 min",
+      "status": "spec_ready",
+      "spec": "specs/",
+      "dependsOn": [],
+      "items": [
+        "Merge next.config.optimization.js into next.config.ts (React Compiler + PPR/Cache Components + image formats)",
+        "Delete next.config.optimization.js (dead code once merged)",
+        "tsconfig.json target ES2017 -> ES2022",
+        "biome.json noExplicitAny warn -> error",
+        "Run npx @next/codemod@latest upgrade (incl. proxyConfig rename)"
+      ]
+    },
+    {
+      "id": "F2",
+      "phase": "Fase 2 — Limpieza de tipos y código muerto",
+      "effort": "medio día",
+      "status": "pending",
+      "spec": null,
+      "dependsOn": ["F1"],
+      "items": [
+        "Delete src/lib/types/queries.types.ts; migrate imports to @/lib/types/schemas",
+        "Delete src/hooks/useOptimizedFetch.ts and src/components/performance/PerformanceMonitor.tsx",
+        "Remove ~18 unsafe `as Type[]` casts in admin.queries.ts and seasons.queries.ts",
+        "Rename components/home/TorunamentFormat -> TournamentFormat",
+        "Rename NormattivaManager.tsx -> NormativaManager.tsx",
+        "Fix resulting any[] in SplitDataProvider"
+      ]
+    },
+    {
+      "id": "F3",
+      "phase": "Fase 3 — Abstracciones admin",
+      "effort": "1-2 días",
+      "status": "pending",
+      "spec": null,
+      "dependsOn": ["F2"],
+      "items": [
+        "Extract <AdminModal> and <AdminErrorBanner>",
+        "Extract useLeagueSelector() hook (Temporada -> Split -> Division cascade)",
+        "Wire Zod validation into admin forms (schemas already exist)",
+        "Migrate SeasonsManager to Server Actions + useOptimistic (pilot)"
+      ]
+    },
+    {
+      "id": "F4",
+      "phase": "Fase 4 — Cacheo coherente",
+      "effort": "1-2 días",
+      "status": "pending",
+      "spec": null,
+      "dependsOn": ["F1", "F3"],
+      "items": [
+        "Migrate queries to 'use cache' + cacheTag",
+        "Call revalidateTag('matches') from the Server Action that updates results",
+        "Delete src/lib/data/fetchData.ts (dual-cache layer)",
+        "Move src/lib/services/matchService.ts (pure fns) to src/lib/utils/matches.ts"
+      ]
+    },
+    {
+      "id": "F5",
+      "phase": "Fase 5 — Performance / modernización",
+      "effort": "1 día",
+      "status": "pending",
+      "spec": null,
+      "dependsOn": ["F1"],
+      "items": [
+        "generateStaticParams in [season] and [season]/[split]",
+        "Granular <Suspense> per section in [split]/page.tsx",
+        "Push 'use client' to minimal wrappers in CrucesBracket / MatchupCard / TableRow",
+        "Extract <ErrorCard>, <PageSkeleton>, <BackgroundDecoration>, formatSplitName()",
+        "Image sizes, capped animation delays, CSS spin for Pokéballs"
+      ]
+    },
+    {
+      "id": "F6",
+      "phase": "Fase 6 — Refactor mayores",
+      "effort": "cuando haya tiempo",
+      "status": "pending",
+      "spec": null,
+      "dependsOn": ["F3", "F4"],
+      "items": [
+        "Replace SplitDataProvider render-prop with direct composition in pages",
+        "Migrate remaining managers to Server Actions",
+        "Reusable confirmation modal to replace window.confirm()"
+      ]
+    }
+  ]
+}

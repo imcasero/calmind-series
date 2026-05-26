@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
-import NormattivaManager from './_components/NormattivaManager';
+import RegulationsManager from './_components/RegulationsManager';
 
-export default async function NormattivaPage() {
+export default async function RegulationsPage() {
   const supabase = await createClient();
 
   const { data: publicData } = supabase.storage
@@ -19,5 +19,5 @@ export default async function NormattivaPage() {
     console.error('Error al obtener la URL del PDF:', error);
   }
 
-  return <NormattivaManager currentPdfUrl={currentPdfUrl} />;
+  return <RegulationsManager currentPdfUrl={currentPdfUrl} />;
 }

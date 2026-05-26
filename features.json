@@ -3,33 +3,40 @@
   "source": "ARCHITECTURE_REVIEW.html",
   "updated": "2026-05-26",
   "statusLegend": ["pending", "spec_ready", "in_progress", "done"],
-  "activeBatch": ["F0", "F1"],
+  "activeBatch": ["F2"],
   "features": [
     {
       "id": "F0",
       "phase": "Fase 0 — Bugs reales",
       "effort": "~30 min",
-      "status": "spec_ready",
+      "status": "done",
       "spec": "specs/",
       "dependsOn": [],
       "items": [
         "Fix client-side redirect() in src/app/admin/page.tsx:31 -> router.push()",
         "Make SeasonsManager.handleActivate atomic via Supabase RPC (optional, low risk today)"
+      ],
+      "deferred": [
+        "REQ-3 (atomic RPC) deferred 2026-05-26 — needs Supabase migration access; optional/low-risk. F0 ships redirect fix only."
       ]
     },
     {
       "id": "F1",
       "phase": "Fase 1 — Activar plataforma",
       "effort": "~30 min",
-      "status": "spec_ready",
+      "status": "done",
       "spec": "specs/",
       "dependsOn": [],
       "items": [
-        "Merge next.config.optimization.js into next.config.ts (React Compiler + PPR/Cache Components + image formats)",
+        "Merge next.config.optimization.js into next.config.ts (React Compiler + image formats; PPR/Cache Components deferred to F4/F5)",
         "Delete next.config.optimization.js (dead code once merged)",
         "tsconfig.json target ES2017 -> ES2022",
-        "biome.json noExplicitAny warn -> error",
+        "biome.json noExplicitAny warn -> error (DEFERRED to F2)",
         "Run npx @next/codemod@latest upgrade (incl. proxyConfig rename)"
+      ],
+      "deferred": [
+        "REQ-5 (cacheComponents/PPR) deferred 2026-05-26 to F4/F5 — strict mode needs Suspense boundaries (F5) + 'use cache' (F4); enabling now breaks the build.",
+        "REQ-9 (biome noExplicitAny: error) deferred 2026-05-26 to F2 — live any[] in SplitDataProvider.tsx:243-244 would turn lint red."
       ]
     },
     {
@@ -43,10 +50,13 @@
         "Delete src/lib/types/queries.types.ts; migrate imports to @/lib/types/schemas",
         "Delete src/hooks/useOptimizedFetch.ts and src/components/performance/PerformanceMonitor.tsx",
         "Remove ~18 unsafe `as Type[]` casts in admin.queries.ts and seasons.queries.ts",
-        "Rename components/home/TorunamentFormat -> TournamentFormat",
-        "Rename NormattivaManager.tsx -> NormativaManager.tsx",
-        "Fix resulting any[] in SplitDataProvider"
-      ]
+        "[DONE 2026-05-26] Rename components/home/TorunamentFormat -> TournamentFormat",
+        "[DONE 2026-05-26] Normattiva->Normativa (user) then Normativa*->Regulations* identifiers (English standard)",
+        "[DONE 2026-05-26] Cruces*->Playoff* identifiers (CrucesBracket/DataProvider/Page/Error); routes /cruces stay Spanish",
+        "Fix resulting any[] in SplitDataProvider",
+        "Flip biome.json noExplicitAny warn -> error after all any removed (inherited from F1 / REQ-9)"
+      ],
+      "note": "Naming sub-items pulled forward & completed 2026-05-26 (English code identifiers, Spanish UI/URLs kept). Remaining F2 work (dead code, type dedup, casts, any[], noExplicitAny flip) still pending; depends on F1."
     },
     {
       "id": "F3",
@@ -73,7 +83,8 @@
         "Migrate queries to 'use cache' + cacheTag",
         "Call revalidateTag('matches') from the Server Action that updates results",
         "Delete src/lib/data/fetchData.ts (dual-cache layer)",
-        "Move src/lib/services/matchService.ts (pure fns) to src/lib/utils/matches.ts"
+        "Move src/lib/services/matchService.ts (pure fns) to src/lib/utils/matches.ts",
+        "Enable cacheComponents in next.config.ts alongside 'use cache' (inherited from F1 / REQ-5)"
       ]
     },
     {

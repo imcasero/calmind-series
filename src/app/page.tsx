@@ -1,7 +1,7 @@
 import { AboutCalmind } from '@/components/home/AboutCalmind/AboutCalmind';
 import { CurrentSeason } from '@/components/home/CurrentSeason/CurrentSeason';
 import { Hero } from '@/components/home/Hero/Hero';
-import { TournamentFormat } from '@/components/home/TorunamentFormat/TournamentFormat';
+import { TournamentFormat } from '@/components/home/TournamentFormat/TournamentFormat';
 import { Navbar } from '@/components/shared';
 
 import { getActiveSeasonWithSplit } from '@/lib/queries';

@@ -23,6 +23,10 @@ display the error message and re-enable the form, and **shall not** navigate awa
 - *Verify:* manual — submit wrong credentials, error banner shows, form usable.
 
 ### REQ-3 — Atomic season activation *(optional, low risk today)*
+> **DEFERRED (approved 2026-05-26).** Needs a Supabase Postgres RPC + migration;
+> flagged optional/low-risk. F0 ships the redirect fix only. Re-spec when DB
+> migration access is in scope.
+
 **While** an admin activates a season, **the system shall** deactivate every other
 season and activate the chosen one as a **single atomic operation**, such that a
 mid-operation failure never leaves the system with zero active seasons.
@@ -38,6 +42,12 @@ memoized automatically at build time.
 - *Verify:* `./init.sh` build succeeds; build output reports React Compiler active.
 
 ### REQ-5 — Partial Prerendering / Cache Components enabled
+> **DEFERRED to F4/F5 (approved 2026-05-26).** In Next 16.1.1 PPR ships as
+> Cache Components (`cacheComponents: true`), which is strict: dynamic data access
+> must sit inside `<Suspense>`. Those boundaries are F5 (REQ in Fase 5) and the
+> `'use cache'` model is F4. Enabling it now breaks the build, so it lands with
+> that work — not in this batch.
+
 **The build system shall** enable PPR (or the Next.js 16 Cache Components
 equivalent) so static shells are served immediately and dynamic content streams
 within `<Suspense>`.
@@ -58,6 +68,11 @@ within `<Suspense>`.
 - *Verify:* `tsconfig.json` `compilerOptions.target == "ES2022"`; typecheck clean.
 
 ### REQ-9 — `noExplicitAny` is an error
+> **DEFERRED to F2 (approved 2026-05-26).** Confirmed live `any` in
+> `SplitDataProvider.tsx:243-244` (`j15Matches: any[]`, `j16Matches: any[]`).
+> Flipping to `error` now turns lint red. F2 removes the dead code and the `any`,
+> so REQ-9 lands at the end of F2.
+
 **If** a source file introduces an explicit `any`, **then** Biome **shall** fail the
 check as an **error** (not a warning).
 - *Verify:* `biome.json` sets `noExplicitAny: "error"`; `pnpm lint` enforces it.

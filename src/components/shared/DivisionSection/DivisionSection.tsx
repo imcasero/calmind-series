@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { CrucesBracket } from '@/components/cross/CrucesBracket';
+import { PlayoffBracket } from '@/components/cross/PlayoffBracket';
 import type { Matchup } from '@/lib/types/matches';
 
 interface DivisionSectionProps {
@@ -40,7 +40,7 @@ export function DivisionBracket({
   footerNote,
 }: DivisionBracketProps) {
   return (
-    <CrucesBracket
+    <PlayoffBracket
       title={title}
       subtitle={subtitle}
       matchups={matchups}

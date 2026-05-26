@@ -1,10 +1,11 @@
 'use client';
 
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
 
 export default function AdminPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ export default function AdminPage() {
       return;
     }
 
-    redirect('/admin/dashboard');
+    router.push('/admin/dashboard');
   };
 
   const pixel3dEffect = {

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { CrucesBracket } from '@/components/cross/CrucesBracket';
-import { CrucesDataProvider } from '@/components/divisions/SplitDataProvider/SplitDataProvider';
+import { PlayoffBracket } from '@/components/cross/PlayoffBracket';
+import { PlayoffDataProvider } from '@/components/divisions/SplitDataProvider/SplitDataProvider';
 import {
   DivisionBracket,
   DivisionSection,
@@ -14,7 +14,7 @@ import { ROUTES } from '@/lib/constants/routes';
 import { getDivisionPreview, getSplitByNames } from '@/lib/queries';
 import type { RankingEntry } from '@/lib/types/schemas';
 
-interface CrucesPageProps {
+interface PlayoffPageProps {
   params: Promise<{
     season: string;
     split: string;
@@ -23,7 +23,7 @@ interface CrucesPageProps {
 
 export async function generateMetadata({
   params,
-}: CrucesPageProps): Promise<Metadata> {
+}: PlayoffPageProps): Promise<Metadata> {
   const { season, split } = await params;
   const seasonName = season.toUpperCase();
   const splitName = split.replace('split', 'Split ');
@@ -38,10 +38,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function CrucesPage({ params }: CrucesPageProps) {
+export default async function PlayoffPage({ params }: PlayoffPageProps) {
   const { season, split } = await params;
 
-  // Get split info using the existing query (follows Next.js best practices)
   const splitInfo = await getSplitByNames(season, split);
 
   if (!splitInfo) {
@@ -73,8 +72,8 @@ export default async function CrucesPage({ params }: CrucesPageProps) {
           backText={`${split.toUpperCase()} Standings`}
         />
 
-        <CrucesDataProvider
-          splitId={splitInfo.split.id}
+        <PlayoffDataProvider
+          splitId={splitInfo?.split.id}
           primeraRanks={primeraRanks}
           segundaRanks={segundaRanks}
         >
@@ -123,7 +122,7 @@ export default async function CrucesPage({ params }: CrucesPageProps) {
               </DivisionSection>
             </>
           )}
-        </CrucesDataProvider>
+        </PlayoffDataProvider>
 
         {/* Navigation to J16 */}
         <section className="text-center mt-12 pb-12">

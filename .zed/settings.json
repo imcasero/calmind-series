@@ -1,0 +1,18 @@
+{
+  //"note": "Use the project's Biome (biome.json) for formatting JS/TS so the editor stops fighting `pnpm lint` (single quotes, 80-col). Requires the Biome extension/LSP in Zed. Restart the language server after install.",
+  "format_on_save": "on",
+  "formatter": {
+    "language_server": { "name": "biome" }
+  },
+  "code_actions_on_format": {
+    "source.organizeImports.biome": false,
+    "source.fixAll.biome": false
+  },
+  "languages": {
+    "JavaScript": { "formatter": { "language_server": { "name": "biome" } } },
+    "TypeScript": { "formatter": { "language_server": { "name": "biome" } } },
+    "TSX": { "formatter": { "language_server": { "name": "biome" } } },
+    "JSON": { "formatter": { "language_server": { "name": "biome" } } },
+    "JSONC": { "formatter": { "language_server": { "name": "biome" } } }
+  }
+}

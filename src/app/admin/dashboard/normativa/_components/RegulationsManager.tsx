@@ -4,13 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-interface NormattivaManagerProps {
+interface RegulationsManagerProps {
   currentPdfUrl: string | null;
 }
 
-export default function NormattivaManager({
+export default function RegulationsManager({
   currentPdfUrl,
-}: NormattivaManagerProps) {
+}: RegulationsManagerProps) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -55,14 +55,12 @@ export default function NormattivaManager({
     setSuccess(false);
 
     try {
-      // Usar un nombre fijo para que siempre se sobrescriba
       const fileName = 'normativa_pokemon_calmind_series.pdf';
 
-      // Subir a Supabase Storage (con upsert=true para sobrescribir)
       const { data, error: uploadError } = await supabase.storage
         .from('normativas')
         .upload(`public/${fileName}`, file, {
-          cacheControl: '0', // No cachear para obtener la versión más reciente
+          cacheControl: '0',
           upsert: true,
         });
 
@@ -74,7 +72,6 @@ export default function NormattivaManager({
         throw new Error('No se pudo subir el archivo');
       }
 
-      // Obtener la URL pública
       const { data: publicData } = supabase.storage
         .from('normativas')
         .getPublicUrl(`public/${fileName}`);
@@ -84,7 +81,6 @@ export default function NormattivaManager({
       setCurrentUrl(newUrl);
       setFile(null);
       setSuccess(true);
-      // Limpiar el input
       const fileInput = document.getElementById(
         'pdf-upload',
       ) as HTMLInputElement;
@@ -169,7 +165,8 @@ export default function NormattivaManager({
               <div className="mt-3 p-3 bg-jacksons-purple-700 border-2 border-jacksons-purple-600 rounded text-jacksons-purple-100 text-sm">
                 <strong>Archivo seleccionado:</strong> {file.name}
                 <br />
-                <strong>Tamaño:</strong> {(file.size / 1024 / 1024).toFixed(2)} MB
+                <strong>Tamaño:</strong> {(file.size / 1024 / 1024).toFixed(2)}{' '}
+                MB
               </div>
             )}
           </div>

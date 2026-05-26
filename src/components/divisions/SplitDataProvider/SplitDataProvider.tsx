@@ -55,7 +55,7 @@ export default async function SplitDataProvider({
 /**
  * Enhanced provider for J15 (Los Cruces) page with optimized data fetching
  */
-interface CrucesDataProviderProps {
+interface PlayoffDataProviderProps {
   splitId: string;
   primeraRanks: any[];
   segundaRanks: any[];
@@ -65,12 +65,12 @@ interface CrucesDataProviderProps {
   }) => React.ReactNode;
 }
 
-export async function CrucesDataProvider({
+export async function PlayoffDataProvider({
   splitId,
   primeraRanks,
   segundaRanks,
   children,
-}: CrucesDataProviderProps) {
+}: PlayoffDataProviderProps) {
   // Use the optimized fetch function
   const { leagues, j15Matches } = await fetchSplitData(splitId);
 

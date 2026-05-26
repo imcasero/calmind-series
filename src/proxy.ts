@@ -53,6 +53,6 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = {
+export const proxyConfig = {
   matcher: ['/admin/:path*'],
 };

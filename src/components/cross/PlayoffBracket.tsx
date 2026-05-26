@@ -19,12 +19,12 @@ interface BracketProps {
     away: Team;
     played?: boolean;
   }[];
-  accentColor: string; // e.g., 'var(--color-retro-gold-500)'
-  innerAccentColor: string; // e.g., 'var(--color-retro-gold-400)'
+  accentColor: string;
+  innerAccentColor: string;
   footerNote?: string;
 }
 
-export const CrucesBracket = ({
+export const PlayoffBracket = ({
   title,
   subtitle,
   matchups,

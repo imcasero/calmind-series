@@ -8,9 +8,9 @@ interface ErrorProps {
   reset: () => void;
 }
 
-export default function CrucesError({ error, reset }: ErrorProps) {
+export default function PlayoffError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    console.error('[Cruces Error]', error);
+    console.error('[Playoff Error]', error);
   }, [error]);
 
   return (

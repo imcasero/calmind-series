@@ -22,6 +22,10 @@ export {
   type MatchWithTrainers,
   type ParticipantWithTrainer,
 } from './admin.queries';
+// Archive queries
+export { getArchiveChampions, type SplitChampions } from './archive.queries';
+// Bracket / finals queries
+export { type BracketData, getBracketData } from './bracket.queries';
 // League queries (preferred for UI)
 export {
   type DivisionPreview,
@@ -43,9 +47,14 @@ export {
 export {
   getActiveSeasonWithSplit,
   getAllSeasons,
+  getAllSeasonsWithSplits,
   getSeasonByName,
   getSeasonWithSplits,
   getSplitByNames,
   type SeasonWithActiveSplit,
   type SeasonWithSplits,
 } from './seasons.queries';
+// Tournament / phase queries
+export { getCurrentRound } from './tournament.queries';
+// Trainer queries
+export { getTrainerById, type TrainerProfileInfo } from './trainers.queries';

@@ -1,10 +1,8 @@
 import Link from 'next/link';
 import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
-import { getActiveSeasonWithSplit } from '@/lib/queries/seasons.queries';
 
-export default async function Footer() {
+export default function Footer() {
   const currentYear = new Date().getFullYear();
-  const activeSeason = await getActiveSeasonWithSplit();
 
   return (
     <footer className="mt-auto w-full relative bg-jacksons-purple-950/60 backdrop-blur-sm border-t-[3px] border-retro-cyan-500/30">
@@ -25,17 +23,12 @@ export default async function Footer() {
 
           {/* Links Section */}
           <div className="flex flex-col md:flex-row gap-4 xs:gap-6 items-center">
-            {activeSeason?.name && activeSeason?.activeSplit?.name && (
-              <Link
-                href={ROUTES.season(
-                  activeSeason.name,
-                  activeSeason.activeSplit.name,
-                )}
-                className="text-sm xs:text-base text-white/70 hover:text-retro-gold-400 transition-all duration-300 uppercase tracking-wide font-semibold hover:drop-shadow-[0_0_8px_rgba(255,237,78,0.3)]"
-              >
-                Temporada Actual
-              </Link>
-            )}
+            <Link
+              href={ROUTES.hub}
+              className="text-sm xs:text-base text-white/70 hover:text-retro-gold-400 transition-all duration-300 uppercase tracking-wide font-semibold hover:drop-shadow-[0_0_8px_rgba(255,237,78,0.3)]"
+            >
+              Hub
+            </Link>
             <a
               href={EXTERNAL_ROUTES.NORMATIVA_PDF}
               target="_blank"

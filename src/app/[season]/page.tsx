@@ -1,84 +1,10 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { Navbar, PageHeader } from '@/components/shared';
+import { redirect } from 'next/navigation';
 import { ROUTES } from '@/lib/constants/routes';
-import { getSeasonByName } from '@/lib/queries';
 
-interface SeasonPageProps {
-  params: Promise<{
-    season: string;
-  }>;
-}
-
-export async function generateMetadata({
-  params,
-}: SeasonPageProps): Promise<Metadata> {
-  const { season } = await params;
-  const seasonName = season.toUpperCase();
-
-  return {
-    title: seasonName,
-    description: `Clasificaciones y participantes de la temporada ${seasonName} de Pokemon Calmind Series. Competición amateur de Pokemon.`,
-    openGraph: {
-      title: `${seasonName} - Pokemon Calmind Series`,
-      description: `Temporada ${seasonName} de la competición amateur Pokemon Calmind Series.`,
-    },
-  };
-}
-
-export default async function SeasonPage({ params }: SeasonPageProps) {
-  const { season } = await params;
-
-  // Get season by URL param name (single query with joins)
-  const seasonData = await getSeasonByName(season);
-
-  if (!seasonData) {
-    notFound();
-  }
-
-  const { splits } = seasonData;
-
-  return (
-    <>
-      <Navbar />
-      <div className="max-w-4xl mx-auto px-2 xs:px-3 sm:px-4 py-8">
-        {/* Season Header */}
-        <PageHeader
-          season={season}
-          title={season.toUpperCase()}
-          subtitle="Pokemon Calmind Series"
-          showDecorativeLines={false}
-        />
-
-        {/* Splits Grid */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 xs:gap-6">
-          {splits.map((split) => (
-            <Link
-              key={split.id}
-              href={ROUTES.season(season, split.name)}
-              className={`retro-border border-3 xs:border-4 p-4 xs:p-6 text-center transition-transform hover:-translate-y-1 ${
-                split.is_active
-                  ? 'border-retro-gold-500 bg-jacksons-purple-800'
-                  : 'border-jacksons-purple-600 bg-jacksons-purple-900/50 opacity-60'
-              }`}
-            >
-              <h2 className="text-retro-gold-400 font-bold text-lg xs:text-xl mb-2">
-                {split.name}
-              </h2>
-              {split.is_active ? (
-                <span className="inline-block bg-retro-cyan-600 text-white text-[10px] xs:text-xs px-2 py-1 uppercase tracking-wide">
-                  Activo
-                </span>
-              ) : (
-                <span className="inline-block bg-jacksons-purple-600 text-white/60 text-[10px] xs:text-xs px-2 py-1 uppercase tracking-wide">
-                  Proximamente
-                </span>
-              )}
-            </Link>
-          ))}
-        </section>
-      </div>
-    </>
-  );
+/**
+ * Legacy season overview — retired by the redesign (FR11). Seasons now live in the
+ * time-machine archive.
+ */
+export default function LegacySeasonPage() {
+  redirect(ROUTES.archive);
 }

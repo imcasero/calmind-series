@@ -10,6 +10,17 @@ export const ROUTES = {
   finals: (season: string, split: string) => `/${season}/${split}/final`,
   division: (season: string, split: string, division: 'primera' | 'segunda') =>
     `/${season}/${split}/${division}`,
+  // Pixel redesign — flattened /hub IA (FR2+) and time-machine archive (FR9)
+  hub: '/hub',
+  hubStandings: '/hub/clasificacion',
+  hubCalendar: '/hub/calendario',
+  hubRoster: '/hub/entrenadores',
+  hubTrainer: (trainerId: string) => `/hub/entrenador/${trainerId}`,
+  hubBracket: '/hub/bracket',
+  hubOlimpo: '/hub/olimpo',
+  archive: '/archivo',
+  archiveDetail: (season: string, split: string) =>
+    `/archivo/${season}/${split}`,
 } as const;
 
 /**

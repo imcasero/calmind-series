@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Press_Start_2P } from 'next/font/google';
+import { JetBrains_Mono, Press_Start_2P, VT323 } from 'next/font/google';
 import { Footer } from '@/components/shared';
 import './globals.css';
 
@@ -7,6 +7,18 @@ const pressStart2P = Press_Start_2P({
   weight: '400',
   subsets: ['latin'],
   variable: '--font-pokemon',
+});
+
+// Pixel redesign (FR0): retro body + numeric fonts.
+const vt323 = VT323({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-vt323',
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains',
 });
 
 export const metadata: Metadata = {
@@ -56,7 +68,9 @@ export default function RootLayout({
       <head>
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
       </head>
-      <body className={pressStart2P.variable}>
+      <body
+        className={`${pressStart2P.variable} ${vt323.variable} ${jetBrainsMono.variable}`}
+      >
         <div className="clouds-container">
           <div className="cloud cloud-1" />
           <div className="cloud cloud-2" />

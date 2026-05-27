@@ -14,7 +14,8 @@
       "!**/build",
       "!**/node_modules",
       "!**/next-env.d.ts",
-      "!**/pnpm-lock.yaml"
+      "!**/pnpm-lock.yaml",
+      "!**/docs/design_handoff_calmind_pixel"
     ]
   },
   "formatter": {

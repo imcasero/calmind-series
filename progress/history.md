@@ -229,3 +229,431 @@ Review initiative.
 - REQ-5: confirm whether Next 16.1.1 PPR is `experimental.ppr` or Cache Components (`cacheComponents`) before editing `next.config.ts`.
 
 **Next action:** present `specs/` (F0+F1) to the user for approval, then hand to `implementer`.
+
+---
+
+## 2026-05-27 — Pixel redesign initiative + FR0 shipped
+
+New initiative `pixel-redesign` from `docs/design_handoff_calmind_pixel/` (Claude
+Design handoff). Analysed the bundle against the real codebase + Supabase schema.
+
+**Key findings (analysis)**
+- The handoff README assumes **Vite + React Router + client hooks + Tailwind v3**;
+  the repo is **Next 16 App Router + RSC + Tailwind v4**. All stack guidance translated.
+- Data gaps vs Supabase: trainers have **no** real name / region / ELO / color;
+  no `current_round`/`tournament_state`; News, Story Beat, Olimpo countdown are
+  fictional in the prototype. `matches.metadata` (jsonb) shape unknown.
+- Three conflicting `match_tag` vocabularies (constants/matches.ts vs
+  TOURNAMENT_FLOW.md vs handoff) — flagged for reconciliation in FR7.
+- Tension: existing `lives` survival mechanic vs design's position-based zones.
+
+**Decisions locked with user (2026-05-27)**
+1. Routing → full new IA (`/hub`, `/hub/*`, `/archivo/:season/:split`); legacy
+   `[season]/[split]` becomes archive detail (FR9, with 301s).
+2. Trainer data → nickname + avatar + bio only; **color hashed from id**. No ELO/region/name.
+3. `current_round` → derived from matches (max played round). No DB change.
+4. Editorial → auto-generated from data; countdown hidden when no date. No new tables.
+
+**Persisted**
+- `features.json`: added `initiatives` map + FR0–FR10 track. activeBatch → `FR1`
+  (FR0 done). Architecture-review F2–F6 untouched.
+- `specs/redesign/{requirements,design,tasks}.md` — FR0 batch (kept separate from
+  the root F0/F1 specs to avoid coupling initiative lifecycles).
+
+**FR0 — Visual foundation (DONE, `./init.sh` full green)**
+- **Root cause fixed:** the handoff prototype JSX/CSS made `biome check .` report 54
+  errors (src alone = 0). Excluded `docs/design_handoff_calmind_pixel` in `biome.json`
+  (folder pattern, no `/**` — `useBiomeIgnoreFolder`).
+- `theme.css`: namespaced `--color-px-*` palette + `--font-pixel/retro/num` tokens.
+- `layout.tsx`: load VT323 + JetBrains Mono via next/font; vars on `<body>`.
+- `src/app/styles/pixel.css`: scanlines/vignette/starfield/crt/blink/glitch/marquee/
+  pixel-frame/borders/card/badge/btn/hpbar/title-stack — **all scoped under `.pixel-root`
+  or via opt-in class names**, so legacy purple pages are unchanged. Imported in globals.css.
+- `components/shared/ui/pixel/`: `PixelGrid` (shared ASCII→SVG renderer), icons
+  (`PixelIcons`), `MonsterSprite`, `TrainerAvatar`, `PixelCard`, `PixelBadge`,
+  `PixelButton`, barrel `index.ts`. All RSC (hover is CSS), typed, lint-clean.
+- Verification: `./init.sh` full = typecheck clean · lint 0 errors (35 pre-existing F2
+  warnings remain) · production build succeeds · all existing routes build unchanged.
+
+**Open / deferred to later FRs**
+- FR1: `phase.ts` (`getPhase`), `getCurrentRound(splitId)`, `trainerColor(id)` hash, PhaseProvider.
+- FR3/FR4: decide how `lives` coexists with position zones in standings.
+- FR5: per-round date source.
+- FR7: reconcile the 3 `match_tag` vocabularies against real DB data.
+
+**Next action:** spec + implement FR1 (phase machine + active context) when the user
+gives the go.
+
+---
+
+## 2026-05-27 — FR1 shipped (phase machine + active context)
+
+Spec appended to `specs/redesign/` (FR1 batch). `./init.sh` full green.
+
+**Correction logged:** `current_round` derives from the max `played` round across
+**all** match groups, not just `regular` (FR0 spec text said "regular" — that would
+cap at 14 and the phase could never reach J15/J16/Olympus). User's locked decision
+("derive from matches, max played round") honored.
+
+**Shipped**
+- `src/lib/utils/phase.ts`: `getPhase` (OFFSEASON/REGULAR/FINALS_J15/FINALS_J16/OLYMPUS,
+  Spanish labels, `--color-px-*` accents, glyph icons), `isFinalsUnlocked`,
+  `progressPct`, `TOTAL_ROUNDS=16`, `FINALS_START_ROUND=15`. Pure, JSX-free.
+- `src/lib/queries/tournament.queries.ts`: `getCurrentRound(splitId)` — `react.cache`,
+  max played round (all groups), returns 0 + logs `[getCurrentRound] Error:` on failure.
+  Exported from `queries/index.ts`.
+- `src/lib/utils/trainerColor.ts`: deterministic id → 8-color palette hash (raw hex,
+  since the palette has orange/purple outside the px token set; feeds `TrainerAvatar`).
+- `src/components/providers/PhaseProvider.tsx` (`'use client'`): context + `usePhase()`
+  (throws outside provider). Holds round in state seeded from `initialRound`, exposes
+  setter for FR10 realtime, `useMemo` derivations, `useEffect` resync on split switch.
+  NOT in the `shared` barrel — keeps the client boundary explicit.
+
+**Known limitation (note, not a bug):** finals nav will unlock only once a J15 result
+is recorded, not when the admin generates J15 fixtures. Refine to "J15 matches exist"
+in FR7 when the bracket consumes match rows.
+
+**Verification:** `./init.sh` full = typecheck clean · lint 0 errors (35 pre-existing
+F2 warnings) · production build succeeds · all existing routes build unchanged.
+
+**Next action:** FR2 (TopBar shell + Season/Split chip + phase chip + marquee + nav
+gating) when the user gives the go. FR2 is the first FR that renders visible UI and
+consumes `PhaseProvider` + `getCurrentRound`.
+
+---
+
+## 2026-05-27 — FR2 shipped (redesign shell on /hub)
+
+First visible UI. New `/hub` segment with a shell layout; FR3 fills the dashboard.
+`./init.sh` full green; `/hub` in the route manifest.
+
+**Shipped**
+- `src/app/hub/layout.tsx` (RSC): parallel `getActiveSeasonWithSplit` +
+  `getCurrentRound` + `getAllSeasonsWithSplits` + `getDivisionPreview`; wraps content
+  in `PhaseProvider` → `.pixel-root .scanlines` → `TopBar` + `MarqueeStrip` + `<main>`.
+  Auto-generates marquee items (phase, round, D1/D2 leaders, finals-lock).
+- `src/app/hub/page.tsx`: FR3 placeholder.
+- `getAllSeasonsWithSplits()` (seasons.queries.ts, one query) + export.
+- `ROUTES` extended with hub + archive routes; `HUB_NAV` constant.
+- `components/shared/layout/hub/`: `TopBar` (sticky, scroll→backdrop), `SeasonSplitChip`
+  (dropdown, active→/hub vs past→/archivo), `PhaseChip` (`usePhase`, progress), `HubNav`
+  (`usePathname` active + `usePhase` gating, 🔒 + tooltip), `MarqueeStrip` (RSC).
+- `.pixel-root` gained `width: 100%` so it spans the flex-centered `body`.
+
+**Design notes**
+- Tailwind v4 generates utilities from FR0 tokens (`bg-px-*`, `text-px-*`,
+  `border-px-*`, `font-pixel/retro/num`) — used directly; `pixel.css` keeps the
+  composite patterns (`pixel-btn*`, `.marquee-track`).
+- `clouds.css:111` forces `body > *` above the clouds; `.pixel-root` is opaque, so it
+  covers them with no root-layout change. The legacy `Footer` still shows below `/hub`
+  (interim) — pixel footer + clouds suppression deferred to the legacy→/archivo migration.
+
+**Interim (not bugs)**
+- Only `/hub` resolves; other nav targets (clasificacion/calendario/bracket/olimpo/
+  archivo) 404 until FR4/FR5/FR7/FR8/FR9. Redesign isn't linked from the live site yet.
+
+**Verification:** `./init.sh` full = typecheck clean · lint 0 errors (35 pre-existing
+F2 warnings) · build succeeds · `ƒ /hub` in manifest · legacy routes unchanged.
+
+**Next action:** FR3 — the Hub master dashboard (phase banner, story beat, dual live
+standings with zones + streak pips, projected bracket teaser, right column feed,
+news rail). Consumes `getDivisionPreview` + `getMatchesByRound` + `usePhase` and the
+FR0 primitives. It's the biggest screen and the first DECIDE point (lives vs zones).
+
+---
+
+## 2026-05-27 — FR3 shipped (Hub master dashboard)
+
+`./init.sh` full green; 14 pages built. Replaced the FR2 placeholder.
+
+**DECIDE resolved (user, 2026-05-27):** standings show position-based zones for the
+row accent **and** lives as a secondary `♥` indicator (not zones-only, not lives-first).
+
+**Architecture note:** FR3 sections are all Server Components fed by server-resolved
+data; phase-dependent visuals read the server `currentRound`/`phase` rather than
+`usePhase`. Live (no-reload) repaint is deferred to FR10 holistically — keeps FR3
+RSC-first and faster.
+
+**Shipped**
+- `src/lib/utils/standings.ts`: `zoneForPosition` (1–4/5–6/7–8 → gold/neutral/red),
+  `ZONES`, `recentStreak` (W/L from played matches). Zone thresholds assume 8-player
+  divisions (the league format).
+- `src/lib/utils/editorial.ts`: `buildStoryBeat`, `buildNews` — derive headlines from
+  standings (locked editorial decision; no tables/constants).
+- `src/components/hub/`: `PhaseBanner` (16-cell progress strip), `StoryBeat`,
+  `StandingsLive` (dual panels, zones + streak + `♥` lives, rows → trainer profile),
+  `ProjectedBracketTeaser` (#1v#2 + projected Olimpo line), `HubRightColumn` (live feed
+  / last results with crown / Olympus projection card w/ starfield + MonsterSprites),
+  `NewsRail`, barrel.
+- `app/hub/page.tsx`: composes sections in a 1fr/340px grid; graceful offseason empty
+  state when no active split.
+
+**Interim (not bugs)**
+- Standing rows + teaser link to `/hub/entrenador/:id` and `/hub/bracket` (FR6/FR7) —
+  404 until those FRs.
+- Olimpo projection uses primera pos-7 vs segunda #1 (rough, explicitly "proyectado").
+
+**Verification:** `./init.sh` full = typecheck clean · lint 0 errors (35 pre-existing
+F2 warnings) · build succeeds (14 pages) · legacy routes unchanged.
+
+**Next action:** FR4 — full standings page `/hub/clasificacion` (both divisions,
+PG/PP derived from `player_match_performance`, streak, zone cards; ELO/region omitted).
+
+---
+
+## 2026-05-27 — FR4 shipped (Clasificación /hub/clasificacion)
+
+`./init.sh` full green; `/hub/clasificacion` in manifest (15 pages).
+
+**Decision:** PG/PP derived from match set-scores (`winLossRecord`) rather than a new
+`player_match_performance` query — the match rows are already fetched and give the
+same win/loss result, avoiding an extra round-trip. ELO/region/real-name columns
+dropped (no DB backing, per locked decision).
+
+**Shipped**
+- `standings.ts`: `winLossRecord`, `StandingRowVM`, `buildStandingRows`.
+- `components/hub/`: `HubPageHeader` (reusable eyebrow+title), `ZoneCards`,
+  `ClasificacionView` (`'use client'` tabs + full table; ★ #1, avatar+nickname,
+  PG/PP/PT, 5 streak pips, zone chip; rows → `/hub/entrenador/:id`).
+- `app/hub/clasificacion/page.tsx` (server: builds both divisions' rows).
+
+**Verification:** typecheck clean · lint 0 errors (35 pre-existing) · build (15 pages) ·
+legacy routes unchanged.
+
+**Next action:** FR5 — calendar `/hub/calendario` (round timeline + per-round match
+listings from `getMatchesByRound`). DECIDE point: per-round date source (derive vs omit).
+
+---
+
+## 2026-05-27 — FR5 shipped (Calendario /hub/calendario)
+
+`./init.sh` full green; `/hub/calendario` in manifest (16 pages).
+
+**DECIDE resolved (default, flagged to user):** the `matches` table has no scheduled
+date per round (only `created_at`). Rather than fabricate dates, the calendar shows
+the known weekly cadence ("Domingo · 18:00 CEST") + jornada + phase. Real dates would
+need a `scheduled_at` column — offered to the user as a future enhancement.
+
+**Shipped**
+- `components/hub/CalendarView.tsx` (`'use client'`): horizontal 16-round timeline
+  (phase-colored, current blinks, future dimmed), focus-a-round state, detail panel
+  with D1/D2 match columns (color dot + handle, score or "vs", crown on winner),
+  phase legend. Finals rounds (no regular matches) link to the bracket.
+- `app/hub/calendario/page.tsx` (server: `getMatchesByRound` + `getCurrentRound`).
+
+**Verification:** typecheck clean · lint 0 errors (35 pre-existing) · build (16 pages) ·
+legacy routes unchanged.
+
+**Next action:** FR6 — roster `/hub/entrenadores` + profile `/hub/entrenador/[id]`
+(from `getParticipantsBySplit` + per-trainer matches; team-reveal slots stay locked).
+
+---
+
+## 2026-05-27 — FR6 shipped (Roster + Profile)
+
+`./init.sh` full green; `/hub/entrenadores` + `/hub/entrenador/[id]` in manifest (17 pages).
+
+**Shipped**
+- `queries/trainers.queries.ts`: `getTrainerById` (nickname/avatar/bio) + export.
+- `standings.ts`: `spriteVariant`, `buildRosterCards`/`RosterCardVM`,
+  `trainerRecentMatches`/`RecentMatchVM`.
+- `components/hub/RosterView.tsx` (`'use client'`): TODOS/D1/D2 filter pills + card grid
+  (division badge, tinted MonsterSprite, nickname, PG/PP/PT/J footer; card border in the
+  trainer's signature color, hover lift).
+- `components/hub/TrainerProfile.tsx` (RSC): tinted hero + MonsterSprite, division/
+  position/leader badges, 5 stat tiles (PG/PP/PT/Winrate/Vidas), locked team slots
+  ("?", revealed J16), recent history with W/L stripe, real `trainers.bio`.
+- `app/hub/entrenadores/page.tsx` + `app/hub/entrenador/[id]/page.tsx` (dynamic;
+  `generateMetadata`; `notFound()` when the trainer id is unknown).
+
+**Adjustments:** ELO/region/real-name omitted (no DB). Team-reveal slots locked — no
+`matches.metadata` shape defined. Profile gracefully degrades if the trainer isn't in
+the active split (no division/stats, still shows bio).
+
+**Verification:** typecheck clean · lint 0 errors (35 pre-existing) · build (17 pages) ·
+legacy routes unchanged.
+
+**Next action:** FR7 — Bracket `/hub/bracket` (the most complex screen). First task is
+the `match_tag` reconciliation DECIDE: the working code in `matchService.ts` uses
+`semi_1/2`, `survival_1/2`, `grand_final`, `3rd_place`, `relegation_battle`… while the
+handoff/TOURNAMENT_FLOW use other names. Need to confirm the real DB tags before wiring
+official matches.
+
+---
+
+## 2026-05-27 — FR7 shipped (Bracket /hub/bracket)
+
+`./init.sh` full green; `/hub/bracket` in manifest (18 pages).
+
+**DECIDE resolved (match_tag vocabulary):** the live DB tags are what the existing
+`matchService` + `SplitDataProvider` finals page consume — confirmed by reading that
+working code, not the handoff/TOURNAMENT_FLOW docs. Canonical set:
+- J15 (both divisions): `semi_1`, `semi_2`, `survival_1`, `survival_2`.
+- J16 D1: `grand_final`, `3rd_place`, `relegation_battle`, `honor_battle`.
+- J16 D2: `segunda_final`, `opportunity`, `last_chance`, `honor_segunda`.
+The handoff names (`third_place`, `fifth_place`, `relegation_final`, `olympus`,
+`promotion_playoff`) are NOT in the DB. FR7 reuses the proven matchService helpers.
+
+**Shipped**
+- `queries/bracket.queries.ts`: `getBracketData(splitId)` — leagues + rounds 15/16
+  matches with trainer joins (typed via `unknown` cast, no `any`); + export.
+- `services/bracketService.ts`: `buildDivisionBracket(ranks, j15, j16, leagueId, div)`
+  — division-parameterized tag map; reuses `buildJ15Matchups`/`getFromJ15Match`/
+  `getJ16Match`; degrades to projected (rankings) when no matches.
+- `components/hub/BracketView.tsx` (RSC): per-division TOP-4 (gold) + BOTTOM-4 (red)
+  lanes, J15→J16 columns with `PixelArrow` connectors, projected/official badges,
+  winner highlight + crown, and the Olympus junction (starfield, → /hub/olimpo).
+- `app/hub/bracket/page.tsx`.
+
+**Interim:** Olympus junction is a teaser → /hub/olimpo; exact competitor derivation
+(D1 survivor vs D2 champion — the handoff's corrected narrative vs the live app's
+"perdedor relegation vs ganador opportunity") is deferred to FR8. Finals (J16) winner
+rows have no trainerId from matchService, so no color swatch/link on those (semis do).
+
+**Verification:** typecheck clean · lint 0 errors (35 pre-existing) · build (18 pages) ·
+legacy routes unchanged.
+
+**Next action:** FR8 — Olimpo `/hub/olimpo` (hero + countdown hidden w/o date,
+face-off, el camino, stakes, past-Olimpos archive). DECIDE: exact Olympus competitor
+derivation from finals winners.
+
+---
+
+## 2026-05-27 — FR8 shipped (El Olimpo /hub/olimpo)
+
+`./init.sh` full green; `/hub/olimpo` in manifest (19 pages).
+
+**Decisions/adjustments:** countdown hidden (no event date in DB); ELO/motto/títulos
+omitted (no data). Competitors are PROJECTED from standings (D1 survivor ≈ pos-7, D2
+champion ≈ #1) — consistent with the hub/teaser projection. Exact official-winner
+derivation is DEFERRED: the Olympus narrative is contested (handoff = D1 relegation-final
+winner vs D2 grand-final winner; live app = relegation loser vs opportunity winner) and
+no confirmed `olympus` match tag exists in the live DB tag set. Past-Olimpos archive grid
+omitted for the same reason.
+
+**Shipped**
+- `components/hub/OlimpoView.tsx` (RSC): starfield hero + OLIMPO wordmark + projection
+  badge; face-off ChampionCards (role, MonsterSprite, Pos/PT/WR/Vidas) flanking a
+  lightning VS; El Camino RoadCards (J1–14/J15/J16/POST); Stakes cards (Ascenso/Defensa).
+- `app/hub/olimpo/page.tsx` (builds projected champion VMs).
+
+**Verification:** typecheck clean · lint 0 errors (35 pre-existing) · build (19 pages) ·
+legacy routes unchanged.
+
+**Next action:** FR9 — Archive `/archivo` + `/archivo/[season]/[split]` (derived from
+seasons/splits + finals; 301 redirects from legacy `[season]/[split]`,`/cruces`,`/final`).
+Open question raised by user: landing `/` reskin is not in FR0–FR10 — propose FR11.
+
+---
+
+## 2026-05-27 — FR11 added to backlog (Landing + go-live)
+
+User asked when the landing `/` gets reworked — it was missing from FR0–FR10. Added
+**FR11 — Landing + go-live**: reskin `/`, point primary nav to /hub, 301-redirect legacy
+routes to /archivo, pixel footer. Scheduled LAST (depends on FR9) so redirects have a
+destination. User chose order: finish FR9 → FR10 → then FR11.
+
+## 2026-05-27 — FR9 shipped (Archivo)
+
+`./init.sh` full green; `/archivo` + `/archivo/[season]/[split]` in manifest (20 pages).
+
+**Refactor:** extracted the shell into `components/shared/layout/hub/PixelShell.tsx`
+(data + PhaseProvider + TopBar + marquee + main). Both `app/hub/layout.tsx` and the new
+`app/archivo/layout.tsx` delegate to it, so /archivo carries the same TopBar nav.
+
+**Shipped**
+- `queries/archive.queries.ts`: `getArchiveChampions()` — one query, all `grand_final`
+  (D1) + `segunda_final` (D2) winners → `Map<splitId, {d1,d2}>`. + export.
+- `components/hub/ArchiveView.tsx` (RSC): seasons newest-first; active split card
+  (● EN CURSO → ENTRAR AL HUB) vs past split card (champions + VER SPLIT → detail).
+- `app/archivo/page.tsx` (builds season/split VMs with champions + active flag).
+- `app/archivo/[season]/[split]/page.tsx`: champion panels (D1/D2) + final podium
+  (top-3 each, via `getDivisionPreview` of the past split). `notFound()` if unresolved.
+
+**Decisions/adjustments:** no `olympus` match in DB → no cross-league winner in the
+archive (champions only). Season signature color omitted (no DB) — neutral border.
+**301 redirects DEFERRED to FR11** (the go-live), so the legacy `[season]/[split]`,
+`/cruces`, `/final` keep working while the redesign is built in isolation.
+
+**Build cache note:** a stale `.next/dev/types/validator.ts` (from an earlier `pnpm dev`)
+broke `tsc` with a typed-routes mismatch on `/archivo`. Fixed by `rm -rf .next` before
+the guardian; the route itself is valid.
+
+**Verification:** typecheck clean · lint 0 errors (35 pre-existing) · build (20 pages) ·
+legacy routes unchanged.
+
+**Next action:** FR10 — Realtime + polish (Supabase subscriptions on matches/rankings →
+update PhaseProvider round without reload; scrollTo(0,0) on route change; polish pass).
+
+---
+
+## 2026-05-27 — FR10 shipped (Realtime + polish)
+
+`./init.sh` full green; 20 pages.
+
+**Shipped**
+- `components/shared/layout/hub/ShellClientEffects.tsx` (`'use client'`, renders null):
+  scroll-to-top on `usePathname` change; Supabase Realtime channel on `matches` +
+  `league_participants` → `router.refresh()`, which re-runs the RSC tree and re-seeds
+  `PhaseProvider.initialRound`, so the phase + standings + feed mutate live without a
+  reload (README §Realtime). Mounted in `PixelShell`.
+- `prefers-reduced-motion` already neutralizes the stepped animations (FR0 pixel.css).
+
+**Lint note:** `useExhaustiveDependencies` flagged `pathname` as the scroll-trigger dep;
+kept it with an explicit `biome-ignore` (removing it would break the behavior).
+
+**Verification:** typecheck clean · lint 0 errors (35 pre-existing) · build (20 pages).
+
+**Status: FR0–FR10 DONE.** The full pixel redesign exists in isolation under /hub +
+/archivo; the live site (`/`, `[season]/[split]`, `/cruces`, `/final`) is untouched and
+nothing links to the redesign yet.
+
+**Next action:** FR11 — Landing + go-live. Reskin `/`, point nav to /hub, 301-redirect
+legacy routes. The redirect/retirement strategy needs a user decision (hard-to-reverse,
+outward-facing) before executing.
+
+---
+
+## 2026-05-27 — FR11 shipped (Landing + go-live) — PIXEL REDESIGN COMPLETE
+
+User chose "corte completo" (full cutover) and to proceed without a prior visual review.
+`./init.sh` full green; 20 pages.
+
+**Shipped**
+- `components/landing/BattleScreen.tsx` (`'use client'`): animated Game Boy battle text
+  (brand moment, README §Fidelity), data-driven names.
+- `components/landing/PixelLanding.tsx` (RSC): hero (badges, CALMIND SERIES wordmark,
+  CTAs, live stats, Game Boy device) · snapshot (D1/D2 leaders + D1 exile → trainer) ·
+  format brief (4 phase cards + scoring) · Olimpo teaser · Join CTA.
+- `app/page.tsx`: replaced the legacy home with the pixel landing (own `.pixel-root`,
+  no TopBar — slim brand entry; degrades gracefully with no active split).
+- Footer: link now → /hub (dropped the unused active-season fetch).
+
+**Go-live cutover (legacy routes retired → redirects):**
+- `app/[season]/[split]/page.tsx` → active split → /hub, past → /archivo/:season/:split.
+- `app/[season]/[split]/cruces` + `final` → active → /hub/bracket, past → archivo.
+- `app/[season]/page.tsx` → /archivo.
+- **Used temporary `redirect()` (307), not permanent (308/301):** a given
+  `[season]/[split]` URL's correct target flips from /hub to /archivo when the split
+  stops being active, so a permanent (cacheable) redirect would be wrong. Noted for the
+  user (they asked for "301"; temporary is the correct semantics here).
+
+**Deferred polish (not blocking):** pixel-styled global Footer (still the legacy purple
+footer at the bottom of pixel pages; replacing it touches admin). Legacy components
+(Hero/TournamentFormat/AboutCalmind/CurrentSeason/Navbar + divisions/cross bracket
+components) are now dead code — cleanup belongs to architecture-review F2/F6, not here.
+
+**Verification:** typecheck clean · lint 0 errors (30 pre-existing F2 warnings) ·
+build (20 pages) · admin untouched.
+
+---
+
+## 2026-05-27 — Pixel redesign initiative DONE (FR0–FR11)
+
+The full redesign from `docs/design_handoff_calmind_pixel/` shipped across FR0–FR11,
+each batch verified green by `./init.sh`. The site now boots into the pixel landing at
+`/`, runs the phase-aware Hub at `/hub/*`, the time-machine at `/archivo/*`, and redirects
+all legacy public routes. `activeBatch` cleared. Remaining non-redesign work is the
+architecture-review backlog (F2–F6), a separate initiative, still pending.
+
+Working tree is uncommitted (user requested no commits during the build).

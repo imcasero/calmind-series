@@ -50,6 +50,43 @@
   --color-retro-gold-700: #ff8f00;
   --color-retro-gold-800: #ff6f00;
   --color-retro-gold-900: #e65100;
+
+  /* ============================================================
+     PIXEL REDESIGN TOKENS (FR0) — docs/design_handoff_calmind_pixel
+     Namespaced `px-` to avoid clobbering Tailwind defaults
+     (a bare `--color-base` would generate the reserved `text-base`
+     utility). Hex values copied verbatim from the handoff.
+     Opt-in only: consumed within a `.pixel-root` container (pixel.css).
+     ============================================================ */
+  /* Backgrounds */
+  --color-px-void: #07021a;
+  --color-px-deep: #0d0420;
+  --color-px-base: #1a0a3c;
+  --color-px-elev: #2d1654;
+  --color-px-elev2: #4b2c89;
+  /* Ink */
+  --color-px-ink: #f5e9ff;
+  --color-px-ink-soft: #d4b8f5;
+  --color-px-ink-dim: #9d7bc4;
+  --color-px-ink-faint: #6b4f95;
+  /* Accents — vivid 16-bit palette */
+  --color-px-magenta: #ff3df8;
+  --color-px-magenta-2: #c025c4;
+  --color-px-cyan: #3df8ff;
+  --color-px-cyan-2: #20a3c4;
+  --color-px-gold: #ffd83d;
+  --color-px-gold-2: #c49520;
+  --color-px-danger: #ff3d6e;
+  --color-px-success: #3dff8a;
+  --color-px-lime: #b6ff3d;
+  /* Borders */
+  --color-px-border: #6b3fb8;
+  --color-px-border-hi: #a774ff;
+
+  /* Pixel font tokens (next/font variables wired in layout.tsx) */
+  --font-pixel: var(--font-pokemon);
+  --font-retro: var(--font-vt323), "JetBrains Mono", monospace;
+  --font-num: var(--font-jetbrains), monospace;
 }
 
 :root {

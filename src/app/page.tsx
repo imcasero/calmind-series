@@ -1,36 +1,83 @@
-import { AboutCalmind } from '@/components/home/AboutCalmind/AboutCalmind';
-import { CurrentSeason } from '@/components/home/CurrentSeason/CurrentSeason';
-import { Hero } from '@/components/home/Hero/Hero';
-import { TournamentFormat } from '@/components/home/TournamentFormat/TournamentFormat';
-import { Navbar } from '@/components/shared';
+import {
+  type LandingSnapVM,
+  type LandingVM,
+  PixelLanding,
+} from '@/components/landing/PixelLanding';
+import {
+  getActiveSeasonWithSplit,
+  getAllSeasonsWithSplits,
+  getCurrentRound,
+  getDivisionPreview,
+  getMatchesByRound,
+} from '@/lib/queries';
+import type {
+  DivisionPreview,
+  MatchEntry,
+  RankingEntry,
+} from '@/lib/types/schemas';
+import { getPhase } from '@/lib/utils/phase';
+import { spriteVariant, winLossRecord } from '@/lib/utils/standings';
+import { trainerColor } from '@/lib/utils/trainerColor';
 
-import { getActiveSeasonWithSplit } from '@/lib/queries';
+function toSnap(
+  entry: RankingEntry | undefined,
+  matches: MatchEntry[],
+): LandingSnapVM | null {
+  if (!entry) {
+    return null;
+  }
+  const { pg, pp } = winLossRecord(entry.trainerId, matches);
+  return {
+    trainerId: entry.trainerId,
+    nickname: entry.nickname,
+    color: trainerColor(entry.trainerId),
+    variant: spriteVariant(entry.trainerId),
+    pt: entry.totalPoints,
+    pg,
+    pp,
+  };
+}
 
 export default async function HomePage() {
-  const seasonInfo = await getActiveSeasonWithSplit();
+  const [seasonInfo, seasons] = await Promise.all([
+    getActiveSeasonWithSplit(),
+    getAllSeasonsWithSplits(),
+  ]);
+  const split = seasonInfo?.activeSplit ?? null;
+
+  let currentRound = 0;
+  let preview: DivisionPreview = { primera: [], segunda: [] };
+  let allMatches: MatchEntry[] = [];
+
+  if (split) {
+    const [round, divisionPreview, matchesByRound] = await Promise.all([
+      getCurrentRound(split.id),
+      getDivisionPreview(split.id),
+      getMatchesByRound(split.id),
+    ]);
+    currentRound = round;
+    preview = divisionPreview;
+    allMatches = matchesByRound.flatMap((r) => r.matches);
+  }
+
+  const phase = getPhase(currentRound);
+  const splitsCount = seasons.reduce((acc, s) => acc + s.splits.length, 0);
+
+  const vm: LandingVM = {
+    seasonName: seasonInfo?.name ?? 'Calmind',
+    splitName: split?.name ?? '—',
+    currentRound,
+    phaseLabel: phase.label,
+    phaseColor: phase.color,
+    splitsCount,
+    d1Leader: toSnap(preview.primera[0], allMatches),
+    d2Leader: toSnap(preview.segunda[0], allMatches),
+    d1Exile: toSnap(preview.primera.at(-1), allMatches),
+  };
 
   return (
-    <>
-      <Navbar />
-      <div className="relative overflow-hidden">
-        {/* Background Aesthetic Decorations - matching cruces/final pages */}
-        <div className="fixed inset-0 pointer-events-none -z-10">
-          <div className="absolute top-1/4 left-0 w-[500px] h-[500px] bg-retro-gold-500/5 blur-[120px] rounded-full" />
-          <div className="absolute bottom-1/4 right-0 w-[500px] h-[500px] bg-snuff-500/5 blur-[120px] rounded-full" />
-          <div className="absolute top-2/3 left-1/3 w-[400px] h-[400px] bg-retro-cyan-500/3 blur-[100px] rounded-full" />
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 xs:px-6 sm:px-8">
-          {/* Hero Section */}
-          <Hero />
-          {/* Tournament Format Section */}
-          <TournamentFormat />
-          {/* About Section */}
-          <AboutCalmind />
-          {/* Current Season CTA */}
-          <CurrentSeason seasonInfo={seasonInfo} />
-        </div>
-      </div>
-    </>
+    <div className="pixel-root scanlines">
+      <PixelLanding vm={vm} />
+    </div>
   );
 }

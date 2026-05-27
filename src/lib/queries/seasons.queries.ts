@@ -81,6 +81,55 @@ export const getAllSeasons = cache(async (): Promise<Season[]> => {
 });
 
 /**
+ * Gets every season with its splits (nested), newest year first, splits ordered
+ * by split_order. One query — feeds the redesign's Season/Split selector chip.
+ */
+export const getAllSeasonsWithSplits = cache(
+  async (): Promise<SeasonWithSplits[]> => {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('seasons')
+      .select(`
+      *,
+      splits(*)
+    `)
+      .order('year', { ascending: false });
+
+    if (error || !data) {
+      console.error(
+        '[getAllSeasonsWithSplits] Error:',
+        error?.message ?? 'No data',
+      );
+      return [];
+    }
+
+    const result: SeasonWithSplits[] = [];
+
+    for (const raw of data as Record<string, unknown>[]) {
+      const rawSplits = (raw.splits as unknown[]) ?? [];
+      const splits = [...rawSplits].sort(
+        (a, b) =>
+          (a as { split_order: number }).split_order -
+          (b as { split_order: number }).split_order,
+      );
+
+      const parsed = SeasonWithSplitsSchema.safeParse({ ...raw, splits });
+      if (parsed.success) {
+        result.push(parsed.data);
+      } else {
+        console.error(
+          '[getAllSeasonsWithSplits] Validation error:',
+          parsed.error,
+        );
+      }
+    }
+
+    return result;
+  },
+);
+
+/**
  * Gets a season by its ID with all its splits using a single query
  */
 export const getSeasonWithSplits = cache(

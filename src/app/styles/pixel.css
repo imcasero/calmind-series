@@ -1,0 +1,385 @@
+/* ============================================================
+   PIXEL DESIGN SYSTEM (FR0) — docs/design_handoff_calmind_pixel
+   Ported from the prototype styles.css, rewritten against the
+   namespaced --color-px-* tokens (theme.css).
+
+   SCOPING RULE: every rule is contained under `.pixel-root`.
+   Nothing here targets bare html/body, so the legacy purple site
+   stays untouched until each route is migrated (FR2+).
+   All animations are stepped (steps(2)) to preserve the pixel feel.
+   ============================================================ */
+
+/* ---- Theme container (opt-in) ---- */
+.pixel-root {
+  background:
+    radial-gradient(
+      ellipse 80% 50% at 50% 0%,
+      rgba(192, 37, 196, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 80% 80%,
+      rgba(61, 248, 255, 0.08),
+      transparent 60%
+    ),
+    var(--color-px-void);
+  color: var(--color-px-ink);
+  font-family: var(--font-retro);
+  width: 100%;
+  min-height: 100vh;
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+  position: relative;
+}
+
+.pixel-root img {
+  image-rendering: pixelated;
+}
+
+/* ---- Scanlines + vignette overlay ---- */
+.pixel-root.scanlines::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: multiply;
+}
+
+.pixel-root.scanlines::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ---- Typography helpers ---- */
+.pixel-root .f-pixel {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.05em;
+}
+.pixel-root .f-retro {
+  font-family: var(--font-retro);
+}
+.pixel-root .f-num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.pixel-root .eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-px-magenta);
+  text-transform: uppercase;
+}
+
+/* ---- Stepped corner clip (chunky pixel corners) ---- */
+.pixel-frame {
+  --c: 8px;
+  clip-path: polygon(
+    0 var(--c),
+    var(--c) var(--c),
+    var(--c) 0,
+    calc(100% - var(--c)) 0,
+    calc(100% - var(--c)) var(--c),
+    100% var(--c),
+    100% calc(100% - var(--c)),
+    calc(100% - var(--c)) calc(100% - var(--c)),
+    calc(100% - var(--c)) 100%,
+    var(--c) 100%,
+    var(--c) calc(100% - var(--c)),
+    0 calc(100% - var(--c))
+  );
+}
+
+/* ---- Pixel borders (hard, stepped, no radius) ---- */
+.pixel-border {
+  background: var(--color-px-elev);
+  position: relative;
+  box-shadow:
+    0 0 0 4px var(--color-px-border),
+    4px 4px 0 4px var(--color-px-deep),
+    8px 8px 0 4px var(--color-px-border);
+}
+.pixel-border-thin {
+  background: var(--color-px-elev);
+  border: 3px solid var(--color-px-border);
+  position: relative;
+}
+.pixel-border-hi {
+  background: var(--color-px-elev);
+  border: 3px solid var(--color-px-border-hi);
+  position: relative;
+}
+
+/* ---- Pixel card (CSS-only hover; keeps consumers as RSC) ---- */
+.pixel-card {
+  background: var(--color-px-elev);
+  border: 3px solid var(--color-px-border);
+  padding: 20px;
+  box-shadow: 4px 4px 0 0 var(--color-px-deep);
+  transition:
+    transform 80ms steps(2),
+    border-color 80ms steps(2),
+    box-shadow 80ms steps(2);
+}
+.pixel-card--interactive {
+  cursor: pointer;
+}
+.pixel-card--interactive:hover {
+  transform: translate(-2px, -2px);
+  border-color: var(--color-px-magenta);
+  box-shadow: 6px 6px 0 0 var(--color-px-deep);
+}
+
+/* ---- Pixel badge ---- */
+.pixel-badge {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-px-deep);
+  border: 2px solid var(--color-px-border);
+  color: var(--color-px-ink);
+  text-transform: uppercase;
+}
+.pixel-badge--magenta {
+  border-color: var(--color-px-magenta);
+  color: var(--color-px-magenta);
+}
+.pixel-badge--cyan {
+  border-color: var(--color-px-cyan);
+  color: var(--color-px-cyan);
+}
+.pixel-badge--gold {
+  border-color: var(--color-px-gold);
+  color: var(--color-px-gold);
+}
+.pixel-badge--success {
+  border-color: var(--color-px-success);
+  color: var(--color-px-success);
+}
+.pixel-badge--danger {
+  border-color: var(--color-px-danger);
+  color: var(--color-px-danger);
+}
+
+/* ---- Pixel button ---- */
+.pixel-btn {
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  padding: 14px 22px;
+  color: var(--color-px-ink);
+  background: var(--color-px-elev2);
+  border: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-border-hi),
+    4px 4px 0 0 var(--color-px-deep);
+  transition:
+    transform 80ms steps(2),
+    box-shadow 80ms steps(2);
+}
+.pixel-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-ink),
+    6px 6px 0 0 var(--color-px-deep);
+}
+.pixel-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-border-hi),
+    0 0 0 0 var(--color-px-deep);
+}
+.pixel-btn--primary {
+  background: var(--color-px-magenta);
+  color: var(--color-px-deep);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-gold),
+    4px 4px 0 0 var(--color-px-deep);
+}
+.pixel-btn--primary:hover {
+  background: var(--color-px-gold);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-magenta),
+    6px 6px 0 0 var(--color-px-deep);
+}
+.pixel-btn--ghost {
+  background: transparent;
+  box-shadow: inset 0 0 0 3px var(--color-px-border);
+}
+.pixel-btn--ghost:hover {
+  background: var(--color-px-elev);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-border-hi),
+    4px 4px 0 0 var(--color-px-deep);
+}
+.pixel-btn--sm {
+  font-size: 10px;
+  padding: 10px 14px;
+}
+
+/* ---- HP bar ---- */
+.hpbar {
+  height: 12px;
+  background: var(--color-px-deep);
+  border: 2px solid var(--color-px-border);
+  position: relative;
+  overflow: hidden;
+}
+.hpbar-fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-px-success) 0 8px,
+    var(--color-px-lime) 8px 16px
+  );
+  transition: width 0.4s steps(8);
+}
+.hpbar-fill--mid {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-px-gold) 0 8px,
+    #ff9b3d 8px 16px
+  );
+}
+.hpbar-fill--low {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-px-danger) 0 8px,
+    #ff7b3d 8px 16px
+  );
+}
+
+/* ---- Star field (Olimpo / premium card backgrounds) ---- */
+.starfield {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, var(--color-px-ink-soft), transparent),
+    radial-gradient(1px 1px at 60% 70%, var(--color-px-cyan), transparent),
+    radial-gradient(1px 1px at 80% 20%, var(--color-px-magenta), transparent),
+    radial-gradient(1px 1px at 30% 80%, var(--color-px-ink), transparent),
+    radial-gradient(1px 1px at 90% 50%, var(--color-px-gold), transparent),
+    radial-gradient(1px 1px at 10% 60%, var(--color-px-ink-soft), transparent),
+    radial-gradient(1px 1px at 50% 10%, var(--color-px-magenta), transparent),
+    radial-gradient(1px 1px at 70% 40%, var(--color-px-cyan), transparent);
+  background-size: 200px 200px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ---- Title stack (stacked hard shadows) ---- */
+.title-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.title-chunk {
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  text-shadow:
+    4px 0 0 var(--color-px-magenta-2),
+    4px 4px 0 var(--color-px-deep),
+    8px 8px 0 var(--color-px-cyan-2);
+}
+
+/* ============================================================
+   STEPPED ANIMATIONS (never smooth — brand requirement)
+   ============================================================ */
+@keyframes px-crt-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.97;
+  }
+}
+.crt {
+  animation: px-crt-flicker 0.15s infinite steps(2);
+}
+
+@keyframes px-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.blink {
+  animation: px-blink 1s steps(2) infinite;
+}
+
+@keyframes px-glitch {
+  0%,
+  100% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 1px);
+  }
+  40% {
+    transform: translate(2px, -1px);
+  }
+  60% {
+    transform: translate(-1px, -2px);
+  }
+  80% {
+    transform: translate(1px, 2px);
+  }
+}
+.glitch:hover {
+  animation: px-glitch 0.3s steps(2) infinite;
+}
+
+@keyframes px-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  display: flex;
+  gap: 48px;
+  animation: px-marquee 30s linear infinite;
+  white-space: nowrap;
+  width: max-content;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt,
+  .blink,
+  .glitch:hover,
+  .marquee-track {
+    animation: none;
+  }
+}

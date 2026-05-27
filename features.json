@@ -1,9 +1,13 @@
 {
   "project": "calmind-series",
   "source": "ARCHITECTURE_REVIEW.html",
-  "updated": "2026-05-26",
+  "updated": "2026-05-27",
   "statusLegend": ["pending", "spec_ready", "in_progress", "done"],
-  "activeBatch": ["F2"],
+  "activeBatch": [],
+  "initiatives": {
+    "architecture-review": "ARCHITECTURE_REVIEW.html — phases F0–F6 (F2 still pending)",
+    "pixel-redesign": "docs/design_handoff_calmind_pixel/ — phases FR0–FR10 (active)"
+  },
   "features": [
     {
       "id": "F0",
@@ -114,6 +118,175 @@
         "Migrate remaining managers to Server Actions",
         "Reusable confirmation modal to replace window.confirm()"
       ]
+    },
+    {
+      "id": "FR0",
+      "phase": "Rediseño Pixel — Fundación visual",
+      "effort": "medio día",
+      "status": "done",
+      "spec": "specs/redesign/",
+      "dependsOn": [],
+      "source": "docs/design_handoff_calmind_pixel/",
+      "items": [
+        "Exclude docs/design_handoff_calmind_pixel/** from Biome (prototype JSX breaks the guardian)",
+        "Add namespaced pixel palette tokens (--color-px-*) to src/app/styles/theme.css",
+        "Load VT323 + JetBrains Mono via next/font; map --font-* theme tokens",
+        "Create src/app/styles/pixel.css (scanlines, vignette, starfield, crt, blink, glitch, marquee, pixel-frame, hard shadows, hpbar, .pixel-root) and import in globals.css",
+        "Pixel primitives in components/shared/ui/pixel/ (icons, MonsterSprite, TrainerAvatar, PixelCard, PixelBadge, PixelButton) — scoped, must not alter live legacy pages"
+      ],
+      "note": "Decisions locked 2026-05-27: full /hub IA · nickname + hashed color only (no ELO/region/real name) · current_round derived from matches · editorial auto-generated. Pixel theme scoped to .pixel-root so legacy purple pages stay intact until their route is migrated."
+    },
+    {
+      "id": "FR1",
+      "phase": "Rediseño Pixel — Máquina de fase + contexto",
+      "effort": "medio día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR0"],
+      "items": [
+        "src/lib/utils/phase.ts: getPhase(round) -> {id,label,color,icon}, isFinalsUnlocked, progressPct, TOTAL_ROUNDS=16",
+        "Query getCurrentRound(splitId): max round with played=true among regular matches",
+        "src/lib/utils/trainerColor.ts: deterministic id -> palette color hash",
+        "PhaseProvider (client) receiving server-resolved phase; ready for realtime recompute (FR10)"
+      ]
+    },
+    {
+      "id": "FR2",
+      "phase": "Rediseño Pixel — Shell (TopBar + marquee + nav lock)",
+      "effort": "1 día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR0", "FR1"],
+      "items": [
+        "TopBar: logo+wordmark, Season/Split chip dropdown, phase chip + progress bar, nav, INSCRÍBETE CTA",
+        "Marquee status strip (auto-generated leaders + phase state)",
+        "Nav gating: Bracket/Olimpo locked (lock + tooltip) when current_round < 15, read from phase.ts",
+        "Season/Split dropdown: getAllSeasons + splits; active -> /hub, past -> /archivo/:season/:split"
+      ]
+    },
+    {
+      "id": "FR3",
+      "phase": "Rediseño Pixel — Hub (/hub)",
+      "effort": "2 días",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR1", "FR2"],
+      "items": [
+        "Route + layout /hub resolving active season/split",
+        "Phase Banner (per-round progress cells)",
+        "Story Beat (auto-generated via lib/utils/editorial.ts)",
+        "Standings Live dual panels (position zones + streak pips) from getDivisionPreview",
+        "Projected Bracket Teaser from standings",
+        "Right column: Live Feed (current round), Last Results (prev round), Olympus Projection",
+        "News Rail (auto-generated)",
+        "DECIDE: how lives coexists with position-based zones in standings"
+      ]
+    },
+    {
+      "id": "FR4",
+      "phase": "Rediseño Pixel — Clasificación (/hub/clasificacion)",
+      "effort": "medio día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR3"],
+      "items": [
+        "Full standings, both divisions, from getDivisionPreview",
+        "Derive PG/PP from player_match_performance; derive streak from matches",
+        "Omit ELO/region columns (no DB backing); zone explainer cards"
+      ]
+    },
+    {
+      "id": "FR5",
+      "phase": "Rediseño Pixel — Calendario (/hub/calendario)",
+      "effort": "medio día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR3"],
+      "items": [
+        "Round timeline + per-round match listings from getMatchesByRound",
+        "DECIDE: per-round date source (derive vs omit)"
+      ]
+    },
+    {
+      "id": "FR6",
+      "phase": "Rediseño Pixel — Roster + Perfil",
+      "effort": "1 día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR3"],
+      "items": [
+        "/hub/entrenadores roster grid from getParticipantsBySplit",
+        "/hub/entrenador/[id] profile: per-trainer matches + derived stats/streak",
+        "Team reveal slots stay locked unless matches.metadata shape is defined"
+      ]
+    },
+    {
+      "id": "FR7",
+      "phase": "Rediseño Pixel — Bracket (/hub/bracket)",
+      "effort": "1-2 días",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR3"],
+      "items": [
+        "Reconcile the 3 conflicting match_tag vocabularies against real DB data",
+        "Projected (rankings) vs Official (matches) modes",
+        "Top4/Bottom4 lanes + Olympus junction"
+      ]
+    },
+    {
+      "id": "FR8",
+      "phase": "Rediseño Pixel — Olimpo (/hub/olimpo)",
+      "effort": "1-2 días",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR7"],
+      "items": [
+        "Competitors derived from finals winners (relegation_final / grand_final)",
+        "Countdown hidden when no date; face-off + el camino + stakes",
+        "Past Olimpos archive grid"
+      ]
+    },
+    {
+      "id": "FR9",
+      "phase": "Rediseño Pixel — Archivo",
+      "effort": "1 día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR3"],
+      "items": [
+        "/archivo: seasons/splits stacked; active vs past cards",
+        "/archivo/[season]/[split]: detail derived from finals",
+        "301 redirects from [season]/[split], /cruces, /final to new routes"
+      ]
+    },
+    {
+      "id": "FR10",
+      "phase": "Rediseño Pixel — Realtime + pulido",
+      "effort": "1 día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR3", "FR7", "FR8"],
+      "items": [
+        "Supabase Realtime subscriptions on matches/rankings to repaint",
+        "Recompute phase on round tick without reload",
+        "scrollTo(0,0) on route change; final polish pass"
+      ]
+    },
+    {
+      "id": "FR11",
+      "phase": "Rediseño Pixel — Landing + go-live",
+      "effort": "1 día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR3", "FR9"],
+      "items": [
+        "Reskin landing `/` in pixel style (slim brand entry → Hub) per prototype landing.jsx",
+        "Point primary navigation (home/Navbar/Footer) to /hub instead of [season]/[split]",
+        "301 redirects: legacy [season]/[split] → /archivo/:season/:split (active split → /hub); retire /cruces, /final",
+        "Decide pixel Footer + clouds suppression for the redesign shell",
+        "This is the 'flip the switch' batch — only after FR9 so redirects have a destination"
+      ],
+      "note": "Added 2026-05-27 after user asked when the landing gets reworked — it was missing from FR0–FR10. Scheduled last (after FR9/FR10) to avoid dangling links while the redesign is built in isolation under /hub."
     }
   ]
 }

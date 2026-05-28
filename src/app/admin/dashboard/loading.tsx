@@ -1,21 +1,21 @@
 export default function DashboardLoading() {
   return (
-    <div className="space-y-6 animate-pulse">
+    <div className="flex animate-pulse flex-col gap-6">
       {/* Header skeleton */}
-      <div className="h-8 w-48 bg-jacksons-purple-700 rounded" />
+      <div className="h-8 w-48 bg-px-elev" />
 
       {/* Stats grid skeleton */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {['a', 'b', 'c', 'd'].map((k) => (
           <div
-            key={i}
-            className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 h-24"
+            key={k}
+            className="h-24 border-[3px] border-px-border bg-px-elev"
           />
         ))}
       </div>
 
       {/* Content skeleton */}
-      <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 h-48" />
+      <div className="h-48 border-[3px] border-px-border bg-px-elev" />
     </div>
   );
 }

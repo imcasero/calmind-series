@@ -2,6 +2,16 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  AdminBadge,
+  AdminButton,
+  AdminCard,
+  AdminErrorBanner,
+  AdminInput,
+  AdminModal,
+  AdminSelect,
+  AdminTextarea,
+} from '@/components/admin/ui';
 import { createClient } from '@/lib/supabase/client';
 import type {
   League,
@@ -10,6 +20,7 @@ import type {
   Split,
   Trainer,
 } from '@/lib/types/database.types';
+import { cn } from '@/lib/utils';
 
 type ParticipantWithTrainer = LeagueParticipant & { trainer: Trainer };
 
@@ -395,267 +406,187 @@ export default function ParticipantsManager({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-retro-gold-500 uppercase tracking-wider">
-          Participantes
-        </h1>
-      </div>
+      <h1 className="font-pixel text-lg uppercase tracking-wider text-px-gold">
+        Participantes
+      </h1>
 
-      {/* Error Message */}
       {error && (
-        <div className="bg-red-600 border-4 border-red-800 p-4 text-white text-sm">
-          {error}
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-4 underline"
-          >
-            Cerrar
-          </button>
-        </div>
+        <AdminErrorBanner message={error} onDismiss={() => setError(null)} />
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2">
-        <button
-          type="button"
+      <div className="flex flex-wrap gap-2">
+        <TabButton
+          active={activeTab === 'trainers'}
           onClick={() => setActiveTab('trainers')}
-          className={`
-            px-6 py-3 font-bold uppercase tracking-wide text-sm border-4 transition-all duration-100
-            ${
-              activeTab === 'trainers'
-                ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
-                : 'bg-jacksons-purple-800 text-jacksons-purple-200 border-jacksons-purple-600 hover:bg-jacksons-purple-700'
-            }
-          `}
         >
           Entrenadores
-        </button>
-        <button
-          type="button"
+        </TabButton>
+        <TabButton
+          active={activeTab === 'assignments'}
           onClick={() => setActiveTab('assignments')}
-          className={`
-            px-6 py-3 font-bold uppercase tracking-wide text-sm border-4 transition-all duration-100
-            ${
-              activeTab === 'assignments'
-                ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
-                : 'bg-jacksons-purple-800 text-jacksons-purple-200 border-jacksons-purple-600 hover:bg-jacksons-purple-700'
-            }
-          `}
         >
-          Asignacion a Divisiones
+          Asignación a Divisiones
           {hasLivesChanges && (
-            <span className="ml-2 px-2 py-0.5 bg-orange-500 text-white text-xs rounded-full">
+            <span className="ml-2 grid size-4 place-items-center border border-px-deep bg-px-danger text-[8px] text-px-ink">
               !
             </span>
           )}
-        </button>
+        </TabButton>
       </div>
 
       {activeTab === 'trainers' ? (
         /* Trainers Tab */
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {/* Actions Bar */}
-          <div className="flex items-center justify-between gap-4 flex-wrap bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-4 shadow-[4px_4px_0px_0px_#1a1a1a]">
-            {/* Search */}
-            <div className="flex items-center gap-2">
-              <label htmlFor="search-trainers" className="sr-only">
-                Buscar
-              </label>
-              <input
-                id="search-trainers"
-                type="text"
-                placeholder="Buscar por nickname o bio..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 placeholder-jacksons-purple-400 min-w-[250px]"
-              />
-            </div>
-
-            <button
-              type="button"
+          <AdminCard className="flex flex-wrap items-center justify-between gap-4">
+            <input
+              type="text"
+              aria-label="Buscar"
+              placeholder="Buscar por nickname o bio..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pixel-input min-w-[250px]"
+            />
+            <AdminButton
+              tone="primary"
               onClick={() => {
                 setEditingTrainer(null);
                 setTrainerForm({ nickname: '', avatar_url: '', bio: '' });
                 setShowTrainerForm(true);
               }}
-              className="px-6 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] transition-all duration-100"
             >
               + Nuevo Entrenador
-            </button>
-          </div>
+            </AdminButton>
+          </AdminCard>
 
           {/* Trainer Form Modal */}
           {showTrainerForm && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 shadow-[4px_4px_0px_0px_#1a1a1a] w-full max-w-md">
-                <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-4">
-                  {editingTrainer ? 'Editar Entrenador' : 'Nuevo Entrenador'}
-                </h2>
-                <form onSubmit={handleSaveTrainer} className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="nickname"
-                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                    >
-                      Nickname *
-                    </label>
-                    <input
-                      id="nickname"
-                      type="text"
-                      value={trainerForm.nickname}
-                      onChange={(e) =>
-                        setTrainerForm({
-                          ...trainerForm,
-                          nickname: e.target.value,
-                        })
-                      }
-                      required
-                      placeholder="Ej: AshKetchum"
-                      className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 placeholder-jacksons-purple-400"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="avatar_url"
-                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                    >
-                      Avatar URL
-                    </label>
-                    <input
-                      id="avatar_url"
-                      type="text"
-                      value={trainerForm.avatar_url}
-                      onChange={(e) =>
-                        setTrainerForm({
-                          ...trainerForm,
-                          avatar_url: e.target.value,
-                        })
-                      }
-                      placeholder="https://..."
-                      className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 placeholder-jacksons-purple-400"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="bio"
-                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                    >
-                      Bio
-                    </label>
-                    <textarea
-                      id="bio"
-                      value={trainerForm.bio}
-                      onChange={(e) =>
-                        setTrainerForm({ ...trainerForm, bio: e.target.value })
-                      }
-                      placeholder="Descripcion del entrenador..."
-                      rows={3}
-                      className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 placeholder-jacksons-purple-400 resize-none"
-                    />
-                  </div>
-                  <div className="flex gap-4 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowTrainerForm(false);
-                        setEditingTrainer(null);
-                        setTrainerForm({
-                          nickname: '',
-                          avatar_url: '',
-                          bio: '',
-                        });
-                      }}
-                      className="flex-1 px-4 py-3 bg-jacksons-purple-600 text-white border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm hover:bg-jacksons-purple-500 transition-all duration-100"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex-1 px-4 py-3 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 transition-all duration-100"
-                    >
-                      {saving ? 'Guardando...' : 'Guardar'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <AdminModal
+              title={editingTrainer ? 'Editar Entrenador' : 'Nuevo Entrenador'}
+              onClose={() => {
+                setShowTrainerForm(false);
+                setEditingTrainer(null);
+                setTrainerForm({ nickname: '', avatar_url: '', bio: '' });
+              }}
+            >
+              <form
+                onSubmit={handleSaveTrainer}
+                className="flex flex-col gap-4"
+              >
+                <AdminInput
+                  id="nickname"
+                  label="Nickname *"
+                  type="text"
+                  value={trainerForm.nickname}
+                  onChange={(e) =>
+                    setTrainerForm({ ...trainerForm, nickname: e.target.value })
+                  }
+                  required
+                  placeholder="Ej: AshKetchum"
+                />
+                <AdminInput
+                  id="avatar_url"
+                  label="Avatar URL"
+                  type="text"
+                  value={trainerForm.avatar_url}
+                  onChange={(e) =>
+                    setTrainerForm({
+                      ...trainerForm,
+                      avatar_url: e.target.value,
+                    })
+                  }
+                  placeholder="https://..."
+                />
+                <AdminTextarea
+                  id="bio"
+                  label="Bio"
+                  value={trainerForm.bio}
+                  onChange={(e) =>
+                    setTrainerForm({ ...trainerForm, bio: e.target.value })
+                  }
+                  placeholder="Descripción del entrenador..."
+                  rows={3}
+                  className="resize-none"
+                />
+                <div className="flex gap-3 pt-2">
+                  <AdminButton
+                    tone="ghost"
+                    onClick={() => {
+                      setShowTrainerForm(false);
+                      setEditingTrainer(null);
+                      setTrainerForm({ nickname: '', avatar_url: '', bio: '' });
+                    }}
+                    className="flex-1 justify-center"
+                  >
+                    Cancelar
+                  </AdminButton>
+                  <AdminButton
+                    type="submit"
+                    tone="primary"
+                    disabled={saving}
+                    className="flex-1 justify-center"
+                  >
+                    {saving ? 'Guardando...' : 'Guardar'}
+                  </AdminButton>
+                </div>
+              </form>
+            </AdminModal>
           )}
 
           {/* Trainers Table */}
-          <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden">
+          <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
             {filteredTrainers.length === 0 ? (
-              <div className="p-8 text-center text-jacksons-purple-300">
+              <p className="p-8 text-center font-retro text-lg text-px-ink-dim">
                 {searchQuery
                   ? 'No se encontraron entrenadores.'
                   : 'No hay entrenadores registrados.'}
-              </div>
+              </p>
             ) : (
               <>
-                <table className="w-full">
+                <table className="pixel-table">
                   <thead>
-                    <tr className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600">
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Avatar
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Nickname
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Bio
-                      </th>
-                      <th className="px-6 py-4 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Acciones
-                      </th>
+                    <tr>
+                      <th>Avatar</th>
+                      <th>Nickname</th>
+                      <th>Bio</th>
+                      <th className="text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedTrainers.map((trainer) => (
-                      <tr
-                        key={trainer.id}
-                        className="border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          {trainer.avatar_url ? (
-                            <img
-                              src={trainer.avatar_url}
-                              alt={trainer.nickname}
-                              className="w-10 h-10 border-2 border-jacksons-purple-500 object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold">
-                              {trainer.nickname.charAt(0).toUpperCase()}
-                            </div>
-                          )}
+                      <tr key={trainer.id}>
+                        <td>
+                          <TrainerAvatar
+                            url={trainer.avatar_url}
+                            nickname={trainer.nickname}
+                          />
                         </td>
-                        <td className="px-6 py-4 text-white font-medium">
-                          {trainer.nickname}
-                        </td>
-                        <td className="px-6 py-4 text-jacksons-purple-300 text-sm max-w-xs truncate">
+                        <td className="text-px-ink">{trainer.nickname}</td>
+                        <td className="max-w-xs truncate text-px-ink-dim">
                           {trainer.bio || '-'}
                         </td>
-                        <td className="px-6 py-4">
+                        <td>
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
+                            <AdminButton
+                              tone="cyan"
+                              size="sm"
                               onClick={() => handleEditTrainer(trainer)}
-                              className="px-4 py-2 bg-retro-cyan-500 text-white border-2 border-retro-cyan-700 text-xs font-bold uppercase hover:bg-retro-cyan-400 transition-all duration-100"
                             >
                               Editar
-                            </button>
-                            <button
-                              type="button"
+                            </AdminButton>
+                            <AdminButton
+                              tone="danger"
+                              size="sm"
                               onClick={() => handleDeleteTrainer(trainer.id)}
-                              className="px-4 py-2 bg-red-600 text-white border-2 border-red-800 text-xs font-bold uppercase hover:bg-red-500 transition-all duration-100"
                             >
                               Eliminar
-                            </button>
+                            </AdminButton>
                           </div>
                         </td>
                       </tr>
@@ -665,8 +596,8 @@ export default function ParticipantsManager({
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between px-6 py-4 bg-jacksons-purple-900 border-t-2 border-jacksons-purple-600">
-                    <span className="text-jacksons-purple-300 text-sm">
+                  <div className="flex items-center justify-between border-t-[3px] border-px-border bg-px-deep px-6 py-4">
+                    <span className="font-retro text-base text-px-ink-dim">
                       Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
                       {Math.min(
                         currentPage * ITEMS_PER_PAGE,
@@ -675,29 +606,29 @@ export default function ParticipantsManager({
                       de {filteredTrainers.length}
                     </span>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
+                      <AdminButton
+                        tone="default"
+                        size="sm"
                         onClick={() =>
                           setCurrentPage((p) => Math.max(1, p - 1))
                         }
                         disabled={currentPage === 1}
-                        className="px-3 py-1 bg-jacksons-purple-700 text-white border-2 border-jacksons-purple-600 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-jacksons-purple-600 transition-all"
                       >
                         Anterior
-                      </button>
-                      <span className="text-white text-sm px-3">
+                      </AdminButton>
+                      <span className="px-2 font-num text-sm text-px-ink">
                         {currentPage} / {totalPages}
                       </span>
-                      <button
-                        type="button"
+                      <AdminButton
+                        tone="default"
+                        size="sm"
                         onClick={() =>
                           setCurrentPage((p) => Math.min(totalPages, p + 1))
                         }
                         disabled={currentPage === totalPages}
-                        className="px-3 py-1 bg-jacksons-purple-700 text-white border-2 border-jacksons-purple-600 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-jacksons-purple-600 transition-all"
                       >
                         Siguiente
-                      </button>
+                      </AdminButton>
                     </div>
                   </div>
                 )}
@@ -707,212 +638,161 @@ export default function ParticipantsManager({
         </div>
       ) : (
         /* Assignments Tab */
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {/* Selectors */}
-          <div className="flex items-center gap-4 flex-wrap bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-4 shadow-[4px_4px_0px_0px_#1a1a1a]">
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="season-select"
-                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-              >
-                Temporada:
-              </label>
-              <select
-                id="season-select"
-                value={selectedSeasonId ?? ''}
-                onChange={(e) => setSelectedSeasonId(e.target.value || null)}
-                className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer"
-              >
-                <option value="">Seleccionar</option>
-                {initialSeasons.map((season) => (
-                  <option key={season.id} value={season.id}>
-                    {season.name} {season.is_active ? '★' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="split-select"
-                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-              >
-                Split:
-              </label>
-              <select
-                id="split-select"
-                value={selectedSplitId ?? ''}
-                onChange={(e) => setSelectedSplitId(e.target.value || null)}
-                disabled={!selectedSeasonId || loadingSplits}
-                className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer disabled:opacity-50"
-              >
-                <option value="">
-                  {loadingSplits ? 'Cargando...' : 'Seleccionar'}
+          <AdminCard className="flex flex-wrap items-center gap-3">
+            <SelectorField
+              label="Temporada"
+              value={selectedSeasonId ?? ''}
+              onChange={(v) => setSelectedSeasonId(v || null)}
+            >
+              <option value="">Seleccionar</option>
+              {initialSeasons.map((season) => (
+                <option key={season.id} value={season.id}>
+                  {season.name} {season.is_active ? '★' : ''}
                 </option>
-                {splits.map((split) => (
-                  <option key={split.id} value={split.id}>
-                    {split.name} {split.is_active ? '★' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+              ))}
+            </SelectorField>
 
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="league-select"
-                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-              >
-                Division:
-              </label>
-              <select
-                id="league-select"
-                value={selectedLeagueId ?? ''}
-                onChange={(e) => setSelectedLeagueId(e.target.value || null)}
-                disabled={!selectedSplitId || loadingLeagues}
-                className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer disabled:opacity-50"
-              >
-                <option value="">
-                  {loadingLeagues ? 'Cargando...' : 'Seleccionar'}
+            <SelectorField
+              label="Split"
+              value={selectedSplitId ?? ''}
+              onChange={(v) => setSelectedSplitId(v || null)}
+              disabled={!selectedSeasonId || loadingSplits}
+            >
+              <option value="">
+                {loadingSplits ? 'Cargando...' : 'Seleccionar'}
+              </option>
+              {splits.map((split) => (
+                <option key={split.id} value={split.id}>
+                  {split.name} {split.is_active ? '★' : ''}
                 </option>
-                {leagues.map((league) => (
-                  <option key={league.id} value={league.id}>
-                    {league.tier_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              ))}
+            </SelectorField>
+
+            <SelectorField
+              label="División"
+              value={selectedLeagueId ?? ''}
+              onChange={(v) => setSelectedLeagueId(v || null)}
+              disabled={!selectedSplitId || loadingLeagues}
+            >
+              <option value="">
+                {loadingLeagues ? 'Cargando...' : 'Seleccionar'}
+              </option>
+              {leagues.map((league) => (
+                <option key={league.id} value={league.id}>
+                  {league.tier_name}
+                </option>
+              ))}
+            </SelectorField>
 
             {selectedLeagueId && availableTrainers.length > 0 && (
-              <button
-                type="button"
+              <AdminButton
+                tone="primary"
                 onClick={() => setShowAssignForm(true)}
-                className="px-4 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] transition-all duration-100"
               >
                 + Asignar
-              </button>
+              </AdminButton>
             )}
-          </div>
+          </AdminCard>
 
-          {/* Save/Discard Changes Bar */}
+          {/* Save/Discard Bar */}
           {hasLivesChanges && (
-            <div className="flex items-center justify-between bg-orange-600 border-4 border-orange-800 p-4 shadow-[4px_4px_0px_0px_#1a1a1a]">
-              <span className="text-white font-bold">
-                Tienes {Object.keys(pendingLivesChanges).length} cambio(s) sin
-                guardar
+            <div className="flex flex-wrap items-center justify-between gap-3 border-[3px] border-px-gold bg-px-deep p-4">
+              <span className="font-pixel text-[10px] uppercase tracking-wider text-px-gold">
+                {Object.keys(pendingLivesChanges).length} cambio(s) sin guardar
               </span>
               <div className="flex gap-2">
-                <button
-                  type="button"
+                <AdminButton
+                  tone="ghost"
+                  size="sm"
                   onClick={handleDiscardLivesChanges}
-                  className="px-4 py-2 bg-jacksons-purple-600 text-white border-2 border-jacksons-purple-800 font-bold uppercase text-sm hover:bg-jacksons-purple-500 transition-all"
                 >
                   Descartar
-                </button>
-                <button
-                  type="button"
+                </AdminButton>
+                <AdminButton
+                  tone="success"
+                  size="sm"
                   onClick={handleSaveLivesChanges}
                   disabled={saving}
-                  className="px-4 py-2 bg-green-600 text-white border-2 border-green-800 font-bold uppercase text-sm hover:bg-green-500 disabled:opacity-50 transition-all"
                 >
                   {saving ? 'Guardando...' : 'Guardar Cambios'}
-                </button>
+                </AdminButton>
               </div>
             </div>
           )}
 
           {/* Assign Form Modal */}
           {showAssignForm && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 shadow-[4px_4px_0px_0px_#1a1a1a] w-full max-w-md">
-                <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-4">
-                  Asignar Entrenador
-                </h2>
-                <form onSubmit={handleAssignTrainer} className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="trainer-select"
-                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                    >
-                      Entrenador
-                    </label>
-                    <select
-                      id="trainer-select"
-                      value={selectedTrainerId}
-                      onChange={(e) => setSelectedTrainerId(e.target.value)}
-                      required
-                      className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer"
-                    >
-                      <option value="">Seleccionar entrenador</option>
-                      {availableTrainers.map((trainer) => (
-                        <option key={trainer.id} value={trainer.id}>
-                          {trainer.nickname}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex gap-4 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAssignForm(false);
-                        setSelectedTrainerId('');
-                      }}
-                      className="flex-1 px-4 py-3 bg-jacksons-purple-600 text-white border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm hover:bg-jacksons-purple-500 transition-all duration-100"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving || !selectedTrainerId}
-                      className="flex-1 px-4 py-3 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 transition-all duration-100"
-                    >
-                      {saving ? 'Guardando...' : 'Asignar'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <AdminModal
+              title="Asignar Entrenador"
+              onClose={() => {
+                setShowAssignForm(false);
+                setSelectedTrainerId('');
+              }}
+            >
+              <form
+                onSubmit={handleAssignTrainer}
+                className="flex flex-col gap-4"
+              >
+                <AdminSelect
+                  id="trainer-select"
+                  label="Entrenador"
+                  value={selectedTrainerId}
+                  onChange={(e) => setSelectedTrainerId(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar entrenador</option>
+                  {availableTrainers.map((trainer) => (
+                    <option key={trainer.id} value={trainer.id}>
+                      {trainer.nickname}
+                    </option>
+                  ))}
+                </AdminSelect>
+                <div className="flex gap-3 pt-2">
+                  <AdminButton
+                    tone="ghost"
+                    onClick={() => {
+                      setShowAssignForm(false);
+                      setSelectedTrainerId('');
+                    }}
+                    className="flex-1 justify-center"
+                  >
+                    Cancelar
+                  </AdminButton>
+                  <AdminButton
+                    type="submit"
+                    tone="primary"
+                    disabled={saving || !selectedTrainerId}
+                    className="flex-1 justify-center"
+                  >
+                    {saving ? 'Guardando...' : 'Asignar'}
+                  </AdminButton>
+                </div>
+              </form>
+            </AdminModal>
           )}
 
           {/* Participants Table */}
           {!selectedLeagueId ? (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">
-                Selecciona temporada, split y division para ver los
-                participantes.
-              </p>
-            </div>
+            <EmptyPanel text="Selecciona temporada, split y división para ver los participantes." />
           ) : loadingParticipants ? (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">
-                Cargando participantes...
-              </p>
-            </div>
+            <EmptyPanel text="Cargando participantes..." />
           ) : (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden">
+            <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
               {participants.length === 0 ? (
-                <div className="p-8 text-center text-jacksons-purple-300">
-                  No hay participantes asignados a esta division.
-                </div>
+                <p className="p-8 text-center font-retro text-lg text-px-ink-dim">
+                  No hay participantes asignados a esta división.
+                </p>
               ) : (
-                <table className="w-full">
+                <table className="pixel-table">
                   <thead>
-                    <tr className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600">
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Seed
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Entrenador
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Vidas
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Estado
-                      </th>
-                      <th className="px-6 py-4 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Acciones
-                      </th>
+                    <tr>
+                      <th>Seed</th>
+                      <th>Entrenador</th>
+                      <th>Vidas</th>
+                      <th>Estado</th>
+                      <th className="text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -923,34 +803,26 @@ export default function ParticipantsManager({
                       return (
                         <tr
                           key={participant.id}
-                          className={`border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors ${hasChange ? 'bg-orange-900/20' : ''}`}
+                          className={hasChange ? 'bg-px-base' : undefined}
                         >
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center justify-center w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 text-white font-bold text-sm">
+                          <td>
+                            <span className="grid size-8 place-items-center border-2 border-px-border bg-px-deep font-num text-sm text-px-ink">
                               {participant.initial_seed ?? '-'}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td>
                             <div className="flex items-center gap-3">
-                              {participant.trainer?.avatar_url ? (
-                                <img
-                                  src={participant.trainer.avatar_url}
-                                  alt={participant.trainer.nickname}
-                                  className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                                  {participant.trainer?.nickname
-                                    ?.charAt(0)
-                                    .toUpperCase() ?? '?'}
-                                </div>
-                              )}
-                              <span className="text-white font-medium">
+                              <TrainerAvatar
+                                url={participant.trainer?.avatar_url ?? null}
+                                nickname={participant.trainer?.nickname ?? '?'}
+                                small
+                              />
+                              <span className="text-px-ink">
                                 {participant.trainer?.nickname ?? 'Unknown'}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td>
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
@@ -962,12 +834,17 @@ export default function ParticipantsManager({
                                   )
                                 }
                                 disabled={currentLives <= 0}
-                                className="w-7 h-7 bg-red-600 text-white border-2 border-red-800 font-bold text-sm hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                className="grid size-7 place-items-center border-2 border-px-deep bg-px-danger font-pixel text-xs text-px-ink disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 -
                               </button>
                               <span
-                                className={`font-bold min-w-[3rem] text-center ${hasChange ? 'text-orange-400' : 'text-retro-gold-400'}`}
+                                className={cn(
+                                  'min-w-[3rem] text-center font-num font-bold',
+                                  hasChange
+                                    ? 'text-px-magenta'
+                                    : 'text-px-gold',
+                                )}
                               >
                                 {currentLives}
                               </span>
@@ -980,30 +857,34 @@ export default function ParticipantsManager({
                                     1,
                                   )
                                 }
-                                className="w-7 h-7 bg-green-600 text-white border-2 border-green-800 font-bold text-sm hover:bg-green-500 transition-all"
+                                className="grid size-7 place-items-center border-2 border-px-deep bg-px-success font-pixel text-xs text-px-deep"
                               >
                                 +
                               </button>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-2 py-1 text-xs font-bold uppercase border-2 ${participant.status === 'active' ? 'bg-green-600 border-green-800 text-white' : 'bg-jacksons-purple-600 border-jacksons-purple-800 text-jacksons-purple-200'}`}
+                          <td>
+                            <AdminBadge
+                              tone={
+                                participant.status === 'active'
+                                  ? 'success'
+                                  : 'neutral'
+                              }
                             >
                               {participant.status ?? 'active'}
-                            </span>
+                            </AdminBadge>
                           </td>
-                          <td className="px-6 py-4">
+                          <td>
                             <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
+                              <AdminButton
+                                tone="danger"
+                                size="sm"
                                 onClick={() =>
                                   handleRemoveFromLeague(participant.id)
                                 }
-                                className="px-4 py-2 bg-red-600 text-white border-2 border-red-800 text-xs font-bold uppercase hover:bg-red-500 transition-all duration-100"
                               >
                                 Quitar
-                              </button>
+                              </AdminButton>
                             </div>
                           </td>
                         </tr>
@@ -1016,6 +897,100 @@ export default function ParticipantsManager({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center border-[3px] px-5 py-3 font-pixel text-[10px] uppercase tracking-wider transition-colors',
+        active
+          ? 'border-px-gold bg-px-gold text-px-deep'
+          : 'border-px-border bg-px-elev text-px-ink-soft hover:border-px-border-hi',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SelectorField({
+  label,
+  value,
+  onChange,
+  disabled = false,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-pixel text-[9px] uppercase tracking-wider text-px-ink-dim">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="pixel-input w-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {children}
+      </select>
+    </div>
+  );
+}
+
+function TrainerAvatar({
+  url,
+  nickname,
+  small = false,
+}: {
+  url: string | null;
+  nickname: string;
+  small?: boolean;
+}) {
+  const sizeClass = small ? 'size-8' : 'size-10';
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={nickname}
+        className={cn('border-2 border-px-border object-cover', sizeClass)}
+      />
+    );
+  }
+  return (
+    <div
+      className={cn(
+        'grid place-items-center border-2 border-px-border bg-px-deep font-pixel text-xs text-px-ink',
+        sizeClass,
+      )}
+    >
+      {nickname.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function EmptyPanel({ text }: { text: string }) {
+  return (
+    <div className="border-[3px] border-px-border bg-px-elev p-8 text-center shadow-[4px_4px_0_0_var(--color-px-deep)]">
+      <p className="font-retro text-lg text-px-ink-dim">{text}</p>
     </div>
   );
 }

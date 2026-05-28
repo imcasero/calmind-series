@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { AdminButton } from '@/components/admin/ui';
 
 export default function AdminError({
   error,
@@ -14,36 +15,22 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="bg-jacksons-purple-800 border-4 border-red-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] max-w-md w-full text-center">
-        <div className="text-4xl mb-4">⚠️</div>
-        <h2 className="text-xl font-bold text-red-400 uppercase tracking-wider mb-2">
-          Error
+    <div className="pixel-root flex min-h-screen items-center justify-center px-4">
+      <div className="w-full max-w-md border-[3px] border-px-danger bg-px-elev p-8 text-center shadow-[6px_6px_0_0_var(--color-px-deep)]">
+        <h2 className="mb-2 font-pixel text-lg uppercase tracking-wider text-px-danger">
+          ⚠ Error
         </h2>
-        <p className="text-jacksons-purple-200 text-sm mb-6">
+        <p className="mb-6 font-retro text-lg text-px-ink-soft">
           Ha ocurrido un error al cargar esta página.
         </p>
         {error.message && (
-          <p className="text-red-300 text-xs mb-6 font-mono bg-jacksons-purple-950 p-3 border-2 border-jacksons-purple-600">
+          <p className="mb-6 border-2 border-px-border bg-px-deep p-3 font-num text-xs text-px-danger">
             {error.message}
           </p>
         )}
-        <button
-          type="button"
-          onClick={reset}
-          className="
-            px-6 py-3
-            bg-retro-gold-500 text-jacksons-purple-950
-            border-4 border-jacksons-purple-950
-            font-bold uppercase tracking-wide text-sm
-            shadow-[4px_4px_0px_0px_#1a1a1a]
-            hover:translate-x-0.5 hover:translate-y-0.5
-            hover:shadow-[2px_2px_0px_0px_#1a1a1a]
-            transition-all duration-100
-          "
-        >
+        <AdminButton tone="primary" onClick={reset} className="justify-center">
           Reintentar
-        </button>
+        </AdminButton>
       </div>
     </div>
   );

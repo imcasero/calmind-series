@@ -3,17 +3,41 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { AdminButton } from '@/components/admin/ui';
+import {
+  PixelCrown,
+  PixelDoc,
+  PixelGear,
+  PixelGem,
+  PixelLightning,
+  PixelOrb,
+  PixelSword,
+  PixelUsers,
+} from '@/components/shared/ui/pixel';
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
 
-const navItems = [
-  { href: '/admin/dashboard', label: 'Panel', icon: '📊' },
-  { href: '/admin/dashboard/seasons', label: 'Temporadas', icon: '🏆' },
-  { href: '/admin/dashboard/splits', label: 'Splits', icon: '📅' },
-  { href: '/admin/dashboard/divisions', label: 'Divisiones', icon: '⚔️' },
-  { href: '/admin/dashboard/participants', label: 'Participantes', icon: '👥' },
-  { href: '/admin/dashboard/matches', label: 'Partidos', icon: '🎮' },
-  { href: '/admin/dashboard/normativa', label: 'Normativa', icon: '📄' },
-  { href: '/admin/dashboard/settings', label: 'Configuración', icon: '⚙️' },
+type IconComponent = (props: {
+  size?: number;
+  color?: string;
+}) => React.ReactNode;
+
+const navItems: { href: string; label: string; Icon: IconComponent }[] = [
+  { href: '/admin/dashboard', label: 'Panel', Icon: PixelGem },
+  { href: '/admin/dashboard/seasons', label: 'Temporadas', Icon: PixelCrown },
+  { href: '/admin/dashboard/splits', label: 'Splits', Icon: PixelOrb },
+  { href: '/admin/dashboard/divisions', label: 'Divisiones', Icon: PixelSword },
+  {
+    href: '/admin/dashboard/participants',
+    label: 'Participantes',
+    Icon: PixelUsers,
+  },
+  { href: '/admin/dashboard/matches', label: 'Partidos', Icon: PixelLightning },
+  { href: '/admin/dashboard/normativa', label: 'Normativa', Icon: PixelDoc },
+  {
+    href: '/admin/dashboard/settings',
+    label: 'Configuración',
+    Icon: PixelGear,
+  },
 ];
 
 export default function DashboardLayout({
@@ -34,41 +58,46 @@ export default function DashboardLayout({
     setLoggingOut(false);
   };
 
+  const activeLabel =
+    navItems.find((item) => item.href === pathname)?.label ?? 'Dashboard';
+
   return (
-    <div className="min-h-screen w-full flex">
+    <div className="pixel-root flex min-h-screen w-full">
       {/* Sidebar */}
-      <aside className="w-64 bg-jacksons-purple-950 border-r-4 border-jacksons-purple-700 flex flex-col shrink-0">
+      <aside className="flex w-64 shrink-0 flex-col border-r-[3px] border-px-border bg-px-deep">
         {/* Logo/Header */}
-        <div className="p-6 border-b-4 border-jacksons-purple-700">
-          <h1 className="text-retro-gold-500 font-bold text-sm uppercase tracking-wider">
+        <div className="border-b-[3px] border-px-border p-6">
+          <h1 className="font-pixel text-xs uppercase tracking-wider text-px-gold">
             Calmind Admin
           </h1>
-          <p className="text-jacksons-purple-400 text-xs mt-1">
+          <p className="mt-1 font-retro text-sm text-px-ink-dim">
             Panel de Control
           </p>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-4">
-          <ul className="space-y-2">
+          <ul className="flex flex-col gap-2">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`
-                      flex items-center gap-3 px-4 py-3
-                      text-sm font-medium uppercase tracking-wide
-                      border-2 transition-all duration-150
-                      ${
-                        isActive
-                          ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
-                          : 'bg-jacksons-purple-800 text-jacksons-purple-100 border-jacksons-purple-600 hover:bg-jacksons-purple-700 hover:border-retro-gold-500'
-                      }
-                    `}
+                    className={`flex items-center gap-3 border-2 px-3 py-2.5 font-pixel text-[10px] uppercase tracking-wider transition-colors ${
+                      isActive
+                        ? 'border-px-gold bg-px-gold text-px-deep'
+                        : 'border-px-border text-px-ink-soft hover:border-px-border-hi hover:text-px-magenta'
+                    }`}
                   >
-                    <span>{item.icon}</span>
+                    <item.Icon
+                      size={16}
+                      color={
+                        isActive
+                          ? 'var(--color-px-deep)'
+                          : 'var(--color-px-ink-soft)'
+                      }
+                    />
                     <span>{item.label}</span>
                   </Link>
                 </li>
@@ -78,43 +107,34 @@ export default function DashboardLayout({
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t-4 border-jacksons-purple-700">
-          <button
-            type="button"
+        <div className="border-t-[3px] border-px-border p-4">
+          <AdminButton
+            tone="danger"
+            size="sm"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="
-              w-full flex items-center justify-center gap-2 px-4 py-3
-              bg-snuff-600 text-white
-              text-sm font-medium uppercase tracking-wide
-              border-2 border-jacksons-purple-950
-              shadow-[2px_2px_0px_0px_#1a1a1a]
-              hover:bg-snuff-500 transition-all duration-150
-              disabled:opacity-50 disabled:cursor-not-allowed
-            "
+            className="w-full justify-center"
           >
-            <span>🚪</span>
-            <span>{loggingOut ? 'Saliendo...' : 'Cerrar Sesión'}</span>
-          </button>
+            {loggingOut ? 'Saliendo...' : 'Cerrar Sesión'}
+          </AdminButton>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 bg-jacksons-purple-900 overflow-auto">
+      <main className="flex-1 overflow-auto bg-px-base">
         {/* Top Bar */}
-        <header className="bg-jacksons-purple-800 border-b-4 border-jacksons-purple-600 px-8 py-4">
+        <header className="border-b-[3px] border-px-border bg-px-deep px-8 py-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-white font-bold uppercase tracking-wider">
-              {navItems.find((item) => item.href === pathname)?.label ||
-                'Dashboard'}
+            <h2 className="font-pixel text-sm uppercase tracking-wider text-px-ink">
+              {activeLabel}
             </h2>
-            <div className="flex items-center gap-4">
-              <span className="text-jacksons-purple-300 text-sm">Admin</span>
-              <div className="w-8 h-8 bg-retro-gold-500 border-2 border-jacksons-purple-950 flex items-center justify-center">
-                <span className="text-jacksons-purple-950 text-xs font-bold">
-                  A
-                </span>
-              </div>
+            <div className="flex items-center gap-3">
+              <span className="font-retro text-base text-px-ink-dim">
+                Admin
+              </span>
+              <span className="grid size-8 place-items-center border-2 border-px-deep bg-px-gold font-pixel text-xs text-px-deep">
+                A
+              </span>
             </div>
           </div>
         </header>

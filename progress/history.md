@@ -657,3 +657,86 @@ all legacy public routes. `activeBatch` cleared. Remaining non-redesign work is 
 architecture-review backlog (F2–F6), a separate initiative, still pending.
 
 Working tree is uncommitted (user requested no commits during the build).
+
+---
+
+## 2026-05-27 — Admin pixel reskin started (FR12 marco + primitives)
+
+User asked to adapt `src/app/admin/` to the pixel aesthetic, chose FULL scope (marco +
+all 7 management screens) + pixel nav icons. The admin was on the OLD palette
+(`jacksons-purple`/`retro-gold`/`snuff`, `#1a1a1a` borders, `shadow-[4px..]` 3D, sans
+font) — the only non-pixel public area left. Batched: FR12 marco+primitives, FR13 small
+screens, FR14 big screens. **Logic untouched** (Supabase/forms/router.refresh).
+
+**FR12 shipped (marco + primitives, `./init.sh` full green):**
+- `pixel.css`: `.pixel-btn--cyan/--success/--danger` + `.pixel-input` + `.pixel-table`.
+- `PixelIcons`: new `PixelUsers`, `PixelDoc`, `PixelGear` glyphs (10×10) for the nav.
+- `components/admin/ui/`: `AdminCard`, `AdminButton` (tone variants), `AdminInput`/
+  `AdminSelect`/`AdminTextarea`, `AdminModal`, `AdminBadge`, `AdminErrorBanner` + barrel.
+  Presentational (handlers passed by the client Managers).
+- Shell reskinned to pixel + wrapped in `.pixel-root`: `admin/page.tsx` (login),
+  `admin/dashboard/layout.tsx` (sidebar with pixel icons + topbar), `dashboard/page.tsx`
+  (home), `settings/page.tsx`, and all four `loading.tsx`/`error.tsx`.
+- Lint note: a `biome-ignore` on AdminButton's `type` was an *unused* suppression
+  (`type={type}` with a typed union passes `useButtonType`) — removed.
+
+**Verification:** typecheck clean · lint 0 errors (30 pre-existing F2 warnings, now incl.
+dead imports in matchService/SplitDataProvider from the FR11 legacy-route redirects) ·
+build (20 pages).
+
+**Pending:** FR13 — reskin SeasonsManager/SplitsManager/DivisionsManager/
+RegulationsManager. FR14 — ParticipantsManager (1021) + MatchesManager (1624).
+
+## 2026-05-27 — FR13 shipped (admin small screens)
+
+`./init.sh` full green. Reskinned to pixel primitives, **logic untouched** (hooks,
+Supabase calls, router.refresh preserved verbatim):
+- `SeasonsManager`, `SplitsManager`, `DivisionsManager` — header + selectors,
+  `AdminModal` create forms, `pixel-table` data tables, `AdminBadge` status,
+  `AdminButton` actions. Header season/split selectors use a `pixel-input` `<select>`.
+- `RegulationsManager` — `AdminCard` upload form, styled file input, success banner,
+  current-PDF card with a `pixel-btn--cyan` link.
+
+**Verification:** typecheck clean · lint 0 errors (30 pre-existing) · build (20 pages).
+
+**Pending:** FR14 — the two big screens: `ParticipantsManager` (1021 lines) and
+`MatchesManager` (1624 lines). Largest/most complex CRUD UIs; reskin to the admin
+pixel primitives, logic untouched.
+
+## 2026-05-27 — FR14 partial (ParticipantsManager done; MatchesManager pending)
+
+Split across sessions for credit budget (user had ~25% left, enough for one big screen).
+
+**ParticipantsManager (DONE, `./init.sh` full green):** reskinned to admin pixel
+primitives, **logic verbatim** (tabs trainers/assignments, search + pagination,
+season/split/league selectors, trainer CRUD modal, assignment modal, lives +/- with
+pending-change batching + save/discard, remove). Internal helpers `TabButton`,
+`SelectorField`, `TrainerAvatar` (keeps `<img>` — `noImgElement` is off), `EmptyPanel`.
+Verification: typecheck clean · lint 0 errors (30 pre-existing) · build (20 pages).
+
+**MatchesManager (1624) — PENDING:** deferred to a fresh session. It's the last
+non-pixel admin screen; reskin to the admin pixel primitives, logic untouched.
+
+## 2026-05-28 — FR14 complete (MatchesManager) — ADMIN PIXEL RESKIN DONE
+
+`./init.sh` full green. The last non-pixel admin screen is reskinned. Logic verbatim:
+results tab, planning tab, result editing inline, match form modal, J15/J16
+generators (rankings → semis/survival; J15 winners/losers → J16 with division-specific
+tags `grand_final/3rd_place/relegation_battle/honor_battle` for Primera and
+`segunda_final/opportunity/last_chance/honor_segunda` for Segunda), El Olimpo notice.
+
+**Internal helpers** to keep the file readable: `TabButton`, `SelectorField`,
+`TrainerAvatar`, `EmptyPanel`, `ResultRow` (custom flex layout for the Results tab
+match rows with inline score editing), `MatchesTable` + `PlanningMatchesTable`
+(reused for J15/J16 grouped tables and regular-round tables).
+
+**Verification:** typecheck clean · lint 0 errors (30 pre-existing F2 warnings) ·
+build (20 pages) · admin routes unchanged in count, all reskinned.
+
+**Status: admin pixel reskin DONE.** Marco (FR12) + small screens (FR13: Seasons,
+Splits, Divisions, Regulations) + big screens (FR14: Participants, Matches). The
+entire admin now uses the pixel design system. Working tree uncommitted as per the
+user's standing instruction. `activeBatch` cleared.
+
+Remaining non-redesign work: the architecture-review backlog (F2–F6), a separate
+initiative, still pending.

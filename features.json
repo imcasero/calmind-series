@@ -287,6 +287,46 @@
         "This is the 'flip the switch' batch — only after FR9 so redirects have a destination"
       ],
       "note": "Added 2026-05-27 after user asked when the landing gets reworked — it was missing from FR0–FR10. Scheduled last (after FR9/FR10) to avoid dangling links while the redesign is built in isolation under /hub."
+    },
+    {
+      "id": "FR12",
+      "phase": "Admin Pixel — marco + primitivas",
+      "effort": "medio día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR0"],
+      "items": [
+        "Pixel admin button variants (.pixel-btn--danger/--success/--cyan) + .pixel-input/.pixel-table in pixel.css",
+        "New nav pixel icons (PixelUsers/PixelDoc/PixelGear) in PixelIcons",
+        "Admin primitives src/components/admin/ui/ (AdminCard, AdminButton, AdminInput, AdminSelect, AdminTextarea, AdminModal, AdminBadge, AdminErrorBanner)",
+        "Reskin shell: login, dashboard layout (sidebar+topbar, pixel icons), dashboard home, settings, loading/error — wrap in .pixel-root",
+        "Logic untouched (Supabase/forms/router.refresh)"
+      ],
+      "note": "User chose FULL admin reskin (marco + 7 management screens) + pixel nav icons (2026-05-27). Batched: FR12 marco+primitivas, FR13 small screens, FR14 big screens."
+    },
+    {
+      "id": "FR13",
+      "phase": "Admin Pixel — pantallas pequeñas",
+      "effort": "1 día",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR12"],
+      "items": [
+        "Reskin SeasonsManager, SplitsManager, DivisionsManager, RegulationsManager to admin pixel primitives"
+      ]
+    },
+    {
+      "id": "FR14",
+      "phase": "Admin Pixel — pantallas grandes",
+      "effort": "1-2 días",
+      "status": "done",
+      "spec": null,
+      "dependsOn": ["FR12"],
+      "items": [
+        "[DONE 2026-05-27] ParticipantsManager (1021) reskinned to admin pixel primitives — logic untouched",
+        "[DONE 2026-05-28] MatchesManager (1624) reskinned to admin pixel primitives — logic untouched (J15/J16 generators, result editing, planning, El Olimpo notice all preserved)"
+      ],
+      "note": "Split across two sessions for budget: Participants 2026-05-27, Matches 2026-05-28. Admin pixel reskin COMPLETE."
     }
   ]
 }

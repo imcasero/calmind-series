@@ -9,11 +9,14 @@ export { PixelGrid, type PixelMap, type PixelPalette } from './PixelGrid';
 export {
   PixelArrow,
   PixelCrown,
+  PixelDoc,
+  PixelGear,
   PixelGem,
   PixelLightning,
   PixelLogo,
   PixelOrb,
   PixelSkull,
   PixelSword,
+  PixelUsers,
 } from './PixelIcons';
 export { TrainerAvatar } from './TrainerAvatar';

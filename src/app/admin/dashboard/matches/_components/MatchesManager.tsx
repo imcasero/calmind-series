@@ -2,6 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  AdminBadge,
+  AdminButton,
+  AdminCard,
+  AdminErrorBanner,
+  AdminInput,
+  AdminModal,
+  AdminSelect,
+} from '@/components/admin/ui';
 import type { ActiveSplitInfo } from '@/lib/queries';
 import { createClient } from '@/lib/supabase/client';
 import type {
@@ -12,6 +21,7 @@ import type {
   Split,
   Trainer,
 } from '@/lib/types/database.types';
+import { cn } from '@/lib/utils';
 
 type ParticipantWithTrainer = LeagueParticipant & { trainer: Trainer };
 type MatchWithTrainers = Match & {
@@ -473,7 +483,6 @@ export default function MatchesManager({
     setError(null);
 
     try {
-      // Fetch top 8 from rankings
       const rankings = await fetchRankingsByLeague(selectedLeagueId);
 
       if (rankings.length < 8) {
@@ -482,7 +491,6 @@ export default function MatchesManager({
         );
       }
 
-      // Validate all trainer_ids exist
       for (let i = 0; i < 8; i++) {
         if (!rankings[i].trainer_id) {
           throw new Error(
@@ -491,7 +499,6 @@ export default function MatchesManager({
         }
       }
 
-      // Build the 4 matches
       const matchesToCreate = [
         {
           league_id: selectedLeagueId,
@@ -535,9 +542,7 @@ export default function MatchesManager({
         },
       ];
 
-      // Insert all matches
       const { error } = await supabase.from('matches').insert(matchesToCreate);
-
       if (error) throw error;
 
       await refreshMatches();
@@ -557,7 +562,6 @@ export default function MatchesManager({
     setError(null);
 
     try {
-      // Fetch J15 matches
       const j15Matches = await fetchJ15Matches(selectedLeagueId);
 
       if (j15Matches.length !== 4) {
@@ -566,7 +570,6 @@ export default function MatchesManager({
         );
       }
 
-      // Get matches by tag
       const semi1 = j15Matches.find((m) => m.match_tag === 'semi_1');
       const semi2 = j15Matches.find((m) => m.match_tag === 'semi_2');
       const surv1 = j15Matches.find((m) => m.match_tag === 'survival_1');
@@ -578,10 +581,8 @@ export default function MatchesManager({
         );
       }
 
-      // Determine league tier
       const tier = getLeagueTier(selectedLeagueId);
 
-      // Build J16 matches based on tier
       const matchesToCreate =
         tier === 'primera'
           ? [
@@ -669,9 +670,7 @@ export default function MatchesManager({
               },
             ];
 
-      // Insert all matches
       const { error } = await supabase.from('matches').insert(matchesToCreate);
-
       if (error) throw error;
 
       await refreshMatches();
@@ -689,128 +688,80 @@ export default function MatchesManager({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-retro-gold-500 uppercase tracking-wider">
-          Partidos
-        </h1>
-      </div>
+      <h1 className="font-pixel text-lg uppercase tracking-wider text-px-gold">
+        Partidos
+      </h1>
 
-      {/* Error Message */}
       {error && (
-        <div className="bg-red-600 border-4 border-red-800 p-4 text-white text-sm">
-          {error}
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-4 underline"
-          >
-            Cerrar
-          </button>
-        </div>
+        <AdminErrorBanner message={error} onDismiss={() => setError(null)} />
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2">
-        <button
-          type="button"
+      <div className="flex flex-wrap gap-2">
+        <TabButton
+          active={activeTab === 'results'}
           onClick={() => setActiveTab('results')}
-          className={`
-            px-6 py-3 font-bold uppercase tracking-wide text-sm border-4 transition-all duration-100
-            ${
-              activeTab === 'results'
-                ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
-                : 'bg-jacksons-purple-800 text-jacksons-purple-200 border-jacksons-purple-600 hover:bg-jacksons-purple-700'
-            }
-          `}
         >
           Resultados
-        </button>
-        <button
-          type="button"
+        </TabButton>
+        <TabButton
+          active={activeTab === 'planning'}
           onClick={() => setActiveTab('planning')}
-          className={`
-            px-6 py-3 font-bold uppercase tracking-wide text-sm border-4 transition-all duration-100
-            ${
-              activeTab === 'planning'
-                ? 'bg-retro-gold-500 text-jacksons-purple-950 border-jacksons-purple-950 shadow-[2px_2px_0px_0px_#1a1a1a]'
-                : 'bg-jacksons-purple-800 text-jacksons-purple-200 border-jacksons-purple-600 hover:bg-jacksons-purple-700'
-            }
-          `}
         >
-          Planificacion
-        </button>
+          Planificación
+        </TabButton>
       </div>
 
-      {/* Tab Content */}
       {activeTab === 'results' ? (
         /* Results Tab */
-        <div className="space-y-4">
-          {/* Active Split Info + League Selector */}
-          <div className="flex items-center gap-4 flex-wrap bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-4 shadow-[4px_4px_0px_0px_#1a1a1a]">
+        <div className="flex flex-col gap-4">
+          {/* Active Split + League Selector */}
+          <AdminCard className="flex flex-wrap items-center gap-4">
             {activeSplitInfo ? (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-jacksons-purple-200 text-sm uppercase tracking-wide">
-                    Split Activo:
+                  <span className="font-pixel text-[9px] uppercase tracking-wider text-px-ink-dim">
+                    Split Activo
                   </span>
-                  <span className="px-3 py-1 bg-retro-gold-500 text-jacksons-purple-950 font-bold text-sm border-2 border-jacksons-purple-950">
+                  <AdminBadge tone="gold">
                     {activeSplitInfo.split.name}
-                  </span>
+                  </AdminBadge>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <label
-                    htmlFor="results-league"
-                    className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-                  >
-                    Division:
-                  </label>
-                  <select
-                    id="results-league"
-                    value={resultsLeagueId ?? ''}
-                    onChange={(e) => setResultsLeagueId(e.target.value || null)}
-                    disabled={loadingLeagues}
-                    className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="">
-                      {loadingLeagues ? 'Cargando...' : 'Seleccionar'}
+                <SelectorField
+                  label="División"
+                  value={resultsLeagueId ?? ''}
+                  onChange={(v) => setResultsLeagueId(v || null)}
+                  disabled={loadingLeagues}
+                >
+                  <option value="">
+                    {loadingLeagues ? 'Cargando...' : 'Seleccionar'}
+                  </option>
+                  {leagues.map((league) => (
+                    <option key={league.id} value={league.id}>
+                      {league.tier_name}
                     </option>
-                    {leagues.map((league) => (
-                      <option key={league.id} value={league.id}>
-                        {league.tier_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  ))}
+                </SelectorField>
               </>
             ) : (
-              <p className="text-jacksons-purple-300">
+              <p className="font-retro text-base text-px-ink-dim">
                 No hay un split activo configurado.
               </p>
             )}
-          </div>
+          </AdminCard>
 
-          {/* Matches List for Results */}
+          {/* Matches List */}
           {!resultsLeagueId ? (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">
-                Selecciona una division para ver los partidos.
-              </p>
-            </div>
+            <EmptyPanel text="Selecciona una división para ver los partidos." />
           ) : loadingMatches ? (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">Cargando partidos...</p>
-            </div>
+            <EmptyPanel text="Cargando partidos..." />
           ) : matches.length === 0 ? (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">
-                No hay partidos planificados para esta division.
-              </p>
-            </div>
+            <EmptyPanel text="No hay partidos planificados para esta división." />
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-col gap-4">
               {availableRounds.map((round) => {
                 const roundMatches = matches.filter((m) => m.round === round);
                 if (roundMatches.length === 0) return null;
@@ -818,151 +769,27 @@ export default function MatchesManager({
                 return (
                   <div
                     key={round}
-                    className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden"
+                    className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]"
                   >
-                    <div className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600 px-6 py-3">
-                      <h3 className="text-retro-gold-500 font-bold uppercase tracking-wider">
+                    <div className="border-b-[3px] border-px-border bg-px-deep px-6 py-3">
+                      <h3 className="font-pixel text-sm uppercase tracking-wider text-px-gold">
                         Jornada {round}
                       </h3>
                     </div>
-                    <div className="divide-y-2 divide-jacksons-purple-700">
+                    <div>
                       {roundMatches.map((match) => (
-                        <div
+                        <ResultRow
                           key={match.id}
-                          className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-jacksons-purple-700/30 transition-colors"
-                        >
-                          {/* Match Display */}
-                          <div className="flex items-center gap-4 flex-1">
-                            {/* Home Trainer */}
-                            <div className="flex items-center gap-2 flex-1 justify-end">
-                              <span className="text-white font-medium text-right">
-                                {match.home_trainer?.nickname ?? 'TBD'}
-                              </span>
-                              {match.home_trainer?.avatar_url ? (
-                                <img
-                                  src={match.home_trainer.avatar_url}
-                                  alt=""
-                                  className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                                  {match.home_trainer?.nickname?.charAt(0) ??
-                                    '?'}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Score / Edit */}
-                            {editingResultId === match.id ? (
-                              <div className="flex items-center gap-2 px-4">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="3"
-                                  value={resultForm.home_sets}
-                                  onChange={(e) =>
-                                    setResultForm({
-                                      ...resultForm,
-                                      home_sets:
-                                        parseInt(e.target.value, 10) || 0,
-                                    })
-                                  }
-                                  className="w-12 h-10 text-center bg-jacksons-purple-950 text-white border-2 border-jacksons-purple-500 font-bold"
-                                />
-                                <span className="text-jacksons-purple-400 font-bold">
-                                  -
-                                </span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="3"
-                                  value={resultForm.away_sets}
-                                  onChange={(e) =>
-                                    setResultForm({
-                                      ...resultForm,
-                                      away_sets:
-                                        parseInt(e.target.value, 10) || 0,
-                                    })
-                                  }
-                                  className="w-12 h-10 text-center bg-jacksons-purple-950 text-white border-2 border-jacksons-purple-500 font-bold"
-                                />
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 px-4 min-w-[80px] justify-center">
-                                {match.played ? (
-                                  <span className="text-retro-gold-400 font-bold text-lg">
-                                    {match.home_sets} - {match.away_sets}
-                                  </span>
-                                ) : (
-                                  <span className="text-jacksons-purple-400 font-bold">
-                                    VS
-                                  </span>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Away Trainer */}
-                            <div className="flex items-center gap-2 flex-1">
-                              {match.away_trainer?.avatar_url ? (
-                                <img
-                                  src={match.away_trainer.avatar_url}
-                                  alt=""
-                                  className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                                  {match.away_trainer?.nickname?.charAt(0) ??
-                                    '?'}
-                                </div>
-                              )}
-                              <span className="text-white font-medium">
-                                {match.away_trainer?.nickname ?? 'TBD'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex items-center gap-2">
-                            {editingResultId === match.id ? (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={handleCancelEditResult}
-                                  className="px-3 py-2 bg-jacksons-purple-600 text-white border-2 border-jacksons-purple-800 text-xs font-bold uppercase hover:bg-jacksons-purple-500 transition-all"
-                                >
-                                  Cancelar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveResult(match.id)}
-                                  disabled={saving}
-                                  className="px-3 py-2 bg-green-600 text-white border-2 border-green-800 text-xs font-bold uppercase hover:bg-green-500 disabled:opacity-50 transition-all"
-                                >
-                                  {saving ? '...' : 'Guardar'}
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEditResult(match)}
-                                  className="px-3 py-2 bg-retro-cyan-500 text-white border-2 border-retro-cyan-700 text-xs font-bold uppercase hover:bg-retro-cyan-400 transition-all"
-                                >
-                                  {match.played ? 'Editar' : 'Resultado'}
-                                </button>
-                                {match.played && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleClearResult(match.id)}
-                                    className="px-3 py-2 bg-orange-600 text-white border-2 border-orange-800 text-xs font-bold uppercase hover:bg-orange-500 transition-all"
-                                  >
-                                    Limpiar
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
+                          match={match}
+                          isEditing={editingResultId === match.id}
+                          resultForm={resultForm}
+                          setResultForm={setResultForm}
+                          saving={saving}
+                          onStartEdit={handleStartEditResult}
+                          onCancelEdit={handleCancelEditResult}
+                          onSave={handleSaveResult}
+                          onClear={handleClearResult}
+                        />
                       ))}
                     </div>
                   </div>
@@ -973,360 +800,250 @@ export default function MatchesManager({
         </div>
       ) : (
         /* Planning Tab */
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {/* Selectors */}
-          <div className="flex items-center gap-4 flex-wrap bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-4 shadow-[4px_4px_0px_0px_#1a1a1a]">
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="planning-season"
-                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-              >
-                Temporada:
-              </label>
-              <select
-                id="planning-season"
-                value={selectedSeasonId ?? ''}
-                onChange={(e) => {
-                  setSelectedSeasonId(e.target.value || null);
-                  setSelectedSplitId(null);
-                  setSelectedLeagueId(null);
-                }}
-                className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer"
-              >
-                <option value="">Seleccionar</option>
-                {initialSeasons.map((season) => (
-                  <option key={season.id} value={season.id}>
-                    {season.name} {season.is_active ? '★' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="planning-split"
-                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-              >
-                Split:
-              </label>
-              <select
-                id="planning-split"
-                value={selectedSplitId ?? ''}
-                onChange={(e) => {
-                  setSelectedSplitId(e.target.value || null);
-                  setSelectedLeagueId(null);
-                }}
-                disabled={!selectedSeasonId || loadingSplits}
-                className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer disabled:opacity-50"
-              >
-                <option value="">
-                  {loadingSplits ? 'Cargando...' : 'Seleccionar'}
+          <AdminCard className="flex flex-wrap items-center gap-3">
+            <SelectorField
+              label="Temporada"
+              value={selectedSeasonId ?? ''}
+              onChange={(v) => {
+                setSelectedSeasonId(v || null);
+                setSelectedSplitId(null);
+                setSelectedLeagueId(null);
+              }}
+            >
+              <option value="">Seleccionar</option>
+              {initialSeasons.map((season) => (
+                <option key={season.id} value={season.id}>
+                  {season.name} {season.is_active ? '★' : ''}
                 </option>
-                {splits.map((split) => (
-                  <option key={split.id} value={split.id}>
-                    {split.name} {split.is_active ? '★' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+              ))}
+            </SelectorField>
 
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="planning-league"
-                className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-              >
-                Division:
-              </label>
-              <select
-                id="planning-league"
-                value={selectedLeagueId ?? ''}
-                onChange={(e) => setSelectedLeagueId(e.target.value || null)}
-                disabled={!selectedSplitId || loadingLeagues}
-                className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer disabled:opacity-50"
-              >
-                <option value="">
-                  {loadingLeagues ? 'Cargando...' : 'Seleccionar'}
+            <SelectorField
+              label="Split"
+              value={selectedSplitId ?? ''}
+              onChange={(v) => {
+                setSelectedSplitId(v || null);
+                setSelectedLeagueId(null);
+              }}
+              disabled={!selectedSeasonId || loadingSplits}
+            >
+              <option value="">
+                {loadingSplits ? 'Cargando...' : 'Seleccionar'}
+              </option>
+              {splits.map((split) => (
+                <option key={split.id} value={split.id}>
+                  {split.name} {split.is_active ? '★' : ''}
                 </option>
-                {leagues.map((league) => (
-                  <option key={league.id} value={league.id}>
-                    {league.tier_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+              ))}
+            </SelectorField>
 
-          {/* Round selector + Add match */}
+            <SelectorField
+              label="División"
+              value={selectedLeagueId ?? ''}
+              onChange={(v) => setSelectedLeagueId(v || null)}
+              disabled={!selectedSplitId || loadingLeagues}
+            >
+              <option value="">
+                {loadingLeagues ? 'Cargando...' : 'Seleccionar'}
+              </option>
+              {leagues.map((league) => (
+                <option key={league.id} value={league.id}>
+                  {league.tier_name}
+                </option>
+              ))}
+            </SelectorField>
+          </AdminCard>
+
+          {/* Round + actions */}
           {selectedLeagueId && (
-            <div className="flex items-center justify-between gap-4 flex-wrap bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-4 shadow-[4px_4px_0px_0px_#1a1a1a]">
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="round-select"
-                  className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-                >
-                  Jornada:
-                </label>
-                <select
-                  id="round-select"
-                  value={selectedRound}
-                  onChange={(e) =>
-                    setSelectedRound(parseInt(e.target.value, 10))
-                  }
-                  className="px-4 py-2 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer"
-                >
-                  {[...Array(20)].map((_, i) => {
-                    const round = i + 1;
-                    return (
-                      <option key={`round-${round}`} value={round}>
-                        Jornada {round}
-                        {availableRounds.includes(round) ? ' ●' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+            <AdminCard className="flex flex-wrap items-center justify-between gap-3">
+              <SelectorField
+                label="Jornada"
+                value={String(selectedRound)}
+                onChange={(v) => setSelectedRound(parseInt(v, 10))}
+              >
+                {[...Array(20)].map((_, i) => {
+                  const round = i + 1;
+                  return (
+                    <option key={`round-${round}`} value={round}>
+                      Jornada {round}
+                      {availableRounds.includes(round) ? ' ●' : ''}
+                    </option>
+                  );
+                })}
+              </SelectorField>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled
-                  className="px-4 py-2 bg-jacksons-purple-600 text-jacksons-purple-400 border-4 border-jacksons-purple-700 font-bold uppercase tracking-wide text-sm cursor-not-allowed opacity-50"
-                  title="Proximamente: Carga de CSV"
-                >
+              <div className="flex flex-wrap items-center gap-2">
+                <AdminButton tone="default" disabled>
                   Importar CSV
-                </button>
+                </AdminButton>
 
                 {selectedRound === 15 ? (
-                  <button
-                    type="button"
+                  <AdminButton
+                    tone="primary"
                     onClick={handleGenerateJ15Matches}
                     disabled={
                       generatingSpecialMatches || matchesByRound.length > 0
                     }
-                    className="px-4 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100"
                   >
                     {generatingSpecialMatches
                       ? 'Generando...'
                       : 'Generar Cruces J15'}
-                  </button>
+                  </AdminButton>
                 ) : selectedRound === 16 ? (
-                  <button
-                    type="button"
+                  <AdminButton
+                    tone="primary"
                     onClick={handleGenerateJ16Matches}
                     disabled={
                       generatingSpecialMatches || matchesByRound.length > 0
                     }
-                    className="px-4 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100"
                   >
                     {generatingSpecialMatches
                       ? 'Generando...'
                       : 'Generar Finales J16'}
-                  </button>
+                  </AdminButton>
                 ) : (
-                  <button
-                    type="button"
+                  <AdminButton
+                    tone="primary"
                     onClick={() => handleOpenMatchForm()}
                     disabled={participants.length < 2}
-                    className="px-4 py-2 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100"
                   >
                     + Nuevo Partido
-                  </button>
+                  </AdminButton>
                 )}
               </div>
-            </div>
+            </AdminCard>
           )}
 
           {/* Match Form Modal */}
           {showMatchForm && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 shadow-[4px_4px_0px_0px_#1a1a1a] w-full max-w-md">
-                <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-4">
-                  {editingMatch ? 'Editar Partido' : 'Nuevo Partido'}
-                </h2>
-                <form onSubmit={handleSaveMatch} className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="home-trainer"
-                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                    >
-                      Entrenador Local *
-                    </label>
-                    <select
-                      id="home-trainer"
-                      value={matchForm.home_trainer_id}
-                      onChange={(e) =>
-                        setMatchForm({
-                          ...matchForm,
-                          home_trainer_id: e.target.value,
-                        })
-                      }
-                      required
-                      className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer"
-                    >
-                      <option value="">Seleccionar</option>
-                      {getAvailableTrainers(matchForm.away_trainer_id).map(
-                        (p) => (
-                          <option key={p.trainer_id} value={p.trainer_id ?? ''}>
-                            {p.trainer?.nickname}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
+            <AdminModal
+              title={editingMatch ? 'Editar Partido' : 'Nuevo Partido'}
+              onClose={handleCloseMatchForm}
+            >
+              <form onSubmit={handleSaveMatch} className="flex flex-col gap-4">
+                <AdminSelect
+                  id="home-trainer"
+                  label="Entrenador Local *"
+                  value={matchForm.home_trainer_id}
+                  onChange={(e) =>
+                    setMatchForm({
+                      ...matchForm,
+                      home_trainer_id: e.target.value,
+                    })
+                  }
+                  required
+                >
+                  <option value="">Seleccionar</option>
+                  {getAvailableTrainers(matchForm.away_trainer_id).map((p) => (
+                    <option key={p.trainer_id} value={p.trainer_id ?? ''}>
+                      {p.trainer?.nickname}
+                    </option>
+                  ))}
+                </AdminSelect>
 
-                  <div>
-                    <label
-                      htmlFor="away-trainer"
-                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                    >
-                      Entrenador Visitante *
-                    </label>
-                    <select
-                      id="away-trainer"
-                      value={matchForm.away_trainer_id}
-                      onChange={(e) =>
-                        setMatchForm({
-                          ...matchForm,
-                          away_trainer_id: e.target.value,
-                        })
-                      }
-                      required
-                      className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer"
-                    >
-                      <option value="">Seleccionar</option>
-                      {getAvailableTrainers(matchForm.home_trainer_id).map(
-                        (p) => (
-                          <option key={p.trainer_id} value={p.trainer_id ?? ''}>
-                            {p.trainer?.nickname}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
+                <AdminSelect
+                  id="away-trainer"
+                  label="Entrenador Visitante *"
+                  value={matchForm.away_trainer_id}
+                  onChange={(e) =>
+                    setMatchForm({
+                      ...matchForm,
+                      away_trainer_id: e.target.value,
+                    })
+                  }
+                  required
+                >
+                  <option value="">Seleccionar</option>
+                  {getAvailableTrainers(matchForm.home_trainer_id).map((p) => (
+                    <option key={p.trainer_id} value={p.trainer_id ?? ''}>
+                      {p.trainer?.nickname}
+                    </option>
+                  ))}
+                </AdminSelect>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="match-round"
-                        className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                      >
-                        Jornada *
-                      </label>
-                      <input
-                        id="match-round"
-                        type="number"
-                        min="1"
-                        value={matchForm.round}
-                        onChange={(e) =>
-                          setMatchForm({
-                            ...matchForm,
-                            round: parseInt(e.target.value, 10) || 1,
-                          })
-                        }
-                        required
-                        className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500"
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <AdminInput
+                    id="match-round"
+                    label="Jornada *"
+                    type="number"
+                    min="1"
+                    value={matchForm.round}
+                    onChange={(e) =>
+                      setMatchForm({
+                        ...matchForm,
+                        round: parseInt(e.target.value, 10) || 1,
+                      })
+                    }
+                    required
+                  />
+                  <AdminSelect
+                    id="match-group"
+                    label="Grupo"
+                    value={matchForm.match_group}
+                    onChange={(e) =>
+                      setMatchForm({
+                        ...matchForm,
+                        match_group: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="regular">Regular</option>
+                    <option value="playoff">Playoff</option>
+                    <option value="final">Final</option>
+                  </AdminSelect>
+                </div>
 
-                    <div>
-                      <label
-                        htmlFor="match-group"
-                        className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                      >
-                        Grupo
-                      </label>
-                      <select
-                        id="match-group"
-                        value={matchForm.match_group}
-                        onChange={(e) =>
-                          setMatchForm({
-                            ...matchForm,
-                            match_group: e.target.value,
-                          })
-                        }
-                        className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 cursor-pointer"
-                      >
-                        <option value="regular">Regular</option>
-                        <option value="playoff">Playoff</option>
-                        <option value="final">Final</option>
-                      </select>
-                    </div>
-                  </div>
+                <AdminInput
+                  id="match-tag"
+                  label="Etiqueta (opcional)"
+                  type="text"
+                  value={matchForm.match_tag}
+                  onChange={(e) =>
+                    setMatchForm({ ...matchForm, match_tag: e.target.value })
+                  }
+                  placeholder={`J${matchForm.round}`}
+                />
 
-                  <div>
-                    <label
-                      htmlFor="match-tag"
-                      className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                    >
-                      Etiqueta (opcional)
-                    </label>
-                    <input
-                      id="match-tag"
-                      type="text"
-                      value={matchForm.match_tag}
-                      onChange={(e) =>
-                        setMatchForm({
-                          ...matchForm,
-                          match_tag: e.target.value,
-                        })
-                      }
-                      placeholder={`J${matchForm.round}`}
-                      className="w-full px-4 py-3 bg-jacksons-purple-950 text-white border-4 border-jacksons-purple-600 focus:outline-none focus:border-retro-gold-500 placeholder-jacksons-purple-400"
-                    />
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <button
-                      type="button"
-                      onClick={handleCloseMatchForm}
-                      className="flex-1 px-4 py-3 bg-jacksons-purple-600 text-white border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm hover:bg-jacksons-purple-500 transition-all duration-100"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex-1 px-4 py-3 bg-retro-gold-500 text-jacksons-purple-950 border-4 border-jacksons-purple-950 font-bold uppercase tracking-wide text-sm shadow-[4px_4px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a] disabled:opacity-50 transition-all duration-100"
-                    >
-                      {saving ? 'Guardando...' : 'Guardar'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
+                <div className="flex gap-3 pt-2">
+                  <AdminButton
+                    tone="ghost"
+                    onClick={handleCloseMatchForm}
+                    className="flex-1 justify-center"
+                  >
+                    Cancelar
+                  </AdminButton>
+                  <AdminButton
+                    type="submit"
+                    tone="primary"
+                    disabled={saving}
+                    className="flex-1 justify-center"
+                  >
+                    {saving ? 'Guardando...' : 'Guardar'}
+                  </AdminButton>
+                </div>
+              </form>
+            </AdminModal>
           )}
 
           {/* Matches List for Planning */}
           {!selectedLeagueId ? (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">
-                Selecciona temporada, split y division para planificar partidos.
-              </p>
-            </div>
+            <EmptyPanel text="Selecciona temporada, split y división para planificar partidos." />
           ) : loadingMatches || loadingParticipants ? (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">Cargando...</p>
-            </div>
+            <EmptyPanel text="Cargando..." />
           ) : participants.length < 2 &&
             selectedRound !== 15 &&
             selectedRound !== 16 ? (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-              <p className="text-jacksons-purple-300">
-                Se necesitan al menos 2 participantes en esta division para
-                crear partidos.
-              </p>
-            </div>
+            <EmptyPanel text="Se necesitan al menos 2 participantes en esta división para crear partidos." />
           ) : selectedRound === 15 || selectedRound === 16 ? (
             /* Grouped Display for J15/J16 */
-            <div className="space-y-6">
+            <div className="flex flex-col gap-6">
               {matchesByRound.length === 0 ? (
-                <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-                  <p className="text-jacksons-purple-300">
-                    No hay partidos en esta jornada. Usa el botón "Generar{' '}
-                    {selectedRound === 15 ? 'Cruces J15' : 'Finales J16'}" para
-                    crearlos automáticamente.
-                  </p>
-                </div>
+                <EmptyPanel
+                  text={`No hay partidos en esta jornada. Usa el botón "Generar ${selectedRound === 15 ? 'Cruces J15' : 'Finales J16'}" para crearlos automáticamente.`}
+                />
               ) : (
                 <>
                   {['top_4', 'bottom_4'].map((group) => {
@@ -1339,153 +1056,35 @@ export default function MatchesManager({
                       group === 'top_4'
                         ? selectedRound === 16
                           ? 'FINALES Y PLAYOFFS'
-                          : 'PLAYOFFS - TOP 4'
-                        : 'SUPERVIVENCIA - BOTTOM 4';
+                          : 'PLAYOFFS · TOP 4'
+                        : 'SUPERVIVENCIA · BOTTOM 4';
 
                     return (
-                      <div
+                      <PlanningMatchesTable
                         key={group}
-                        className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden"
-                      >
-                        <div className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600 px-6 py-3">
-                          <h4 className="text-retro-gold-500 font-bold uppercase tracking-wider text-sm">
-                            {groupTitle}
-                          </h4>
-                        </div>
-                        <table className="w-full">
-                          <thead>
-                            <tr className="bg-jacksons-purple-900/50 border-b-2 border-jacksons-purple-600">
-                              <th className="px-6 py-3 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                                Local
-                              </th>
-                              <th className="px-6 py-3 text-center text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                                VS
-                              </th>
-                              <th className="px-6 py-3 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                                Visitante
-                              </th>
-                              <th className="px-6 py-3 text-center text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                                Estado
-                              </th>
-                              <th className="px-6 py-3 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                                Acciones
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {groupMatches.map((match) => (
-                              <tr
-                                key={match.id}
-                                className="border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors"
-                              >
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center gap-2">
-                                    {match.home_trainer?.avatar_url ? (
-                                      <img
-                                        src={match.home_trainer.avatar_url}
-                                        alt=""
-                                        className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                                        {match.home_trainer?.nickname?.charAt(
-                                          0,
-                                        ) ?? '?'}
-                                      </div>
-                                    )}
-                                    <span className="text-white font-medium">
-                                      {match.home_trainer?.nickname ?? 'TBD'}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                  {match.played ? (
-                                    <span className="text-retro-gold-400 font-bold">
-                                      {match.home_sets} - {match.away_sets}
-                                    </span>
-                                  ) : (
-                                    <span className="text-jacksons-purple-400 font-bold">
-                                      VS
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center gap-2">
-                                    {match.away_trainer?.avatar_url ? (
-                                      <img
-                                        src={match.away_trainer.avatar_url}
-                                        alt=""
-                                        className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                                        {match.away_trainer?.nickname?.charAt(
-                                          0,
-                                        ) ?? '?'}
-                                      </div>
-                                    )}
-                                    <span className="text-white font-medium">
-                                      {match.away_trainer?.nickname ?? 'TBD'}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                  <span
-                                    className={`px-2 py-1 text-xs font-bold uppercase border-2 ${
-                                      match.played
-                                        ? 'bg-green-600 border-green-800 text-white'
-                                        : 'bg-jacksons-purple-600 border-jacksons-purple-800 text-jacksons-purple-200'
-                                    }`}
-                                  >
-                                    {match.played ? 'Jugado' : 'Pendiente'}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenMatchForm(match)}
-                                      className="px-3 py-2 bg-retro-cyan-500 text-white border-2 border-retro-cyan-700 text-xs font-bold uppercase hover:bg-retro-cyan-400 transition-all"
-                                    >
-                                      Editar
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleDeleteMatch(match.id)
-                                      }
-                                      className="px-3 py-2 bg-red-600 text-white border-2 border-red-800 text-xs font-bold uppercase hover:bg-red-500 transition-all"
-                                    >
-                                      Eliminar
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                        title={groupTitle}
+                        matches={groupMatches}
+                        onEdit={handleOpenMatchForm}
+                        onDelete={handleDeleteMatch}
+                      />
                     );
                   })}
 
-                  {/* El Olimpo Notice for J16 */}
                   {selectedRound === 16 && (
-                    <div className="mt-6 p-4 bg-retro-gold-500/10 border-2 border-retro-gold-500/30 rounded">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-retro-gold-400 font-bold text-xs uppercase tracking-wider">
-                          Próximo Evento
-                        </span>
-                      </div>
-                      <p className="text-jacksons-purple-200 text-sm">
-                        <span className="font-bold text-retro-gold-400">
+                    <div className="border-2 border-px-gold/40 bg-px-deep p-4">
+                      <p className="mb-2 font-pixel text-[9px] uppercase tracking-wider text-px-gold">
+                        Próximo Evento
+                      </p>
+                      <p className="font-retro text-base text-px-ink-soft">
+                        <span className="font-bold text-px-gold">
                           El Olimpo:
                         </span>{' '}
                         Perdedor [Lucha por Permanencia] vs Ganador [La
                         Oportunidad]
                       </p>
-                      <p className="text-jacksons-purple-400 text-xs mt-1">
+                      <p className="mt-1 font-retro text-sm text-px-ink-dim">
                         Este combate determina el ascenso/descenso entre Primera
-                        y Segunda División
+                        y Segunda División.
                       </p>
                     </div>
                   )}
@@ -1493,132 +1092,360 @@ export default function MatchesManager({
               )}
             </div>
           ) : (
-            <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden">
-              <div className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600 px-6 py-3 flex items-center justify-between">
-                <h3 className="text-retro-gold-500 font-bold uppercase tracking-wider">
+            <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
+              <div className="flex items-center justify-between border-b-[3px] border-px-border bg-px-deep px-6 py-3">
+                <h3 className="font-pixel text-sm uppercase tracking-wider text-px-gold">
                   Jornada {selectedRound}
                 </h3>
-                <span className="text-jacksons-purple-300 text-sm">
+                <span className="font-retro text-base text-px-ink-dim">
                   {matchesByRound.length} partido(s)
                 </span>
               </div>
-
               {matchesByRound.length === 0 ? (
-                <div className="p-8 text-center text-jacksons-purple-300">
+                <p className="p-8 text-center font-retro text-lg text-px-ink-dim">
                   No hay partidos en esta jornada.
-                </div>
+                </p>
               ) : (
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-jacksons-purple-900/50 border-b-2 border-jacksons-purple-600">
-                      <th className="px-6 py-3 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Local
-                      </th>
-                      <th className="px-6 py-3 text-center text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        VS
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Visitante
-                      </th>
-                      <th className="px-6 py-3 text-center text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Estado
-                      </th>
-                      <th className="px-6 py-3 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                        Acciones
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {matchesByRound.map((match) => (
-                      <tr
-                        key={match.id}
-                        className="border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            {match.home_trainer?.avatar_url ? (
-                              <img
-                                src={match.home_trainer.avatar_url}
-                                alt=""
-                                className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                                {match.home_trainer?.nickname?.charAt(0) ?? '?'}
-                              </div>
-                            )}
-                            <span className="text-white font-medium">
-                              {match.home_trainer?.nickname ?? 'TBD'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          {match.played ? (
-                            <span className="text-retro-gold-400 font-bold">
-                              {match.home_sets} - {match.away_sets}
-                            </span>
-                          ) : (
-                            <span className="text-jacksons-purple-400 font-bold">
-                              VS
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            {match.away_trainer?.avatar_url ? (
-                              <img
-                                src={match.away_trainer.avatar_url}
-                                alt=""
-                                className="w-8 h-8 border-2 border-jacksons-purple-500 object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                                {match.away_trainer?.nickname?.charAt(0) ?? '?'}
-                              </div>
-                            )}
-                            <span className="text-white font-medium">
-                              {match.away_trainer?.nickname ?? 'TBD'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`px-2 py-1 text-xs font-bold uppercase border-2 ${
-                              match.played
-                                ? 'bg-green-600 border-green-800 text-white'
-                                : 'bg-jacksons-purple-600 border-jacksons-purple-800 text-jacksons-purple-200'
-                            }`}
-                          >
-                            {match.played ? 'Jugado' : 'Pendiente'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenMatchForm(match)}
-                              className="px-3 py-2 bg-retro-cyan-500 text-white border-2 border-retro-cyan-700 text-xs font-bold uppercase hover:bg-retro-cyan-400 transition-all"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteMatch(match.id)}
-                              className="px-3 py-2 bg-red-600 text-white border-2 border-red-800 text-xs font-bold uppercase hover:bg-red-500 transition-all"
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <MatchesTable
+                  matches={matchesByRound}
+                  onEdit={handleOpenMatchForm}
+                  onDelete={handleDeleteMatch}
+                />
               )}
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- Internal helpers ---------- */
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center border-[3px] px-5 py-3 font-pixel text-[10px] uppercase tracking-wider transition-colors',
+        active
+          ? 'border-px-gold bg-px-gold text-px-deep'
+          : 'border-px-border bg-px-elev text-px-ink-soft hover:border-px-border-hi',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SelectorField({
+  label,
+  value,
+  onChange,
+  disabled = false,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-pixel text-[9px] uppercase tracking-wider text-px-ink-dim">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="pixel-input w-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {children}
+      </select>
+    </div>
+  );
+}
+
+function TrainerAvatar({
+  url,
+  nickname,
+}: {
+  url: string | null | undefined;
+  nickname: string | undefined;
+}) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt=""
+        className="size-8 border-2 border-px-border object-cover"
+      />
+    );
+  }
+  return (
+    <div className="grid size-8 place-items-center border-2 border-px-border bg-px-deep font-pixel text-xs text-px-ink">
+      {(nickname ?? '?').charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function EmptyPanel({ text }: { text: string }) {
+  return (
+    <div className="border-[3px] border-px-border bg-px-elev p-8 text-center shadow-[4px_4px_0_0_var(--color-px-deep)]">
+      <p className="font-retro text-lg text-px-ink-dim">{text}</p>
+    </div>
+  );
+}
+
+function ResultRow({
+  match,
+  isEditing,
+  resultForm,
+  setResultForm,
+  saving,
+  onStartEdit,
+  onCancelEdit,
+  onSave,
+  onClear,
+}: {
+  match: MatchWithTrainers;
+  isEditing: boolean;
+  resultForm: { home_sets: number; away_sets: number };
+  setResultForm: (form: { home_sets: number; away_sets: number }) => void;
+  saving: boolean;
+  onStartEdit: (match: MatchWithTrainers) => void;
+  onCancelEdit: () => void;
+  onSave: (id: string) => void;
+  onClear: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-px-border/40 px-6 py-4 last:border-b-0 hover:bg-px-base">
+      <div className="flex flex-1 flex-wrap items-center gap-4">
+        {/* Home Trainer (right-aligned) */}
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <span className="text-right font-retro text-base text-px-ink">
+            {match.home_trainer?.nickname ?? 'TBD'}
+          </span>
+          <TrainerAvatar
+            url={match.home_trainer?.avatar_url}
+            nickname={match.home_trainer?.nickname}
+          />
+        </div>
+
+        {/* Score / Edit */}
+        {isEditing ? (
+          <div className="flex items-center gap-2 px-4">
+            <input
+              type="number"
+              min="0"
+              max="3"
+              value={resultForm.home_sets}
+              onChange={(e) =>
+                setResultForm({
+                  ...resultForm,
+                  home_sets: parseInt(e.target.value, 10) || 0,
+                })
+              }
+              className="pixel-input w-14 text-center font-num"
+            />
+            <span className="font-pixel text-xs text-px-ink-dim">-</span>
+            <input
+              type="number"
+              min="0"
+              max="3"
+              value={resultForm.away_sets}
+              onChange={(e) =>
+                setResultForm({
+                  ...resultForm,
+                  away_sets: parseInt(e.target.value, 10) || 0,
+                })
+              }
+              className="pixel-input w-14 text-center font-num"
+            />
+          </div>
+        ) : (
+          <div className="flex min-w-[80px] items-center justify-center px-4">
+            {match.played ? (
+              <span className="font-num text-lg font-bold text-px-gold">
+                {match.home_sets} - {match.away_sets}
+              </span>
+            ) : (
+              <span className="font-pixel text-[10px] uppercase text-px-ink-dim">
+                VS
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Away Trainer */}
+        <div className="flex flex-1 items-center gap-2">
+          <TrainerAvatar
+            url={match.away_trainer?.avatar_url}
+            nickname={match.away_trainer?.nickname}
+          />
+          <span className="font-retro text-base text-px-ink">
+            {match.away_trainer?.nickname ?? 'TBD'}
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+        {isEditing ? (
+          <>
+            <AdminButton tone="ghost" size="sm" onClick={onCancelEdit}>
+              Cancelar
+            </AdminButton>
+            <AdminButton
+              tone="success"
+              size="sm"
+              onClick={() => onSave(match.id)}
+              disabled={saving}
+            >
+              {saving ? '...' : 'Guardar'}
+            </AdminButton>
+          </>
+        ) : (
+          <>
+            <AdminButton
+              tone="cyan"
+              size="sm"
+              onClick={() => onStartEdit(match)}
+            >
+              {match.played ? 'Editar' : 'Resultado'}
+            </AdminButton>
+            {match.played && (
+              <AdminButton
+                tone="default"
+                size="sm"
+                onClick={() => onClear(match.id)}
+              >
+                Limpiar
+              </AdminButton>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MatchesTable({
+  matches,
+  onEdit,
+  onDelete,
+}: {
+  matches: MatchWithTrainers[];
+  onEdit: (match: MatchWithTrainers) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <table className="pixel-table">
+      <thead>
+        <tr>
+          <th>Local</th>
+          <th className="text-center">VS</th>
+          <th>Visitante</th>
+          <th className="text-center">Estado</th>
+          <th className="text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {matches.map((match) => (
+          <tr key={match.id}>
+            <td>
+              <div className="flex items-center gap-2">
+                <TrainerAvatar
+                  url={match.home_trainer?.avatar_url}
+                  nickname={match.home_trainer?.nickname}
+                />
+                <span className="text-px-ink">
+                  {match.home_trainer?.nickname ?? 'TBD'}
+                </span>
+              </div>
+            </td>
+            <td className="text-center">
+              {match.played ? (
+                <span className="font-num font-bold text-px-gold">
+                  {match.home_sets} - {match.away_sets}
+                </span>
+              ) : (
+                <span className="font-pixel text-[10px] text-px-ink-dim">
+                  VS
+                </span>
+              )}
+            </td>
+            <td>
+              <div className="flex items-center gap-2">
+                <TrainerAvatar
+                  url={match.away_trainer?.avatar_url}
+                  nickname={match.away_trainer?.nickname}
+                />
+                <span className="text-px-ink">
+                  {match.away_trainer?.nickname ?? 'TBD'}
+                </span>
+              </div>
+            </td>
+            <td className="text-center">
+              <AdminBadge tone={match.played ? 'success' : 'neutral'}>
+                {match.played ? 'Jugado' : 'Pendiente'}
+              </AdminBadge>
+            </td>
+            <td>
+              <div className="flex items-center justify-end gap-2">
+                <AdminButton
+                  tone="cyan"
+                  size="sm"
+                  onClick={() => onEdit(match)}
+                >
+                  Editar
+                </AdminButton>
+                <AdminButton
+                  tone="danger"
+                  size="sm"
+                  onClick={() => onDelete(match.id)}
+                >
+                  Eliminar
+                </AdminButton>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function PlanningMatchesTable({
+  title,
+  matches,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  matches: MatchWithTrainers[];
+  onEdit: (match: MatchWithTrainers) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
+      <div className="border-b-[3px] border-px-border bg-px-deep px-6 py-3">
+        <h4 className="font-pixel text-sm uppercase tracking-wider text-px-gold">
+          {title}
+        </h4>
+      </div>
+      <MatchesTable matches={matches} onEdit={onEdit} onDelete={onDelete} />
     </div>
   );
 }

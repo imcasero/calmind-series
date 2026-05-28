@@ -278,3 +278,92 @@ export function PixelArrow({
     </svg>
   );
 }
+
+const USERS: PixelMap = [
+  '...AAAA...',
+  '..ABBBBA..',
+  '..ABBBBA..',
+  '...ABBA...',
+  '.AABBBBAA.',
+  'ABBBBBBBBA',
+  'ABBBBBBBBA',
+  'ABBBBBBBBA',
+  '.A......A.',
+  '..........',
+];
+
+export function PixelUsers({
+  size = 24,
+  color = 'var(--color-px-cyan)',
+}: IconProps) {
+  return (
+    <PixelGrid
+      size={size}
+      cols={10}
+      map={USERS}
+      palette={{ A: 'var(--color-px-deep)', B: color }}
+    />
+  );
+}
+
+const DOC: PixelMap = [
+  '.AAAAAAAA.',
+  '.ABBBBBBA.',
+  '.ABCCCBBA.',
+  '.ABBBBBBA.',
+  '.ABCCCBBA.',
+  '.ABBBBBBA.',
+  '.ABCCCBBA.',
+  '.ABBBBBBA.',
+  '.ABBBBBBA.',
+  '.AAAAAAAA.',
+];
+
+export function PixelDoc({
+  size = 24,
+  color = 'var(--color-px-ink-soft)',
+}: IconProps) {
+  return (
+    <PixelGrid
+      size={size}
+      cols={10}
+      map={DOC}
+      palette={{
+        A: color,
+        B: 'var(--color-px-ink)',
+        C: 'var(--color-px-ink-dim)',
+      }}
+    />
+  );
+}
+
+const GEAR: PixelMap = [
+  '...A..A...',
+  '.A.AAAA.A.',
+  '.AAABBAAA.',
+  'AABBBBBBAA',
+  'AABBCCBBAA',
+  'AABBCCBBAA',
+  'AABBBBBBAA',
+  '.AAABBAAA.',
+  '.A.AAAA.A.',
+  '...A..A...',
+];
+
+export function PixelGear({
+  size = 24,
+  color = 'var(--color-px-ink-dim)',
+}: IconProps) {
+  return (
+    <PixelGrid
+      size={size}
+      cols={10}
+      map={GEAR}
+      palette={{
+        A: color,
+        B: 'var(--color-px-elev)',
+        C: 'var(--color-px-deep)',
+      }}
+    />
+  );
+}

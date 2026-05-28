@@ -2,6 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import {
+  AdminBadge,
+  AdminButton,
+  AdminErrorBanner,
+  AdminInput,
+  AdminModal,
+} from '@/components/admin/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Season, Split } from '@/lib/types/database.types';
 
@@ -159,284 +166,159 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header with Season Selector */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-xl font-bold text-retro-gold-500 uppercase tracking-wider">
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-pixel text-lg uppercase tracking-wider text-px-gold">
           Splits
         </h1>
 
-        <div className="flex items-center gap-4">
-          {/* Season Selector */}
-          <div className="flex items-center gap-3">
-            <label
-              htmlFor="season-select"
-              className="text-jacksons-purple-200 text-sm uppercase tracking-wide"
-            >
-              Temporada:
-            </label>
-            <select
-              id="season-select"
-              value={selectedSeasonId ?? ''}
-              onChange={(e) => setSelectedSeasonId(e.target.value || null)}
-              className="
-                px-4 py-2
-                bg-jacksons-purple-950 text-white
-                border-4 border-jacksons-purple-600
-                focus:outline-none focus:border-retro-gold-500
-                cursor-pointer
-              "
-            >
-              <option value="">Seleccionar temporada</option>
-              {initialSeasons.map((season) => (
-                <option key={season.id} value={season.id}>
-                  {season.name} ({season.year}) {season.is_active ? '★' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-pixel text-[9px] uppercase tracking-wider text-px-ink-dim">
+            Temporada
+          </span>
+          <select
+            value={selectedSeasonId ?? ''}
+            onChange={(e) => setSelectedSeasonId(e.target.value || null)}
+            className="pixel-input w-auto cursor-pointer"
+          >
+            <option value="">Seleccionar</option>
+            {initialSeasons.map((season) => (
+              <option key={season.id} value={season.id}>
+                {season.name} ({season.year}) {season.is_active ? '★' : ''}
+              </option>
+            ))}
+          </select>
           {selectedSeasonId && (
-            <button
-              type="button"
-              onClick={() => setShowCreateForm(true)}
-              className="
-                px-6 py-2
-                bg-retro-gold-500 text-jacksons-purple-950
-                border-4 border-jacksons-purple-950
-                font-bold uppercase tracking-wide text-sm
-                shadow-[4px_4px_0px_0px_#1a1a1a]
-                hover:translate-x-0.5 hover:translate-y-0.5
-                hover:shadow-[2px_2px_0px_0px_#1a1a1a]
-                transition-all duration-100
-              "
-            >
+            <AdminButton tone="primary" onClick={() => setShowCreateForm(true)}>
               + Nuevo Split
-            </button>
+            </AdminButton>
           )}
         </div>
       </div>
 
-      {/* Error Message */}
       {error && (
-        <div className="bg-red-600 border-4 border-red-800 p-4 text-white text-sm">
-          {error}
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-4 underline"
-          >
-            Cerrar
-          </button>
-        </div>
+        <AdminErrorBanner message={error} onDismiss={() => setError(null)} />
       )}
 
-      {/* Create Form Modal */}
+      {/* Create Modal */}
       {showCreateForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 shadow-[4px_4px_0px_0px_#1a1a1a] w-full max-w-md">
-            <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-4">
-              Nuevo Split
-            </h2>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                >
-                  Nombre
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={newSplit.name}
-                  onChange={(e) =>
-                    setNewSplit({ ...newSplit, name: e.target.value })
-                  }
-                  required
-                  placeholder="Ej: Split 1"
-                  className="
-                    w-full px-4 py-3
-                    bg-jacksons-purple-950 text-white
-                    border-4 border-jacksons-purple-600
-                    focus:outline-none focus:border-retro-gold-500
-                    placeholder-jacksons-purple-400
-                  "
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="split_order"
-                  className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2"
-                >
-                  Orden
-                </label>
-                <input
-                  id="split_order"
-                  type="number"
-                  min="1"
-                  value={newSplit.split_order}
-                  onChange={(e) =>
-                    setNewSplit({
-                      ...newSplit,
-                      split_order: parseInt(e.target.value, 10),
-                    })
-                  }
-                  required
-                  className="
-                    w-full px-4 py-3
-                    bg-jacksons-purple-950 text-white
-                    border-4 border-jacksons-purple-600
-                    focus:outline-none focus:border-retro-gold-500
-                  "
-                />
-              </div>
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="
-                    flex-1 px-4 py-3
-                    bg-jacksons-purple-600 text-white
-                    border-4 border-jacksons-purple-950
-                    font-bold uppercase tracking-wide text-sm
-                    hover:bg-jacksons-purple-500
-                    transition-all duration-100
-                  "
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="
-                    flex-1 px-4 py-3
-                    bg-retro-gold-500 text-jacksons-purple-950
-                    border-4 border-jacksons-purple-950
-                    font-bold uppercase tracking-wide text-sm
-                    shadow-[4px_4px_0px_0px_#1a1a1a]
-                    hover:translate-x-0.5 hover:translate-y-0.5
-                    hover:shadow-[2px_2px_0px_0px_#1a1a1a]
-                    disabled:opacity-50
-                    transition-all duration-100
-                  "
-                >
-                  {saving ? 'Guardando...' : 'Crear'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AdminModal
+          title="Nuevo Split"
+          onClose={() => setShowCreateForm(false)}
+        >
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <AdminInput
+              id="name"
+              label="Nombre"
+              type="text"
+              value={newSplit.name}
+              onChange={(e) =>
+                setNewSplit({ ...newSplit, name: e.target.value })
+              }
+              required
+              placeholder="Ej: Split 1"
+            />
+            <AdminInput
+              id="split_order"
+              label="Orden"
+              type="number"
+              min="1"
+              value={newSplit.split_order}
+              onChange={(e) =>
+                setNewSplit({
+                  ...newSplit,
+                  split_order: parseInt(e.target.value, 10),
+                })
+              }
+              required
+            />
+            <div className="flex gap-3 pt-2">
+              <AdminButton
+                tone="ghost"
+                onClick={() => setShowCreateForm(false)}
+                className="flex-1 justify-center"
+              >
+                Cancelar
+              </AdminButton>
+              <AdminButton
+                type="submit"
+                tone="primary"
+                disabled={saving}
+                className="flex-1 justify-center"
+              >
+                {saving ? 'Guardando...' : 'Crear'}
+              </AdminButton>
+            </div>
+          </form>
+        </AdminModal>
       )}
 
       {/* Content */}
       {!selectedSeasonId ? (
-        <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-          <p className="text-jacksons-purple-300">
-            Selecciona una temporada para gestionar sus splits.
-          </p>
-        </div>
+        <EmptyPanel text="Selecciona una temporada para gestionar sus splits." />
       ) : loadingSplits ? (
-        <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-8 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-          <p className="text-jacksons-purple-300">Cargando splits...</p>
-        </div>
+        <EmptyPanel text="Cargando splits..." />
       ) : (
-        <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 shadow-[4px_4px_0px_0px_#1a1a1a] overflow-hidden">
+        <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
           {splits.length === 0 ? (
-            <div className="p-8 text-center text-jacksons-purple-300">
+            <p className="p-8 text-center font-retro text-lg text-px-ink-dim">
               No hay splits creados para esta temporada.
-            </div>
+            </p>
           ) : (
-            <table className="w-full">
+            <table className="pixel-table">
               <thead>
-                <tr className="bg-jacksons-purple-900 border-b-4 border-jacksons-purple-600">
-                  <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                    Orden
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                    Nombre
-                  </th>
-                  <th className="px-6 py-4 text-right text-sm font-bold text-retro-gold-500 uppercase tracking-wider">
-                    Acciones
-                  </th>
+                <tr>
+                  <th>Estado</th>
+                  <th>Orden</th>
+                  <th>Nombre</th>
+                  <th className="text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {splits.map((split) => (
-                  <tr
-                    key={split.id}
-                    className="border-b-2 border-jacksons-purple-700 hover:bg-jacksons-purple-700/50 transition-colors"
-                  >
-                    <td className="px-6 py-4">
+                  <tr key={split.id}>
+                    <td>
                       {split.is_active ? (
-                        <span className="inline-flex items-center gap-2 px-3 py-1 bg-green-600 border-2 border-green-800 text-white text-xs font-bold uppercase">
-                          <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
-                          Activo
-                        </span>
+                        <AdminBadge tone="success">
+                          <span className="blink">●</span> Activo
+                        </AdminBadge>
                       ) : (
-                        <span className="inline-flex items-center gap-2 px-3 py-1 bg-jacksons-purple-600 border-2 border-jacksons-purple-800 text-jacksons-purple-200 text-xs font-bold uppercase">
-                          Inactivo
-                        </span>
+                        <AdminBadge tone="neutral">Inactivo</AdminBadge>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center justify-center w-8 h-8 bg-jacksons-purple-600 border-2 border-jacksons-purple-500 text-white font-bold text-sm">
+                    <td>
+                      <span className="grid size-8 place-items-center border-2 border-px-border bg-px-deep font-num text-sm text-px-ink">
                         {split.split_order}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-white font-medium">
-                      {split.name}
-                    </td>
-                    <td className="px-6 py-4">
+                    <td className="text-px-ink">{split.name}</td>
+                    <td>
                       <div className="flex items-center justify-end gap-2">
                         {split.is_active ? (
-                          <button
-                            type="button"
+                          <AdminButton
+                            tone="default"
+                            size="sm"
                             onClick={() => handleDeactivate(split.id)}
-                            className="
-                              px-4 py-2
-                              bg-orange-500 text-white
-                              border-2 border-orange-700
-                              text-xs font-bold uppercase
-                              hover:bg-orange-400
-                              transition-all duration-100
-                            "
                           >
                             Desactivar
-                          </button>
+                          </AdminButton>
                         ) : (
-                          <button
-                            type="button"
+                          <AdminButton
+                            tone="success"
+                            size="sm"
                             onClick={() => handleActivate(split.id)}
-                            className="
-                              px-4 py-2
-                              bg-green-600 text-white
-                              border-2 border-green-800
-                              text-xs font-bold uppercase
-                              hover:bg-green-500
-                              transition-all duration-100
-                            "
                           >
                             Activar
-                          </button>
+                          </AdminButton>
                         )}
-                        <button
-                          type="button"
+                        <AdminButton
+                          tone="danger"
+                          size="sm"
                           onClick={() => handleDelete(split.id)}
-                          className="
-                            px-4 py-2
-                            bg-red-600 text-white
-                            border-2 border-red-800
-                            text-xs font-bold uppercase
-                            hover:bg-red-500
-                            transition-all duration-100
-                          "
                         >
                           Eliminar
-                        </button>
+                        </AdminButton>
                       </div>
                     </td>
                   </tr>
@@ -446,6 +328,14 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function EmptyPanel({ text }: { text: string }) {
+  return (
+    <div className="border-[3px] border-px-border bg-px-elev p-8 text-center shadow-[4px_4px_0_0_var(--color-px-deep)]">
+      <p className="font-retro text-lg text-px-ink-dim">{text}</p>
     </div>
   );
 }

@@ -240,6 +240,93 @@
   font-size: 10px;
   padding: 10px 14px;
 }
+.pixel-btn--cyan {
+  background: var(--color-px-cyan);
+  color: var(--color-px-deep);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-deep),
+    4px 4px 0 0 var(--color-px-deep);
+}
+.pixel-btn--cyan:hover {
+  background: var(--color-px-ink);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-cyan),
+    6px 6px 0 0 var(--color-px-deep);
+}
+.pixel-btn--success {
+  background: var(--color-px-success);
+  color: var(--color-px-deep);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-deep),
+    4px 4px 0 0 var(--color-px-deep);
+}
+.pixel-btn--success:hover {
+  background: var(--color-px-lime);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-deep),
+    6px 6px 0 0 var(--color-px-deep);
+}
+.pixel-btn--danger {
+  background: var(--color-px-danger);
+  color: var(--color-px-ink);
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-deep),
+    4px 4px 0 0 var(--color-px-deep);
+}
+.pixel-btn--danger:hover {
+  background: #ff7b3d;
+  box-shadow:
+    inset 0 0 0 3px var(--color-px-deep),
+    6px 6px 0 0 var(--color-px-deep);
+}
+
+/* ---- Pixel form input (admin) ---- */
+.pixel-input {
+  width: 100%;
+  background: var(--color-px-deep);
+  color: var(--color-px-ink);
+  border: 3px solid var(--color-px-border);
+  padding: 10px 12px;
+  font-family: var(--font-retro);
+  font-size: 18px;
+  outline: none;
+}
+.pixel-input::placeholder {
+  color: var(--color-px-ink-faint);
+}
+.pixel-input:focus {
+  border-color: var(--color-px-magenta);
+}
+
+/* ---- Pixel data table (admin) ---- */
+.pixel-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pixel-table thead {
+  background: var(--color-px-deep);
+}
+.pixel-table th {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-px-ink-dim);
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 3px solid var(--color-px-border);
+}
+.pixel-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-px-border) 40%, transparent);
+  font-family: var(--font-retro);
+  font-size: 18px;
+  color: var(--color-px-ink);
+}
+.pixel-table tbody tr:hover {
+  background: var(--color-px-base);
+}
 
 /* ---- HP bar ---- */
 .hpbar {

@@ -2,6 +2,11 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import {
+  AdminButton,
+  AdminCard,
+  AdminErrorBanner,
+} from '@/components/admin/ui';
 import { createClient } from '@/lib/supabase/client';
 
 interface RegulationsManagerProps {
@@ -97,49 +102,38 @@ export default function RegulationsManager({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-retro-gold-500 uppercase tracking-wider">
-          Normativa Pokémon
-        </h1>
-      </div>
+      <h1 className="font-pixel text-lg uppercase tracking-wider text-px-gold">
+        Normativa Pokémon
+      </h1>
 
-      {/* Error Message */}
       {error && (
-        <div className="bg-red-600 border-4 border-red-800 p-4 text-white text-sm">
-          {error}
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-4 underline"
-          >
-            Cerrar
-          </button>
-        </div>
+        <AdminErrorBanner message={error} onDismiss={() => setError(null)} />
       )}
 
-      {/* Success Message */}
       {success && (
-        <div className="bg-green-600 border-4 border-green-800 p-4 text-white text-sm">
-          ✓ Normativa actualizada exitosamente
+        <div className="flex items-start justify-between gap-4 border-[3px] border-px-success bg-px-deep p-4">
+          <p className="font-retro text-base text-px-success">
+            ✓ Normativa actualizada exitosamente
+          </p>
           <button
             type="button"
             onClick={() => setSuccess(false)}
-            className="ml-4 underline"
+            className="shrink-0 font-pixel text-[9px] uppercase tracking-wider text-px-ink-dim transition-colors hover:text-px-ink"
           >
             Cerrar
           </button>
         </div>
       )}
 
-      {/* Upload Section */}
-      <form onSubmit={handleUpload} className="space-y-4">
-        <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 shadow-[4px_4px_0px_0px_#1a1a1a] space-y-4">
+      {/* Upload */}
+      <form onSubmit={handleUpload}>
+        <AdminCard className="flex flex-col gap-4">
           <div>
             <label
               htmlFor="pdf-upload"
-              className="block text-jacksons-purple-200 text-sm uppercase tracking-wide mb-2 font-bold"
+              className="mb-2 block font-pixel text-[9px] uppercase tracking-wider text-px-ink-dim"
             >
               Selecciona un archivo PDF
             </label>
@@ -149,81 +143,56 @@ export default function RegulationsManager({
               accept=".pdf"
               onChange={handleFileChange}
               disabled={uploading}
-              className="block w-full text-white
-                file:mr-4 file:py-3 file:px-6
-                file:border-4 file:border-jacksons-purple-950
-                file:bg-retro-gold-500 file:text-jacksons-purple-950
-                file:font-bold file:uppercase file:tracking-wide
-                file:cursor-pointer file:shadow-[2px_2px_0px_0px_#1a1a1a]
-                file:hover:translate-x-0.5 file:hover:translate-y-0.5
-                file:hover:shadow-[1px_1px_0px_0px_#1a1a1a]
-                file:disabled:opacity-50 file:disabled:cursor-not-allowed
-                file:transition-all file:duration-100
-                bg-jacksons-purple-950 border-4 border-jacksons-purple-600"
+              className="block w-full border-[3px] border-px-border bg-px-deep font-retro text-base text-px-ink-soft file:mr-4 file:cursor-pointer file:border-0 file:border-r-[3px] file:border-px-border file:bg-px-gold file:px-5 file:py-3 file:font-pixel file:text-[10px] file:uppercase file:tracking-wider file:text-px-deep"
             />
             {file && (
-              <div className="mt-3 p-3 bg-jacksons-purple-700 border-2 border-jacksons-purple-600 rounded text-jacksons-purple-100 text-sm">
-                <strong>Archivo seleccionado:</strong> {file.name}
+              <div className="mt-3 border-2 border-px-border bg-px-base p-3 font-retro text-base text-px-ink-soft">
+                <strong className="text-px-ink">Archivo:</strong> {file.name}
                 <br />
-                <strong>Tamaño:</strong> {(file.size / 1024 / 1024).toFixed(2)}{' '}
-                MB
+                <strong className="text-px-ink">Tamaño:</strong>{' '}
+                {(file.size / 1024 / 1024).toFixed(2)} MB
               </div>
             )}
           </div>
 
-          <button
+          <AdminButton
             type="submit"
+            tone="primary"
             disabled={!file || uploading}
-            className={`
-              w-full px-8 py-4
-              bg-retro-gold-500
-              text-jacksons-purple-950
-              border-4 border-jacksons-purple-950
-              font-bold uppercase tracking-wider
-              cursor-pointer
-              transition-all duration-100
-              disabled:opacity-50 disabled:cursor-not-allowed
-              shadow-[4px_4px_0px_0px_#1a1a1a]
-              hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_#1a1a1a]
-              active:translate-x-1 active:translate-y-1 active:shadow-[0px_0px_0px_0px_#1a1a1a]
-            `}
+            className="w-full justify-center"
           >
             {uploading ? 'Subiendo...' : '📤 Subir Normativa'}
-          </button>
-        </div>
+          </AdminButton>
+        </AdminCard>
       </form>
 
-      {/* Current PDF Info */}
-      {currentUrl && (
-        <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 shadow-[4px_4px_0px_0px_#1a1a1a] space-y-4">
-          <h2 className="text-lg font-bold text-retro-gold-500 uppercase tracking-wider">
+      {/* Current PDF */}
+      {currentUrl ? (
+        <AdminCard className="flex flex-col gap-4">
+          <h2 className="font-pixel text-sm uppercase tracking-wider text-px-gold">
             📄 Normativa Actual
           </h2>
-          <p className="text-jacksons-purple-200 text-sm">
+          <p className="font-retro text-base text-px-ink-soft">
             La normativa está disponible públicamente en:
           </p>
           <a
             href={currentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block px-6 py-3 bg-retro-cyan-500 text-jacksons-purple-950 border-4 border-retro-cyan-700 font-bold uppercase tracking-wide text-sm shadow-[2px_2px_0px_0px_#1a1a1a] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#1a1a1a] transition-all duration-100"
+            className="pixel-btn pixel-btn--cyan pixel-btn--sm self-start"
           >
             🔗 Ver Normativa
           </a>
-          <div className="pt-4 border-t-2 border-jacksons-purple-600">
-            <p className="text-jacksons-purple-300 text-xs break-all font-mono">
-              {currentUrl}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!currentUrl && (
-        <div className="bg-jacksons-purple-800 border-4 border-jacksons-purple-600 p-6 shadow-[4px_4px_0px_0px_#1a1a1a] text-center">
-          <p className="text-jacksons-purple-300">
+          <p className="break-all border-t-2 border-px-border pt-4 font-num text-xs text-px-ink-dim">
+            {currentUrl}
+          </p>
+        </AdminCard>
+      ) : (
+        <AdminCard>
+          <p className="text-center font-retro text-lg text-px-ink-dim">
             No hay normativa cargada. Sube un PDF para que esté disponible.
           </p>
-        </div>
+        </AdminCard>
       )}
     </div>
   );

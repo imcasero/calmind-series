@@ -1,7 +1,7 @@
 {
   "project": "calmind-series",
   "source": "ARCHITECTURE_REVIEW.html",
-  "updated": "2026-05-27",
+  "updated": "2026-05-28",
   "statusLegend": ["pending", "spec_ready", "in_progress", "done"],
   "activeBatch": [],
   "initiatives": {
@@ -47,20 +47,24 @@
       "id": "F2",
       "phase": "Fase 2 — Limpieza de tipos y código muerto",
       "effort": "medio día",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F1"],
       "items": [
-        "Delete src/lib/types/queries.types.ts; migrate imports to @/lib/types/schemas",
-        "Delete src/hooks/useOptimizedFetch.ts and src/components/performance/PerformanceMonitor.tsx",
-        "Remove ~18 unsafe `as Type[]` casts in admin.queries.ts and seasons.queries.ts",
+        "[DONE 2026-05-28] Delete src/lib/types/queries.types.ts; migrate imports to @/lib/types/schemas",
+        "[DONE 2026-05-28] Delete src/hooks/useOptimizedFetch.ts and src/components/performance/PerformanceMonitor.tsx",
+        "[DONE 2026-05-28] Remove 32 unsafe `as Type[]` casts across admin.queries.ts (9) + seasons.queries.ts (18) + leagues.queries.ts (5) — original brief said ~18, actual sweep was 32 incl. REQ-14b leagues",
+        "[DONE 2026-05-28] Delete orphan render-prop cluster src/components/divisions/ (SplitDataProvider/SplitContent/ClassificationSection/MatchesSection/ParticipantsList/ClassificationTable + index.ts + dir) — any[] in SplitDataProvider disappeared with the file",
         "[DONE 2026-05-26] Rename components/home/TorunamentFormat -> TournamentFormat",
         "[DONE 2026-05-26] Normattiva->Normativa (user) then Normativa*->Regulations* identifiers (English standard)",
         "[DONE 2026-05-26] Cruces*->Playoff* identifiers (CrucesBracket/DataProvider/Page/Error); routes /cruces stay Spanish",
-        "Fix resulting any[] in SplitDataProvider",
-        "Flip biome.json noExplicitAny warn -> error after all any removed (inherited from F1 / REQ-9)"
+        "[DONE 2026-05-28] Flip biome.json noExplicitAny warn -> error (REQ-17, gated on green init.sh post-flip)"
       ],
-      "note": "Naming sub-items pulled forward & completed 2026-05-26 (English code identifiers, Spanish UI/URLs kept). Remaining F2 work (dead code, type dedup, casts, any[], noExplicitAny flip) still pending; depends on F1."
+      "deferred": [
+        "2 pre-existing noUnusedImports warnings surfaced post-cleanup — fetchData.ts:5 (J15Match, J16Match) + matchService.ts:5 (Matchup) — explicitly punted to F4 (which owns fetchData deletion + matchService move). Predate F2 per baseline lint comparison; not patched here to avoid scope creep. init.sh remains green (warnings don't fail pnpm lint exit 0).",
+        "src/components/shared/DivisionSection/ — different path than the orphan cluster; flagged for a future micro-batch sweep (NOT part of F2 scope per spec-author)."
+      ],
+      "note": "F2 closed 2026-05-28 (reviewer signed off). Net result: 32 casts eliminated, orphan cluster + dead utilities + duplicate types module deleted, noExplicitAny: error active. Zero new Zod schemas added — Supabase v2 inference covered every cast site (per implementer decision log in progress/history.md). 6 folders + index.ts + entire divisions/ dir removed. ParticipantWithTrainer.trainer loosened to Trainer | null (correctness fix, not a workaround — admin consumers declare local types). Naming sub-items completed 2026-05-26 (English code identifiers, Spanish UI/URLs kept)."
     },
     {
       "id": "F3",

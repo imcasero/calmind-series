@@ -37,15 +37,11 @@ export const getActiveSeasonWithSplit = cache(
     }
 
     // Use Zod to validate and format the result
-    const rawData = data as Record<string, unknown>;
-    const rawSplits = (rawData.splits as unknown[]) ?? [];
-    const activeSplit =
-      rawSplits.find(
-        (s) => (s as { is_active: boolean; created_at: string }).is_active,
-      ) ?? null;
+    const splits = data.splits ?? [];
+    const activeSplit = splits.find((s) => s.is_active) ?? null;
 
     const result = SeasonWithActiveSplitSchema.safeParse({
-      ...rawData,
+      ...data,
       activeSplit,
     });
 
@@ -77,7 +73,7 @@ export const getAllSeasons = cache(async (): Promise<Season[]> => {
     return [];
   }
 
-  return (data ?? []) as Season[];
+  return data ?? [];
 });
 
 /**
@@ -106,12 +102,9 @@ export const getAllSeasonsWithSplits = cache(
 
     const result: SeasonWithSplits[] = [];
 
-    for (const raw of data as Record<string, unknown>[]) {
-      const rawSplits = (raw.splits as unknown[]) ?? [];
-      const splits = [...rawSplits].sort(
-        (a, b) =>
-          (a as { split_order: number }).split_order -
-          (b as { split_order: number }).split_order,
+    for (const raw of data) {
+      const splits = [...(raw.splits ?? [])].sort(
+        (a, b) => a.split_order - b.split_order,
       );
 
       const parsed = SeasonWithSplitsSchema.safeParse({ ...raw, splits });
@@ -154,17 +147,13 @@ export const getSeasonWithSplits = cache(
       return null;
     }
 
-    const rawData = data as Record<string, unknown>;
     // Sort splits by split_order
-    const rawSplits = (rawData.splits as unknown[]) ?? [];
-    const splits = [...rawSplits].sort(
-      (a, b) =>
-        (a as { split_order: number }).split_order -
-        (b as { split_order: number }).split_order,
+    const splits = [...(data.splits ?? [])].sort(
+      (a, b) => a.split_order - b.split_order,
     );
 
     const result = SeasonWithSplitsSchema.safeParse({
-      ...rawData,
+      ...data,
       splits,
     });
 
@@ -199,17 +188,13 @@ export const getSeasonByName = cache(
       return null;
     }
 
-    const rawData = data as Record<string, unknown>;
     // Sort splits by split_order
-    const rawSplits = (rawData.splits as unknown[]) ?? [];
-    const splits = [...rawSplits].sort(
-      (a, b) =>
-        (a as { split_order: number }).split_order -
-        (b as { split_order: number }).split_order,
+    const splits = [...(data.splits ?? [])].sort(
+      (a, b) => a.split_order - b.split_order,
     );
 
     const result = SeasonWithSplitsSchema.safeParse({
-      ...rawData,
+      ...data,
       splits,
     });
 
@@ -245,7 +230,7 @@ export const getSplitByNames = cache(
       return null;
     }
 
-    const season = seasonData as Season;
+    const season = seasonData;
 
     // Find split by name within that season
     const { data: splitData, error: splitError } = await supabase
@@ -262,7 +247,7 @@ export const getSplitByNames = cache(
 
     return {
       season,
-      split: splitData as Split,
+      split: splitData,
     };
   },
 );

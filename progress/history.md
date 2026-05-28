@@ -5,6 +5,266 @@ status transition; agents record any deferral or sequencing decision here too.
 
 ---
 
+## 2026-05-28 — F2 done (reviewer signed off)
+
+Reviewer verdict: **APPROVED**. Full `./init.sh` GREEN (typecheck 0 errors, lint 0
+errors / 2 pre-existing warnings, build 20/20 pages). All REQs cumplidas: REQ-11
+(queries.types.ts deleted, imports migrated to `@/lib/types/schemas`), REQ-12
+(`useOptimizedFetch` + `PerformanceMonitor` deleted), REQ-13/14/14b (32 casts removed
+across `admin.queries.ts` 9 + `seasons.queries.ts` 18 + `leagues.queries.ts` 5; 0
+residuals), REQ-15/15b (orphan render-prop cluster fully gone — 6 folders + `index.ts`
++ entire `src/components/divisions/` dir), REQ-17 (`biome.json` `noExplicitAny: error`
+active).
+
+**Files touched (paths absolute):**
+- Deleted: `/Users/diego/Developer/calmind-series/src/components/divisions/` (entire
+  tree — `SplitDataProvider/`, `SplitContent/`, `ClassificationSection/`,
+  `MatchesSection/`, `ParticipantsList/`, `ClassificationTable/` + `index.ts`).
+- Deleted: `/Users/diego/Developer/calmind-series/src/hooks/useOptimizedFetch.ts` +
+  `/Users/diego/Developer/calmind-series/src/components/performance/PerformanceMonitor.tsx`
+  (+ their now-empty parent dirs).
+- Deleted: `/Users/diego/Developer/calmind-series/src/lib/types/queries.types.ts`.
+- Edited: `/Users/diego/Developer/calmind-series/src/lib/queries/admin.queries.ts`,
+  `/Users/diego/Developer/calmind-series/src/lib/queries/seasons.queries.ts`,
+  `/Users/diego/Developer/calmind-series/src/lib/queries/leagues.queries.ts`,
+  `/Users/diego/Developer/calmind-series/biome.json`.
+
+**Decisions confirmed by reviewer:**
+- Zero new Zod schemas added — Supabase v2 inference (via
+  `createServerClient<Database>()`) covered every cast site cleanly.
+- `ParticipantWithTrainer.trainer: Trainer | null` loosening is a **correctness fix**
+  (the FK is nullable; the original non-null type masked reality), not a workaround.
+  Admin consumers declare local types so no client breakage.
+- `shared/DivisionSection/` correctly **deferred** to a future micro-batch (different
+  path than the orphan cluster — out of F2 scope per spec-author).
+- 2 pre-existing warnings in `src/lib/data/fetchData.ts:5` (`J15Match`, `J16Match`) +
+  `src/lib/services/matchService.ts:5` (`Matchup`) **punted to F4** (which owns
+  `fetchData.ts` deletion + `matchService.ts` move). They predate F2; `pnpm lint`
+  exit 0 holds (warnings don't fail it).
+- No scope creep.
+
+**Leader transition:** `features.json` F2 `spec_ready` → `done`; `activeBatch` → `[]`;
+`updated` → `2026-05-28`. F2 items marked `[DONE 2026-05-28]`; F4 inheritance documented
+in F2 `deferred[]`. `specs/` retained as F2 historical record until the next spec-author
+run overwrites it.
+
+**Next-up candidates:**
+- **F3 — Abstracciones admin** (`dependsOn: ["F2"]` ✓). Now unblocked by F2 close.
+  Extracts `<AdminModal>`/`<AdminErrorBanner>`, `useLeagueSelector()` hook, wires Zod
+  validation into admin forms, migrates `SeasonsManager` to Server Actions +
+  `useOptimistic` as the pilot. Effort: 1–2 días.
+- **F5 — Performance / modernización** (`dependsOn: ["F1"]` ✓ — was always ready, not
+  blocked by F2). `generateStaticParams`, granular `<Suspense>`, push `'use client'`
+  to leaves, extract `<ErrorCard>`/`<PageSkeleton>`/`<BackgroundDecoration>`/
+  `formatSplitName()`, image sizes + animation polish. Effort: 1 día.
+
+**Leader recommendation: F3.** Reasoning:
+1. F3 is the next phase in source order (Fase 3 follows Fase 2).
+2. F3 unblocks **F4** (`dependsOn: ["F1", "F3"]`) and indirectly **F6**
+   (`dependsOn: ["F3", "F4"]`) — sequencing F3 first opens the longest critical path.
+3. The FR12–FR14 admin pixel reskin shipped without touching admin logic; F3 picks up
+   the structural work the reskin deliberately left alone (modal/error/selector
+   abstractions, Zod boundaries, Server Action pilot). Doing it now while the admin
+   primitives (`AdminModal`, `AdminErrorBanner`) and pixel shell are fresh in the codebase
+   minimizes rework — those primitives already exist from FR12 and just need to be
+   adopted at the call sites the design discovered.
+4. F5 is smaller (1 día vs 1–2) and standalone — it can slot in any time before F6
+   without blocking anything. Better to hold it as a quick win when budget is tight.
+
+User decides. After approval, leader will hand the chosen batch to `spec-author`.
+
+---
+
+## 2026-05-28 — F2 implemented (implementer → reviewer)
+
+Implemented the approved F2 batch (`specs/requirements.md` + `design.md` + `tasks.md`)
+in order: REQ-15/15b orphan deletion → REQ-12 dead utilities → REQ-11 type module →
+REQ-13/14/14b casts → REQ-17 lint flip. All eight task sections green.
+
+**Files deleted (orphan cluster + dead code + duplicate types)**
+- `src/components/divisions/SplitDataProvider/SplitDataProvider.tsx` (+ dir)
+- `src/components/divisions/SplitContent/SplitContent.tsx` (+ dir)
+- `src/components/divisions/ClassificationSection/ClassificationSection.tsx` (+ dir)
+- `src/components/divisions/MatchesSection/MatchesSection.tsx` (+ dir)
+- `src/components/divisions/ParticipantsList/ParticipantsList.tsx` (+ dir)
+- `src/components/divisions/ClassificationTable/{ClassificationTable,PlayerAvatar,PlayerBadge,StatsLegend,TableHeader,TableRow}.tsx` (+ dir)
+- `src/components/divisions/index.ts` — file became empty after removing the two
+  `ClassificationTable` exports (only the comment block remained); also removed the
+  now-empty `src/components/divisions/` directory itself.
+- `src/components/performance/PerformanceMonitor.tsx` (+ empty `performance/` dir)
+- `src/hooks/useOptimizedFetch.ts` (+ empty `hooks/` dir)
+- `src/lib/types/queries.types.ts` — zero importers after the orphan cluster gone.
+
+**Files edited**
+- `src/lib/queries/admin.queries.ts` — 9 casts removed; `ParticipantWithTrainer` type
+  alias loosened to `trainer: Trainer | null` (see decision below).
+- `src/lib/queries/seasons.queries.ts` — 18 casts removed; `Record<string, unknown>`
+  laundering replaced by direct consumption of the Supabase-inferred join shape.
+- `src/lib/queries/leagues.queries.ts` — 5 casts removed; local `ParticipantRow` and
+  `MatchRow` aliases deleted (Supabase v2 inference covered them); unused
+  `LeagueRanking` import removed (it was only used by the cast).
+- `biome.json` — `linter.rules.suspicious.noExplicitAny`: `"warn"` → `"error"` (last edit).
+
+**Decision per query file (Supabase v2 inference vs Zod)**
+- `admin.queries.ts` → **Inference only.** All 9 casts dropped without adding Zod
+  schemas. For the joined `'*, trainer:trainers(*)'` select in
+  `getAdminParticipantsByLeague`, Supabase v2 correctly infers `trainer: Trainer | null`
+  (FK is nullable). The previous local alias declared `trainer: Trainer` (non-null)
+  which masked reality; loosened to `trainer: Trainer | null` to match the actual
+  runtime shape. Consumers (`ParticipantsManager.tsx`, `MatchesManager.tsx`) declare
+  their own local type alias and don't import the public one, so no client breakage.
+  The joined `getAdminMatchesByLeague` already declared `home_trainer`/`away_trainer`
+  as nullable and matched inference cleanly.
+- `seasons.queries.ts` → **Inference only.** The Supabase typed client returns
+  `Season & { splits: Split[] }` for `seasons.select('*, splits(*)')`. The previous
+  `Record<string, unknown>` + `unknown[]` + `{ split_order: number }` laundering chain
+  was suppressing this. Replaced with direct consumption + the existing
+  `SeasonWithSplitsSchema.safeParse` / `SeasonWithActiveSplitSchema.safeParse` boundary
+  (unchanged — Zod stays the runtime truth). No new schemas added.
+- `leagues.queries.ts` → **Inference only.** All 5 casts dropped. The two joined
+  selects (`getParticipantsBySplit` with `trainers!inner(...)` and `getMatchesByRound`
+  with `home_trainer:trainers!fkey(*)` + `away_trainer:trainers!fkey(*)`) inferred
+  cleanly without Zod. Local `ParticipantRow` and `MatchRow` type aliases became
+  redundant and were deleted. The existing `RankingEntrySchema.safeParse` boundary in
+  `getRankingsByLeague` is untouched.
+
+**Net: zero new Zod schemas added in F2** — Supabase v2 inference + the
+`createServerClient<Database>()` thread (verified pre-flight) covered every cast site.
+
+**Cast counts before/after**
+- `admin.queries.ts`: 9 → 0
+- `seasons.queries.ts`: 18 → 0
+- `leagues.queries.ts`: 5 → 0
+- **Total: 32 → 0.**
+
+**`noExplicitAny` flipped** `warn` → `error` (`biome.json:50`) as REQ-17 last step.
+Lint after the flip: 0 errors / 2 warnings. Both remaining warnings are pre-existing
+`noUnusedImports` in `src/lib/data/fetchData.ts` (`J15Match, J16Match`) and
+`src/lib/services/matchService.ts` (`Matchup`). These predate F2 (confirmed by
+`git stash` + baseline lint comparison) and are explicitly **out of scope** per
+`design.md` "What this batch does NOT touch" / `requirements.md` "Out of scope" →
+F4 owns the `fetchData.ts` / `matchService.ts` cleanup. Surfaced here per the
+tasks-step-7 escalation rule; not patched in F2 to avoid scope creep. The
+`./init.sh` gate is `pnpm lint` exit 0, which holds (warnings don't fail it).
+
+**`divisions/index.ts` outcome** Deleted — after removing the two `ClassificationTable`
+exports the file contained only the leading comment block. The empty
+`src/components/divisions/` directory was also removed (no siblings remained).
+
+**Verification — full `./init.sh` GREEN.** Key evidence:
+```
+✓ typecheck clean
+Found 2 warnings.                  (pre-existing, F4-owned — see above)
+✓ lint clean
+▲ Next.js 16.1.1 (Turbopack)
+✓ Compiled successfully in 2.5s
+✓ Generating static pages using 9 workers (20/20)
+ƒ Proxy (Middleware)
+✓ build succeeds
+✓ Harness ready — baseline is green.
+```
+Static page count unchanged at 20 (FR11 baseline). Route list unchanged. Zero `any`
+annotations in `src/` (`rg ": any\b|any\[\]" src/` empty). Zero casts in the three
+query files (`grep -c ' as '` returns 0 for each).
+
+**Flagged for the future dead-code sweep (NOT touched in F2):**
+- `src/components/shared/DivisionSection/DivisionSection.tsx` — different path than the
+  user-listed cluster; `rg` shows no consumer, but it lives under `shared/` and was
+  explicitly excluded from F2 scope by the spec author. Track for a future micro-batch.
+- The 2 pre-existing `noUnusedImports` warnings noted above belong to F4.
+
+**features.json:** F2 left `spec_ready` (status NOT modified per `tasks.md` §9 —
+leader transitions to `in_progress`→`done` after reviewer sign-off). Handing to reviewer.
+
+---
+
+## 2026-05-28 — F2 spec_ready (spec-author → leader, awaiting user approval)
+
+Spec-author finished `specs/requirements.md` · `specs/design.md` · `specs/tasks.md` for
+F2. Leader flipped `features.json` F2 `pending` → `spec_ready`; `activeBatch` stays
+`["F2"]`; `updated` = `2026-05-28`.
+
+**User decisions (2026-05-28) absorbed into the spec**
+1. **REQ-15 revised — cluster delete.** The orphan render-prop cluster in
+   `src/components/divisions/` (`SplitDataProvider/`, `SplitContent.tsx`,
+   `ClassificationSection.tsx`, `MatchesSection.tsx`, `ParticipantsList.tsx`) is dead
+   post-FR11 and gets deleted wholesale. The `any[]` at `SplitDataProvider.tsx:243-244`
+   disappears with the file — no in-place type fix needed.
+2. **REQ-14b added — `leagues.queries.ts` casts.** Cleanup now sweeps all 32 unsafe
+   `as Type[]` casts (9 admin + 18 seasons + 5 leagues), not just the ~23 the original
+   brief named. Total cast removal target = 32.
+
+**Ordering in design.md (locked):** delete orphan cluster (REQ-15) → delete dead utils
+(REQ-12: `useOptimizedFetch`, `PerformanceMonitor`) → delete `queries.types.ts` (REQ-11,
+migrate imports to `@/lib/types/schemas`) → fix 32 casts (REQ-13/14/14b) → flip
+`biome.json` `noExplicitAny: warn → error` (REQ-17). Lint flip is gated on a green
+`./init.sh` after all cleanups land.
+
+**Residual notes (documented in specs, non-blocking)**
+- `src/components/shared/DivisionSection/` is **out of scope** — different path than the
+  brief; was never in `components/divisions/`.
+- `divisions/ClassificationTable/` will be orphaned post-REQ-15 (still exported from
+  `components/divisions/index.ts`) — flagged for a future sweep.
+- Supabase generated-types inference vs Zod schemas as the cast replacement strategy:
+  implementer decides at runtime per query (whichever gives a clean type without `any`)
+  and records the call in `progress/history.md`.
+
+**User must approve before implementer runs:**
+1. The cluster-delete scope (REQ-15) and the cast totals (32 incl. leagues).
+2. The execution order (delete first → fix casts → flip lint last).
+3. The deferred-sweep note for `ClassificationTable/`.
+
+**Gate:** implementer ships only after a green `./init.sh` post-lint-flip — the
+reviewer rejects otherwise. No code changes until the user signs off on `specs/`.
+
+---
+
+## 2026-05-28 — F2 selected as next batch (leader handoff to spec-author)
+
+User asked to advance F2–F6 of the architecture-review backlog. Leader routed:
+
+**Decision:** F2 is the next ready feature.
+- Dependencies: depends on F1 (done). Satisfied.
+- Status: `pending`. Naming sub-items already completed inline (2026-05-26).
+- F5 is also unblocked (depends only on F1), but F2 is sequenced first because
+  (a) it's the next phase in source order, (b) it unblocks F3/F4/F6, and (c) the
+  REQ-9 `noExplicitAny: error` flip inherited from F1 lives here — flipping it
+  any earlier would turn lint red on the live `any[]` in `SplitDataProvider:243-244`.
+
+**Remaining F2 scope** (after the 2026-05-26 naming slice):
+- Delete `src/lib/types/queries.types.ts`; migrate imports to `@/lib/types/schemas`.
+- Delete `src/hooks/useOptimizedFetch.ts` + `src/components/performance/PerformanceMonitor.tsx`.
+- Remove ~18 unsafe `as Type[]` casts in `admin.queries.ts` + `seasons.queries.ts`.
+- Fix the resulting `any[]` in `SplitDataProvider`.
+- Flip `biome.json` `noExplicitAny: warn → error` (REQ-9, inherited from F1).
+- Note: 30 pre-existing F2 warnings already include dead imports in `matchService` +
+  `SplitDataProvider` left over from the FR11 legacy-route redirects (cleanup naturally
+  swept up by the dead-code deletions above).
+
+**State changes:**
+- `features.json` `activeBatch` → `["F2"]`; `updated` → `2026-05-28`. F2 stays
+  `pending` until the spec-author writes `specs/` and the leader flips it to `spec_ready`.
+- `specs/` currently still holds the F0+F1 batch (stale). The spec-author run for F2
+  will **overwrite** `requirements.md` / `design.md` / `tasks.md` (history stays in git
+  + this log). The `specs/redesign/` track is separate and untouched.
+
+**Next agent: `spec-author`.** Inputs: the remaining F2 items listed above + the
+relevant findings from `ARCHITECTURE_REVIEW.html` (§1.2 type drift, §2 dead code,
+§3 unsafe casts) + the `SplitDataProvider:243-244` `any[]` known issue.
+
+**User decision required BEFORE the spec is approved:**
+1. Confirm `noExplicitAny: error` flips inside the same F2 batch (vs deferring once
+   more). The implementer needs to know whether to gate it on a green lint after
+   the casts/dead-code removals or to flip-then-fix.
+2. Confirm scope of `as Type[]` cast removals — strict (every cast) vs pragmatic
+   (only the unsafe ones the review flagged).
+3. Whether to land F2 in one batch or split (dead-code first, then casts + lint flip).
+
+After the spec-author writes `specs/`, leader will flip F2 → `spec_ready` and
+present it at the approval gate.
+
+---
+
 ## 2026-05-26 — Editor↔Biome formatting drift fixed + Zed aligned
 
 User reported Zed warnings (e.g. "next/navigation not found"). Investigated:

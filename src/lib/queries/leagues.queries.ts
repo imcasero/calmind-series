@@ -1,6 +1,5 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
-import type { LeagueRanking } from '@/lib/types/database.types';
 import {
   type DivisionPreview,
   type LeagueInfo,
@@ -43,7 +42,7 @@ export const getLeaguesBySplit = cache(
       return [];
     }
 
-    return (data ?? []) as LeagueInfo[];
+    return data ?? [];
   },
 );
 
@@ -93,7 +92,7 @@ export const getRankingsByLeague = cache(
     // Use Zod to validate and format the rankings
     const rankings: RankingEntry[] = [];
 
-    for (const ranking of (rankingsData ?? []) as LeagueRanking[]) {
+    for (const ranking of rankingsData ?? []) {
       const lives = livesMap.get(ranking.trainer_id ?? '') ?? 0;
 
       const result = RankingEntrySchema.safeParse({
@@ -194,7 +193,7 @@ export const getLeagueByTier = cache(
       return null;
     }
 
-    return data as LeagueInfo;
+    return data;
   },
 );
 
@@ -240,17 +239,7 @@ export const getParticipantsBySplit = cache(
         return [];
       }
 
-      type ParticipantRow = {
-        trainer_id: string | null;
-        lives: number;
-        trainers: {
-          id: string;
-          nickname: string;
-          avatar_url: string | null;
-        };
-      };
-
-      return ((data ?? []) as ParticipantRow[]).map((p) => ({
+      return (data ?? []).map((p) => ({
         trainerId: p.trainers.id,
         nickname: p.trainers.nickname,
         avatarUrl: p.trainers.avatar_url,
@@ -331,31 +320,10 @@ export const getMatchesByRound = cache(
       return [];
     }
 
-    type MatchRow = {
-      id: string;
-      round: number;
-      match_group: string;
-      match_tag: string;
-      played: boolean | null;
-      home_sets: number | null;
-      away_sets: number | null;
-      league_id: string | null;
-      home_trainer: {
-        id: string;
-        nickname: string;
-        avatar_url: string | null;
-      } | null;
-      away_trainer: {
-        id: string;
-        nickname: string;
-        avatar_url: string | null;
-      } | null;
-    };
-
     // Transform and group by round
     const matchesByRoundMap = new Map<number, MatchEntry[]>();
 
-    for (const row of data as MatchRow[]) {
+    for (const row of data) {
       const match: MatchEntry = {
         id: row.id,
         round: row.round,

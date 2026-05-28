@@ -3,7 +3,7 @@
    ======================================== */
 
 html {
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-retro);
   color: #fff;
   image-rendering: crisp-edges;
 }

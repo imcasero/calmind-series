@@ -1,10 +1,10 @@
 {
   "project": "calmind-series",
   "source": "ARCHITECTURE_REVIEW.html",
-  "updated": "2026-05-30",
+  "updated": "2026-05-31",
   "statusLegend": ["pending", "spec_ready", "in_progress", "done"],
   "activeBatch": [],
-  "_note_activeBatch": "F5 closed 2026-05-30 (reviewer signed off). No active batch — user decides next pick. Next-best candidate by leader: F3 (admin abstractions, 1-2 días) — unblocks F4 and indirectly F6.",
+  "_note_activeBatch": "F3 closed 2026-05-31 (reviewer signed off — init.sh green, 23 pages, 0 lint errors, only the 2 known F4-owned warnings). Net result: useLeagueSelector hook adopted by 3 Managers (-137 LOC net), 7 new *InputSchema entries with safeParse boundaries in all 6 admin Managers, SeasonsManager pilot fully migrated to Server Actions + useOptimistic. MatchesManager hook adoption DEFERRED to F6 (legit dual-cascade). RegulationsUploadSchema ADOPTED. No deferrals breached. NEXT CANDIDATE: F4 (Cacheo coherente — dependsOn F1+F3 both done; owns 'use cache' + cacheTag, fetchData.ts deletion, matchService move, cacheComponents enable).",
   "initiatives": {
     "architecture-review": "ARCHITECTURE_REVIEW.html — phases F0–F6 (F2 still pending)",
     "pixel-redesign": "docs/design_handoff_calmind_pixel/ — phases FR0–FR10 (active)"
@@ -71,15 +71,26 @@
       "id": "F3",
       "phase": "Fase 3 — Abstracciones admin",
       "effort": "1-2 días",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F2"],
       "items": [
-        "Extract <AdminModal> and <AdminErrorBanner>",
-        "Extract useLeagueSelector() hook (Temporada -> Split -> Division cascade)",
-        "Wire Zod validation into admin forms (schemas already exist)",
-        "Migrate SeasonsManager to Server Actions + useOptimistic (pilot)"
-      ]
+        "[DROPPED 2026-05-30] Extract <AdminModal> and <AdminErrorBanner> — SUPERSEDED by FR12. Spec-author confirmed 100% adoption across the 6 Managers post-FR12/FR13/FR14.",
+        "[DONE 2026-05-31] Extract useLeagueSelector() hook (Temporada -> Split -> Division cascade)",
+        "[DONE 2026-05-31] Wire Zod validation into admin forms (schemas already exist)",
+        "[DONE 2026-05-31] Migrate SeasonsManager to Server Actions + useOptimistic (pilot)"
+      ],
+      "pre_spec_findings": [
+        "2026-05-30 leader audit: AdminModal.tsx + AdminErrorBanner.tsx exist (FR12 shipped them). No src/hooks/ directory yet. Admin Managers do NOT import schemas from @/lib/types/schemas (zero matches). SeasonsManager still uses useState + manual fetch + try/catch (no Server Actions, no useOptimistic). 6 Managers present: Seasons, Splits, Divisions, Regulations, Participants, Matches."
+      ],
+      "deferred": [
+        "MatchesManager hook adoption (REQ-26) → F6. Reason: dual-cascade architecture (Results tab seeds leagues from activeSplitInfo server-side; Planning tab runs full Season→Split→League cascade with separate selection state) cannot be modeled by a single useLeagueSelector instance without tangling the Results tab's server-seeded auto-select. Zod (REQ-27) still landed on MatchesManager.",
+        "window.confirm() replacement → F6 (out of F3 scope; spec preserved current behavior).",
+        "5 non-pilot Managers' Server Actions migration → F6 (F3 pilot proves the pattern on SeasonsManager only).",
+        "cacheTag / revalidateTag in _actions.ts → F4 (F3 uses revalidatePath; cacheTag belongs to F4).",
+        "Atomic activate-season RPC → REQ-3 (still deferred; needs Supabase migration access)."
+      ],
+      "note": "F3 closed 2026-05-31 (reviewer signed off — ./init.sh green, 23 pages, 0 lint errors, the 2 pre-existing F4-owned warnings preserved untouched). Net result: (a) useLeagueSelector hook created at src/lib/hooks/ and adopted by 3 Managers (SplitsManager depth:'season-split'; DivisionsManager + ParticipantsManager depth:'season-split-league'), -137 LOC net across the 3 sites; (b) 7 new *InputSchema exports added to src/lib/types/schemas.ts (Season/Split/League/Trainer/MatchPlanning/MatchResult/RegulationsUpload) with z.infer aliases, safeParse boundaries wired in all 6 admin Managers; (c) SeasonsManager pilot fully migrated to Server Actions + useOptimistic — new src/app/admin/dashboard/seasons/_actions.ts (4 actions, discriminated-union returns, no throws, revalidatePath on success), SeasonsManager.tsx has zero browser-side supabase writes and uses the tagged-union reducer pattern from design D4. Live decisions: MatchesManager hook deferral validated as legit dual-cascade (Zod still landed); RegulationsUploadSchema ADOPTED replacing inline file guards (functionally equivalent, Spanish error messages preserved); cookie-aware Supabase client in _actions.ts (RLS/identity propagation — NOT the F5 cookie-free overload which stays narrowly scoped to archive reads); removed one redundant useEffect in ParticipantsManager flagged by Biome (selectedLeagueId-keyed fetch already covers the cleared case). Files net delta: 2 created, 7 edited. All FR12 primitives adoption preserved (no regressions). NEXT: F4 unblocked (dependsOn ['F1','F3'] both done) — also clears the 2 F4-owned warnings as a side-effect of fetchData.ts deletion."
     },
     {
       "id": "F4",

@@ -5,6 +5,268 @@ status transition; agents record any deferral or sequencing decision here too.
 
 ---
 
+## 2026-05-31 — F3 closed (reviewer signed off)
+
+Re-ran `./init.sh` independently — GREEN (23 pages, 0 lint errors, 2 known F4-owned
+warnings preserved untouched). All spec gates verified: REQ-26 hook adopted by 3
+Managers with correct depths, REQ-27 `safeParse` boundaries in all 6 Managers + 7
+new `*InputSchema` exports, REQ-28 pilot fully migrated (zero browser supabase
+writes in `SeasonsManager`, 4 actions with discriminated-union returns + `'use server'`
++ `revalidatePath`, `useOptimistic` with tagged-union reducer per design D4). Live
+decisions validated: MatchesManager hook deferral is legit (dual-cascade Results vs
+Planning), `RegulationsUploadSchema` adoption is functionally equivalent to the prior
+inline guards, cookie-aware Supabase in `_actions.ts` is coherent for RLS,
+removed `useEffect` in ParticipantsManager was redundant per Biome. Scope discipline
+held — no F4/F6/REQ-3 deferrals breached. Flipped `features.json` F3 → `done`,
+cleared `activeBatch`, captured deferrals + closing note on the F3 entry.
+
+NEXT: F4 (Cacheo coherente) unblocked — `dependsOn: ["F1","F3"]` both done. Owns
+`'use cache'` + `cacheTag` migration, deletion of `src/lib/data/fetchData.ts` (clearing
+the 2 known warnings as a side-effect), move of `matchService.ts` to `lib/utils`, and
+`cacheComponents` enablement in `next.config.ts`.
+
+---
+
+## 2026-05-31 — F3 implemented (implementer → reviewer)
+
+Implemented the approved F3 batch (`specs/requirements.md` + `design.md` + `tasks.md`)
+in the sequence the spec locked: REQ-27 (Zod) → REQ-26 (hook) → REQ-28 (pilot). `./init.sh`
+verified green after each REQ — no batched verification.
+
+**REQ-27 — Zod input schemas wired into 6 admin forms**
+
+- **Created NEW schemas in `src/lib/types/schemas.ts`:** `SeasonCreateInputSchema`,
+  `SplitCreateInputSchema`, `LeagueCreateInputSchema`, `TrainerInputSchema`
+  (`avatar_url`/`bio` use a `preprocess` that maps `''` → `null`),
+  `MatchPlanningInputSchema` (UUIDs, round int 1..16, refine `home !== away`),
+  `MatchResultInputSchema` (sets int 0..3), and `RegulationsUploadSchema`
+  (`z.instanceof(File)` + PDF type + 50MB size). Each also exports a `z.infer`
+  type alias to match the existing convention.
+- **Decision on `RegulationsUploadSchema`:** ADOPTED (not kept inline). The spec
+  flagged this as implementer choice; the schema is the only one in `schemas.ts`
+  whose source is a `File` rather than a row, but keeping it co-located preserves
+  the "single source of truth" guarantee and lets `safeParse` replace the
+  hand-rolled `type !== 'application/pdf'` + size guards cleanly. Adopted in
+  `RegulationsManager.tsx`.
+- **`safeParse` boundaries wired in 6 Managers:** `SeasonsManager` (create),
+  `SplitsManager` (create), `DivisionsManager` (create), `ParticipantsManager`
+  (trainer save — single handler covers both update and insert branches),
+  `MatchesManager` (planning create/edit AND result edit), `RegulationsManager`
+  (file change). Each follows the spec's pattern: `setError(joined messages)`
+  + `setSaving(false)` + early return on `!parsed.success`. Verified
+  `rg "from '@/lib/types/schemas'" src/app/admin/` returns 6 hits (target ≥5).
+
+**REQ-26 — `useLeagueSelector` hook adopted by 3 Managers**
+
+- **Created `src/lib/hooks/useLeagueSelector.ts`** per the spec's contract.
+  Implements `'use client'`, uses `createClient()` from `@/lib/supabase/client`,
+  defaults `selectedSeasonId` to active-else-first-else-null, fetches splits
+  ordered by `split_order ASC` on season change (auto-selects active-else-first
+  split when `depth === 'season-split-league'`), fetches leagues ordered by
+  `tier_priority ASC` on split change WITHOUT auto-selecting a league (per
+  contract). Errors logged as `[useLeagueSelector] Error:`, stored in `error`,
+  never thrown. Exposes `refresh()` for post-mutation re-fetch and a `clearError()`
+  callback so consumers can dismiss banners cleanly. Honors `initialSplitId` /
+  `initialLeagueId` seeds via `useRef` guards (one-shot seed application, then
+  hands control back to the auto-select behavior).
+- **Adopted in `SplitsManager.tsx`** with `depth: 'season-split'`. Removed local
+  `selectedSeasonId`, `splits`, `loadingSplits` state + cascade `useEffect` +
+  `refreshSplits()` helper; the create handler now calls the hook's `refresh()`.
+  Net diff (per `git diff --stat`): -100 / +37 lines.
+- **Adopted in `DivisionsManager.tsx`** with `depth: 'season-split-league'`.
+  Removed cascade state (`splits`, `leagues`, `loadingSplits`, `loadingLeagues`,
+  the 2 `useEffect`s, `refreshLeagues()`). Same `refresh()` plumbing.
+  Net diff: -138 / +50 lines.
+- **Adopted in `ParticipantsManager.tsx`** with `depth: 'season-split-league'`
+  for the assignment cascade. Trainer tab state (pagination, search,
+  `trainers[]` from `initialTrainers`) untouched per spec. Kept the local
+  `useEffect` that auto-selects the first league once leagues finish loading
+  (the original assignment UX behavior — distinct from the hook's
+  no-auto-select-league contract since the Manager cares about a default value,
+  not the hook). Removed both cascading `useEffect`s + the auto-select-active-split
+  block; kept the participants-fetch effect since that's a per-league concern,
+  not part of the selector. Net diff: -153 / +50 lines.
+- **Total LOC reduction across the 3 Managers: 264 deletions / 127 insertions =
+  net -137.** Spec target was ≥80.
+
+**Decision on `MatchesManager` hook adoption — DEFERRED to F6** (spec explicitly
+authorized this flexibility). Rationale: the Manager runs TWO independent
+cascades — Results tab derives leagues from `activeSplitInfo.split.id` server-side
+(no Season/Split selectors at all), while Planning tab uses the full
+Season → Split → League cascade seeded from `activeSplitInfo`. A single
+`useLeagueSelector` instance cannot model both surfaces, and instantiating two
+would duplicate the Supabase client per render plus tangle the Results tab's
+auto-select-from-active-split logic (which is unique — neither of the other 3
+Managers has a server-seeded "current league" concept). The hook contract stays
+clean for the 3 adopters; rewriting `MatchesManager` to split its leagues state
+into two parallel hooks is a non-trivial refactor better suited to F6 when the
+remaining Managers also migrate. The Zod validation in REQ-27 still landed on
+this Manager (planning + result edit) — the hook adoption is what's deferred.
+
+**REQ-28 — `SeasonsManager` pilot (Server Actions + `useOptimistic`)**
+
+- **Created `src/app/admin/dashboard/seasons/_actions.ts`** with top-of-file
+  `'use server';` directive. Four exported actions: `createSeasonAction`,
+  `deleteSeasonAction`, `activateSeasonAction`, `deactivateSeasonAction`. Each
+  validates input (`SeasonCreateInputSchema` for create, `z.string().uuid()` for
+  ID), uses the cookie-aware `createClient()` from `@/lib/supabase/server`,
+  returns a discriminated union `{ ok: true } | { ok: false; error: string }`
+  (never throws), logs `[<actionName>] Error:` on Supabase failures, and calls
+  `revalidatePath('/admin/dashboard/seasons')` after success. `activateSeasonAction`
+  stays 2-step (deactivate all `.neq('id', id)` then activate target) per the
+  spec — atomic RPC is REQ-3, still deferred.
+- **Rewrote `SeasonsManager.tsx`** to consume the actions:
+  - Removed `import { createClient } from '@/lib/supabase/client'` and the
+    `useRouter` import + `router.refresh()` calls.
+  - Added `useOptimistic` + `startTransition` from React.
+  - Single tagged-union reducer per design D4 — `OptimisticAction` covers
+    `create | delete | activate | deactivate` in one reducer; activate is the
+    interesting case (mutates 2 rows: sets `is_active: true` on the target,
+    `false` on everyone else).
+  - The 4 handlers wrap `applyOptimistic(...)` then `await <action>(...)`
+    inside `startTransition`. On `!result.ok`, set the error banner; on success,
+    `revalidatePath` reconciles by re-pushing `initialSeasons` server-side.
+  - The optimistic-create temp ID uses `crypto.randomUUID()` so React's `key`
+    prop stays unique while the server insert resolves.
+  - Verified gates: `rg "from '@/lib/supabase/client'"` → 0, `rg "supabase.from\("`
+    → 0, `rg "useOptimistic"` → 2 (declaration + apply), `grep -c "'use server'"`
+    on `_actions.ts` → 1. `window.confirm` kept on delete per spec (F6 owns
+    its replacement).
+
+**Files net delta**
+
+- **Created (2):**
+  - `src/lib/hooks/useLeagueSelector.ts`
+  - `src/app/admin/dashboard/seasons/_actions.ts`
+- **Edited (7):**
+  - `src/lib/types/schemas.ts` (+7 input schemas + type aliases)
+  - `src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx` (full rewrite)
+  - `src/app/admin/dashboard/splits/_components/SplitsManager.tsx` (hook + Zod)
+  - `src/app/admin/dashboard/divisions/_components/DivisionsManager.tsx` (hook + Zod)
+  - `src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx` (hook + Zod)
+  - `src/app/admin/dashboard/matches/_components/MatchesManager.tsx` (Zod only — hook DEFERRED)
+  - `src/app/admin/dashboard/normativa/_components/RegulationsManager.tsx` (Zod for upload)
+- **Deleted:** none.
+
+**Framework gotchas that surfaced**
+
+- **`revalidatePath` import.** Confirmed against `node_modules/next/cache.d.ts`
+  that v16.1.1 re-exports `revalidatePath` from `next/cache` (not deprecated /
+  not renamed). Imported it as-is.
+- **`useOptimistic` requires Client Component + `startTransition`.** Manager
+  stays `'use client'` (form state, modal visibility, `useOptimistic` all need
+  the browser). Actions invoked inside `startTransition(async () => {...})` —
+  the optimistic update is applied synchronously, then `await action(...)` runs,
+  then revalidation reconciles. Verified the action's `Promise<ActionResult>`
+  shape works with `startTransition`'s async callback in React 19.2.3.
+- **Biome `useExhaustiveDependencies` triggered once.** A leftover `useEffect`
+  in `ParticipantsManager` listed `selectedSplitId` as a dep but only called
+  state setters (always stable); biome flagged the dep as extra. The effect
+  was actually redundant (the participants `useEffect` on `selectedLeagueId`
+  already clears state when the league becomes null), so dropping it was the
+  correct fix. Caught between REQ-26 and REQ-27 — re-ran `./init.sh` after,
+  green.
+- **Cookie-aware Supabase client in actions.** `createClient()` from
+  `@/lib/supabase/server` (the default cookie-aware variant) is required for
+  actions — they run server-side under the admin's authenticated identity that
+  `proxy.ts` propagates. The cookie-free F5 variant (`session: false`) stays
+  scoped to archive routes and is NOT used in admin actions (would break RLS).
+- **`MatchesManager` dual-cascade.** Documented above as the REQ-26 deferral.
+
+**Verification — final `./init.sh` GREEN.** Tail:
+```
+  ✓ typecheck clean
+Found 2 warnings.                  (pre-existing, F4-owned — fetchData.ts:5, matchService.ts:5)
+  ✓ lint clean
+▲ Next.js 16.1.1 (Turbopack)
+✓ Compiled successfully in 2.4s
+✓ Generating static pages using 9 workers (23/23) in 405.8ms
+ƒ Proxy (Middleware)
+  ✓ build succeeds
+  ✓ Harness ready — baseline is green.
+```
+23 pages built (matches F5 baseline). Lint 0 errors / 2 warnings (the two
+F4-owned `noUnusedImports` in `fetchData.ts:5` and `matchService.ts:5` —
+unchanged from baseline). No new warnings introduced by F3.
+
+**features.json:** F3 items annotated with `[DONE 2026-05-31]`. F3 `status`
+stays `in_progress` — reviewer flips to `done` after independent green
+`./init.sh`. Handing to reviewer.
+
+---
+
+## 2026-05-30 — F3 specs approved, status → in_progress (user → implementer)
+
+User approved `specs/{requirements,design,tasks}.md` produced by spec-author. F3 status
+flipped `pending` → `in_progress`; `spec` field set to `"specs/"`. Implementer dispatched
+with the 4 REQs in order (REQ-26 → REQ-27 → REQ-28 → REQ-29 gate). Cross-cutting rule:
+`./init.sh` green between each REQ — reviewer will reject any REQ that lacks a green
+gate.
+
+**REQ summary (full text in `specs/requirements.md`):**
+- REQ-26 — `useLeagueSelector` hook at `src/lib/hooks/useLeagueSelector.ts`. Adopted by
+  Splits/Divisions/Participants Managers. MatchesManager adoption optional (dual-cascade
+  complexity — may defer to F6 if contract gets ugly).
+- REQ-27 — 6 new `*InputSchema` exports in `src/lib/types/schemas.ts`; thin `safeParse`
+  boundary at each form handler. NO React Hook Form adoption.
+- REQ-28 — SeasonsManager PILOT: `_actions.ts` (4 server actions) + `useOptimistic`
+  (single tagged-union reducer). `revalidatePath` (not `revalidateTag` — F4 territory).
+- REQ-29 — cross-cutting `./init.sh` gate between REQs.
+
+**Item 1 dropped from F3 scope:** spec-author verified all 6 Managers already import
+`AdminModal`/`AdminErrorBanner` from `@/components/admin/ui` (FR12+FR13+FR14 closed
+adoption at 100%). Only loose end: hand-rolled success banner in `RegulationsManager.tsx:115-128` — out of scope (not an error primitive), logged as future micro-batch.
+
+**Deferrals captured by spec-author:**
+- `window.confirm()` replacement → F6.
+- 5 non-pilot Managers' Server Actions migration → F6.
+- `cacheTag`/`revalidateTag` in `_actions.ts` → F4.
+- MatchesManager hook adoption → may defer to F6.
+- Atomic activate-season RPC → REQ-3 (still deferred; needs Supabase migration access).
+
+---
+
+## 2026-05-30 — F3 opened (leader → spec-author)
+
+User selected F3 (Fase 3 — Abstracciones admin) as next batch. `dependsOn: ["F2"]`
+satisfied (F2 closed 2026-05-28). Status remains `pending` until spec-author
+produces `specs/{requirements,design,tasks}.md` (same convention used for F0/F1/F2/F5);
+`activeBatch` set to `["F3"]`.
+
+**Pre-spec audit (leader, before dispatching spec-author):**
+
+The 4 items in `features.json` for F3 were authored before FR12/FR13/FR14 shipped
+the admin pixel reskin. Quick repo inspection found drift the spec-author must
+reconcile:
+
+- **Item 1 — Extract `<AdminModal>` and `<AdminErrorBanner>`.** SUPERSEDED.
+  Both primitives already exist in `src/components/admin/ui/`
+  (`AdminModal.tsx`, `AdminErrorBanner.tsx`, exported from `index.ts` alongside
+  `AdminCard`, `AdminButton`, `AdminInput/Select/Textarea`, `AdminBadge`). Shipped
+  in FR12. Spec-author must either (a) reframe as an *adoption audit* — verify
+  all 6 Managers (Seasons/Splits/Divisions/Regulations/Participants/Matches)
+  actually consume these primitives instead of inlining `<dialog>`/banner JSX —
+  or (b) drop the item entirely if FR13/FR14 already wired adoption.
+- **Item 2 — `useLeagueSelector()` hook.** No `src/hooks/` directory exists yet.
+  Hook is genuine net-new work. Spec-author to identify which Managers duplicate
+  the Temporada → Split → División cascade today.
+- **Item 3 — Zod validation in admin forms.** Zero matches for `schemas` imports
+  under `src/app/admin/dashboard/`. Schemas exist (`src/lib/types/schemas.ts`,
+  per CLAUDE.md and F2 outcome) but no admin form consumes them. Net-new wiring.
+- **Item 4 — `SeasonsManager` → Server Actions + `useOptimistic`.** Confirmed
+  still on `useState` + manual fetch + `try/catch` (`SeasonsManager.tsx` lines
+  23–29). True pilot — no Server Actions in admin yet. Sets the pattern that
+  F6 will roll out to the remaining 5 Managers.
+
+**Next agent:** spec-author. Inputs: F3 entry + items + `pre_spec_findings` in
+`features.json`, this history entry, `ARCHITECTURE_REVIEW.html §F3`, existing
+admin primitives in `src/components/admin/ui/`, `SeasonsManager.tsx` as pilot
+target. Output: `specs/{requirements.md, design.md, tasks.md}` overwriting the
+F5 batch. After spec-author returns, leader presents to user for approval before
+implementer dispatch (no implementation without explicit user approval).
+
+---
+
 ## 2026-05-30 — F5 done (reviewer signed off, leader close-out)
 
 Reviewer verdict: **`F5 APPROVED — ready for leader close-out`**. Full `./init.sh`

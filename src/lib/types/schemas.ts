@@ -135,6 +135,93 @@ export const MatchesByRoundSchema = z.array(
   }),
 );
 
+// --- Admin Form Input Schemas (F3 / REQ-27) ---
+
+export const SeasonCreateInputSchema = SeasonSchema.pick({
+  name: true,
+  year: true,
+}).extend({
+  name: z.string().min(1, 'El nombre es obligatorio'),
+  year: z
+    .number()
+    .int('El año debe ser un entero')
+    .min(2000, 'El año debe ser mayor o igual a 2000'),
+});
+
+export const SplitCreateInputSchema = SplitSchema.pick({
+  name: true,
+  split_order: true,
+}).extend({
+  name: z.string().min(1, 'El nombre es obligatorio'),
+  split_order: z
+    .number()
+    .int('El orden debe ser un entero')
+    .min(1, 'El orden debe ser >= 1'),
+});
+
+export const LeagueCreateInputSchema = LeagueSchema.pick({
+  tier_name: true,
+  tier_priority: true,
+}).extend({
+  tier_name: z.string().min(1, 'El nombre es obligatorio'),
+  tier_priority: z
+    .number()
+    .int('La prioridad debe ser un entero')
+    .min(1, 'La prioridad debe ser >= 1'),
+});
+
+const emptyStringToNull = (val: unknown) =>
+  typeof val === 'string' && val.trim() === '' ? null : val;
+
+export const TrainerInputSchema = TrainerSchema.pick({
+  nickname: true,
+  avatar_url: true,
+  bio: true,
+}).extend({
+  nickname: z.string().min(1, 'El nickname es obligatorio'),
+  avatar_url: z.preprocess(emptyStringToNull, z.string().nullable()),
+  bio: z.preprocess(emptyStringToNull, z.string().nullable()),
+});
+
+export const MatchPlanningInputSchema = z
+  .object({
+    home_trainer_id: z.string().uuid('Entrenador local inválido'),
+    away_trainer_id: z.string().uuid('Entrenador visitante inválido'),
+    round: z
+      .number()
+      .int('La jornada debe ser un entero')
+      .min(1, 'La jornada debe ser >= 1')
+      .max(16, 'La jornada debe ser <= 16'),
+    match_group: z.string().min(1, 'El grupo es obligatorio'),
+    match_tag: z.string().min(1, 'La etiqueta es obligatoria'),
+  })
+  .refine((d) => d.home_trainer_id !== d.away_trainer_id, {
+    message: 'Los entrenadores deben ser diferentes',
+    path: ['away_trainer_id'],
+  });
+
+export const MatchResultInputSchema = z.object({
+  home_sets: z
+    .number()
+    .int('Los sets locales deben ser un entero')
+    .min(0, 'Los sets locales deben ser >= 0')
+    .max(3, 'Los sets locales deben ser <= 3'),
+  away_sets: z
+    .number()
+    .int('Los sets visitantes deben ser un entero')
+    .min(0, 'Los sets visitantes deben ser >= 0')
+    .max(3, 'Los sets visitantes deben ser <= 3'),
+});
+
+export const RegulationsUploadSchema = z
+  .instanceof(File, { message: 'Selecciona un archivo PDF' })
+  .refine((f) => f.type === 'application/pdf', {
+    message: 'Por favor selecciona un archivo PDF',
+  })
+  .refine((f) => f.size <= 50 * 1024 * 1024, {
+    message: 'El archivo es muy grande (máximo 50MB)',
+  });
+
 // --- Derived Types ---
 export type RankingEntry = z.infer<typeof RankingEntrySchema>;
 export type LeagueInfo = z.infer<typeof LeagueInfoSchema>;
@@ -148,3 +235,9 @@ export type ParticipantsByDivision = z.infer<
   typeof ParticipantsByDivisionSchema
 >;
 export type MatchesByRound = z.infer<typeof MatchesByRoundSchema>;
+export type SeasonCreateInput = z.infer<typeof SeasonCreateInputSchema>;
+export type SplitCreateInput = z.infer<typeof SplitCreateInputSchema>;
+export type LeagueCreateInput = z.infer<typeof LeagueCreateInputSchema>;
+export type TrainerInput = z.infer<typeof TrainerInputSchema>;
+export type MatchPlanningInput = z.infer<typeof MatchPlanningInputSchema>;
+export type MatchResultInput = z.infer<typeof MatchResultInputSchema>;

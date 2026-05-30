@@ -8,8 +8,10 @@ import {
   AdminInput,
   AdminModal,
 } from '@/components/admin/ui';
+import { useLeagueSelector } from '@/lib/hooks/useLeagueSelector';
 import { createClient } from '@/lib/supabase/client';
-import type { League, Season, Split } from '@/lib/types/database.types';
+import type { Season } from '@/lib/types/database.types';
+import { LeagueCreateInputSchema } from '@/lib/types/schemas';
 
 interface DivisionsManagerProps {
   initialSeasons: Season[];
@@ -19,18 +21,20 @@ export default function DivisionsManager({
   initialSeasons,
 }: DivisionsManagerProps) {
   const router = useRouter();
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(
-    () => {
-      const active = initialSeasons.find((s) => s.is_active);
-      return active?.id ?? initialSeasons[0]?.id ?? null;
-    },
-  );
-  const [splits, setSplits] = useState<Split[]>([]);
-  const [selectedSplitId, setSelectedSplitId] = useState<string | null>(null);
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [loadingSplits, setLoadingSplits] = useState(false);
-  const [loadingLeagues, setLoadingLeagues] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    splits,
+    leagues,
+    selectedSeasonId,
+    selectedSplitId,
+    setSeasonId,
+    setSplitId,
+    loadingSplits,
+    loadingLeagues,
+    error: selectorError,
+    clearError: clearSelectorError,
+    refresh,
+  } = useLeagueSelector({ initialSeasons, depth: 'season-split-league' });
+  const [localError, setLocalError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newLeague, setNewLeague] = useState({
     tier_name: '',
@@ -40,87 +44,16 @@ export default function DivisionsManager({
 
   const supabase = createClient();
 
-  // Fetch splits when season changes
-  useEffect(() => {
-    if (!selectedSeasonId) {
-      setSplits([]);
-      setSelectedSplitId(null);
-      return;
-    }
-
-    const fetchSplits = async () => {
-      setLoadingSplits(true);
-      setSelectedSplitId(null);
-      setLeagues([]);
-
-      const { data, error } = await supabase
-        .from('splits')
-        .select('*')
-        .eq('season_id', selectedSeasonId)
-        .order('split_order', { ascending: true });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        const splitsData = (data ?? []) as Split[];
-        setSplits(splitsData);
-        const activeSplit =
-          splitsData.find((s) => s.is_active) ?? splitsData[0];
-        if (activeSplit) {
-          setSelectedSplitId(activeSplit.id);
-        }
-      }
-      setLoadingSplits(false);
-    };
-
-    fetchSplits();
-  }, [selectedSeasonId, supabase.from]);
-
-  // Fetch leagues when split changes
-  useEffect(() => {
-    if (!selectedSplitId) {
-      setLeagues([]);
-      return;
-    }
-
-    const fetchLeagues = async () => {
-      setLoadingLeagues(true);
-
-      const { data, error } = await supabase
-        .from('leagues')
-        .select('*')
-        .eq('split_id', selectedSplitId)
-        .order('tier_priority', { ascending: true });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setLeagues(data ?? []);
-        setNewLeague((prev) => ({
-          ...prev,
-          tier_priority: (data?.length ?? 0) + 1,
-        }));
-      }
-      setLoadingLeagues(false);
-    };
-
-    fetchLeagues();
-  }, [selectedSplitId, supabase.from]);
-
-  const refreshLeagues = async () => {
-    if (!selectedSplitId) return;
-
-    const { data } = await supabase
-      .from('leagues')
-      .select('*')
-      .eq('split_id', selectedSplitId)
-      .order('tier_priority', { ascending: true });
-
-    if (data) {
-      setLeagues(data);
-      setNewLeague((prev) => ({ ...prev, tier_priority: data.length + 1 }));
-    }
+  const error = localError ?? selectorError;
+  const setError = (value: string | null) => {
+    setLocalError(value);
+    if (value === null) clearSelectorError();
   };
+
+  // Keep create-form `tier_priority` in sync with the loaded leagues length.
+  useEffect(() => {
+    setNewLeague((prev) => ({ ...prev, tier_priority: leagues.length + 1 }));
+  }, [leagues.length]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,10 +62,19 @@ export default function DivisionsManager({
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from('leagues').insert({
-      split_id: selectedSplitId,
+    const parsed = LeagueCreateInputSchema.safeParse({
       tier_name: newLeague.tier_name,
       tier_priority: newLeague.tier_priority,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((i) => i.message).join(' · '));
+      setSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.from('leagues').insert({
+      split_id: selectedSplitId,
+      ...parsed.data,
     });
 
     if (error) {
@@ -140,7 +82,7 @@ export default function DivisionsManager({
     } else {
       setNewLeague({ tier_name: '', tier_priority: leagues.length + 2 });
       setShowCreateForm(false);
-      await refreshLeagues();
+      await refresh();
       router.refresh();
     }
     setSaving(false);
@@ -154,7 +96,7 @@ export default function DivisionsManager({
     if (error) {
       setError(error.message);
     } else {
-      await refreshLeagues();
+      await refresh();
       router.refresh();
     }
   };
@@ -173,7 +115,7 @@ export default function DivisionsManager({
           </span>
           <select
             value={selectedSeasonId ?? ''}
-            onChange={(e) => setSelectedSeasonId(e.target.value || null)}
+            onChange={(e) => setSeasonId(e.target.value || null)}
             className="pixel-input w-auto cursor-pointer"
           >
             <option value="">Seleccionar</option>
@@ -189,7 +131,7 @@ export default function DivisionsManager({
           </span>
           <select
             value={selectedSplitId ?? ''}
-            onChange={(e) => setSelectedSplitId(e.target.value || null)}
+            onChange={(e) => setSplitId(e.target.value || null)}
             disabled={!selectedSeasonId || loadingSplits}
             className="pixel-input w-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           >

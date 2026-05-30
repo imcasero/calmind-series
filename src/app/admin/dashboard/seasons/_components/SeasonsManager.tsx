@@ -1,7 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { startTransition, useOptimistic, useState } from 'react';
 import {
   AdminBadge,
   AdminButton,
@@ -9,17 +8,52 @@ import {
   AdminInput,
   AdminModal,
 } from '@/components/admin/ui';
-import { createClient } from '@/lib/supabase/client';
 import type { Season } from '@/lib/types/database.types';
+import { SeasonCreateInputSchema } from '@/lib/types/schemas';
+import {
+  activateSeasonAction,
+  createSeasonAction,
+  deactivateSeasonAction,
+  deleteSeasonAction,
+} from '../_actions';
 
 interface SeasonsManagerProps {
   initialSeasons: Season[];
 }
 
+type OptimisticAction =
+  | { type: 'create'; season: Season }
+  | { type: 'delete'; id: string }
+  | { type: 'activate'; id: string }
+  | { type: 'deactivate'; id: string };
+
+function optimisticReducer(
+  state: Season[],
+  action: OptimisticAction,
+): Season[] {
+  switch (action.type) {
+    case 'create':
+      return [...state, action.season];
+    case 'delete':
+      return state.filter((s) => s.id !== action.id);
+    case 'activate':
+      return state.map((s) => ({ ...s, is_active: s.id === action.id }));
+    case 'deactivate':
+      return state.map((s) =>
+        s.id === action.id ? { ...s, is_active: false } : s,
+      );
+    default:
+      return state;
+  }
+}
+
 export default function SeasonsManager({
   initialSeasons,
 }: SeasonsManagerProps) {
-  const router = useRouter();
+  const [optimisticSeasons, applyOptimistic] = useOptimistic(
+    initialSeasons,
+    optimisticReducer,
+  );
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSeason, setNewSeason] = useState({
@@ -28,77 +62,73 @@ export default function SeasonsManager({
   });
   const [saving, setSaving] = useState(false);
 
-  const supabase = createClient();
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase
-      .from('seasons')
-      .insert({ name: newSeason.name, year: newSeason.year, is_active: false });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setNewSeason({ name: '', year: new Date().getFullYear() });
-      setShowCreateForm(false);
-      router.refresh();
-    }
-    setSaving(false);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta temporada?')) return;
-
-    const { error } = await supabase.from('seasons').delete().eq('id', id);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      router.refresh();
-    }
-  };
-
-  const handleActivate = async (id: string) => {
-    setError(null);
-
-    // First, deactivate all seasons
-    const { error: deactivateError } = await supabase
-      .from('seasons')
-      .update({ is_active: false })
-      .neq('id', id);
-
-    if (deactivateError) {
-      setError(deactivateError.message);
+    const parsed = SeasonCreateInputSchema.safeParse({
+      name: newSeason.name,
+      year: newSeason.year,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((i) => i.message).join(' · '));
+      setSaving(false);
       return;
     }
 
-    // Then activate the selected one
-    const { error: activateError } = await supabase
-      .from('seasons')
-      .update({ is_active: true })
-      .eq('id', id);
+    const tempSeason: Season = {
+      id: `optimistic-${crypto.randomUUID()}`,
+      name: parsed.data.name,
+      year: parsed.data.year,
+      is_active: false,
+      created_at: new Date().toISOString(),
+    };
 
-    if (activateError) {
-      setError(activateError.message);
-    } else {
-      router.refresh();
-    }
+    startTransition(async () => {
+      applyOptimistic({ type: 'create', season: tempSeason });
+      const result = await createSeasonAction(parsed.data);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setNewSeason({ name: '', year: new Date().getFullYear() });
+        setShowCreateForm(false);
+      }
+      setSaving(false);
+    });
   };
 
-  const handleDeactivate = async (id: string) => {
-    const { error } = await supabase
-      .from('seasons')
-      .update({ is_active: false })
-      .eq('id', id);
+  const handleDelete = (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta temporada?')) return;
 
-    if (error) {
-      setError(error.message);
-    } else {
-      router.refresh();
-    }
+    startTransition(async () => {
+      applyOptimistic({ type: 'delete', id });
+      const result = await deleteSeasonAction(id);
+      if (!result.ok) {
+        setError(result.error);
+      }
+    });
+  };
+
+  const handleActivate = (id: string) => {
+    setError(null);
+    startTransition(async () => {
+      applyOptimistic({ type: 'activate', id });
+      const result = await activateSeasonAction(id);
+      if (!result.ok) {
+        setError(result.error);
+      }
+    });
+  };
+
+  const handleDeactivate = (id: string) => {
+    startTransition(async () => {
+      applyOptimistic({ type: 'deactivate', id });
+      const result = await deactivateSeasonAction(id);
+      if (!result.ok) {
+        setError(result.error);
+      }
+    });
   };
 
   return (
@@ -171,7 +201,7 @@ export default function SeasonsManager({
 
       {/* Table */}
       <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
-        {initialSeasons.length === 0 ? (
+        {optimisticSeasons.length === 0 ? (
           <p className="p-8 text-center font-retro text-lg text-px-ink-dim">
             No hay temporadas creadas.
           </p>
@@ -186,7 +216,7 @@ export default function SeasonsManager({
               </tr>
             </thead>
             <tbody>
-              {initialSeasons.map((season) => (
+              {optimisticSeasons.map((season) => (
                 <tr key={season.id}>
                   <td>
                     {season.is_active ? (

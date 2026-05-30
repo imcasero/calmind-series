@@ -1,170 +1,300 @@
-# F5 — Performance / modernización · Requirements (EARS)
+# Requirements — F3 (Fase 3 — Abstracciones admin)
 
-**Source:** `features.json` → F5, updated 2026-05-28 per user scope decisions (see
-note at top of `design.md`). Supersedes the pre-FR11 brief in `ARCHITECTURE_REVIEW.html`
-because the legacy `[season]/[split]` cluster is now redirect stubs only.
+> Source: `ARCHITECTURE_REVIEW.html §F3`, `features.json` F3 entry +
+> `pre_spec_findings`, `progress/history.md` 2026-05-30 "F3 opened".
+> Format: EARS (When/While/If [condition], the system shall [action]).
+> Each REQ has an explicit **Verification Gate** because no test runner is wired.
 
-**Targets:** the live post-FR11 surfaces.
-- `/hub` and subroutes (`/hub/clasificacion`, `/hub/calendario`, `/hub/entrenadores`, `/hub/bracket`, `/hub/olimpo`, `/hub/entrenador/[id]`) — live data, not statically generated.
-- `/archivo/[season]/[split]` — past data, target for SSG via `generateStaticParams`.
+## Scope reconciliation (spec-author audit, 2026-05-30)
 
-**Out of scope** (explicit, do not touch):
-- `src/app/[season]/[split]/page.tsx` and `cruces`/`final` siblings — already redirect stubs (verified `redirect()` to `/hub` or `/archivo`); leave alone.
-- `src/components/home/Hero/Hero.tsx`, `src/components/home/CurrentSeason/CurrentSeason.tsx`, `src/components/shared/layout/Navbar.tsx`, `src/components/shared/ui/Button/LinkButton.tsx` — stale code from the pre-FR11 home; not rendered by any live route. F2 closed without sweeping these; punt to a future micro-batch (do **not** include in F5).
-- `src/lib/data/fetchData.ts:5` and `src/lib/services/matchService.ts:5` noUnusedImports warnings — explicitly absorbed by F4.
-- Migrating queries to `'use cache'` / enabling `cacheComponents` — F4 owns that. F5 only sets up the Suspense surfaces that F4 needs.
+The 4 items in `features.json` F3 were authored before FR12–FR14 shipped the admin
+pixel reskin. After reading the live code, the spec-author reconciles:
 
----
+- **F3 Item 1 — Extract `<AdminModal>` and `<AdminErrorBanner>`.** **DROPPED.**
+  Adoption audit shows 100% coverage already:
+  - `AdminModal.tsx` and `AdminErrorBanner.tsx` exist at
+    `src/components/admin/ui/{AdminModal,AdminErrorBanner}.tsx`, exported from
+    `src/components/admin/ui/index.ts`.
+  - All 6 Managers import them from `@/components/admin/ui`:
+    `SeasonsManager.tsx:5-11`, `SplitsManager.tsx:5-11`,
+    `DivisionsManager.tsx:5-10`, `RegulationsManager.tsx:5-9` (modal not used —
+    upload flow has no dialog), `ParticipantsManager.tsx:5-14`,
+    `MatchesManager.tsx:5-13`.
+  - Zero inline `<dialog>` elements or `role="dialog"` JSX in
+    `src/app/admin/` (`grep -rn '<dialog\|role="dialog"' src/app/admin/` returns
+    empty).
+  - Zero ad-hoc error banner JSX duplication: every Manager that surfaces errors
+    routes them through `<AdminErrorBanner message={error} onDismiss={...} />`.
+  - `RegulationsManager.tsx:115-128` still hand-rolls a **success** banner (not an
+    error). That is OUT OF SCOPE for F3 Item 1 (the brief targets modal + error
+    primitives, not success). Logged as an opportunistic future micro-batch (see
+    "Out of scope" below).
+- **F3 Item 2 — `useLeagueSelector()` hook.** KEPT. Confirmed cascade duplication
+  in 3 Managers: `SplitsManager` (Season→Split, no League), `DivisionsManager`
+  (Season→Split→League), `ParticipantsManager` (Season→Split→League),
+  `MatchesManager` (Season→Split→League, with planning vs results modes — special
+  case). `SeasonsManager` and `RegulationsManager` do not need the hook.
+- **F3 Item 3 — Wire Zod validation into admin forms.** KEPT. Verified zero
+  matches for `from '@/lib/types/schemas'` under `src/app/admin/` today.
+- **F3 Item 4 — `SeasonsManager` → Server Actions + `useOptimistic` (PILOT).**
+  KEPT. Confirmed pilot target still on `useState` + browser `createClient()` +
+  `try/catch` + `router.refresh()` (`SeasonsManager.tsx:31-102`). Sets the
+  pattern that F6 will roll out to the remaining 5 Managers.
 
-## Verification protocol (applies to every REQ unless noted)
+## Requirements
 
-All gates run through `./init.sh` (typecheck → lint → build). Lint must remain `0/0` (the existing 2 `noUnusedImports` warnings on `fetchData.ts` / `matchService.ts` are pre-existing F4 debt and don't fail `pnpm lint`). Build must succeed end-to-end.
+### REQ-26 — `useLeagueSelector` hook (Season → Split → League cascade)
 
-Additional manual gates are called out per-REQ. **Bundle size comparison** is a global gate for the batch: capture `pnpm build` output for the `/hub*` and `/archivo*` routes before any change and after the batch; client JS for any route must not increase (target: decrease on `/hub/clasificacion`, `/hub/calendario`, `/hub/entrenadores` from the client→server splits in REQ-23).
+**When** an admin page renders a Manager that selects a League by drilling through
+Season → Split → League, **the system shall** expose the cascade state and data
+loading via a single hook `useLeagueSelector`, so the consuming Managers
+(`SplitsManager`, `DivisionsManager`, `ParticipantsManager`) consume identical
+behavior instead of duplicating ~80 LOC of `useState` + `useEffect` + fetch each.
 
----
+The hook's contract MUST be:
 
-## REQ-21 — Static generation of archive split pages
+```ts
+// src/lib/hooks/useLeagueSelector.ts
+'use client';
 
-**When** the production build runs (`pnpm build`), the system **shall** statically pre-render every `(season, split)` pair persisted in Supabase under `/archivo/[season]/[split]`.
+import type { League, Season, Split } from '@/lib/types/database.types';
 
-Concrete shape:
-- `src/app/archivo/[season]/[split]/page.tsx` exports `generateStaticParams(): Promise<Array<{ season: string; split: string }>>` derived from `getAllSeasonsWithSplits()` (already exists in `seasons.queries.ts`). Mapping uses the **URL-shaped** lowercase names that `getSplitByNames` already accepts (verified: lines 222 and 238 use `.ilike(...)`, so the existing case-insensitive match keeps working — but `generateStaticParams` must emit canonical lowercase to avoid duplicate static pages).
-- The page exports `export const dynamicParams = true` so visiting an unknown `(season, split)` still works at request time (DB rows added after build).
-- `getDivisionPreview`, `getArchiveChampions`, and `getSplitByNames` must be callable from a static render — this requires a **cookie-free Supabase client** for archive queries (see design REQ-21 §"Cookie blocker"). The default `@/lib/supabase/server.ts` calls `await cookies()`, which opts the route out of static rendering in Next 16.
+export interface UseLeagueSelectorOptions {
+  /** Required: the full Season[] (loaded server-side by the parent page). */
+  initialSeasons: Season[];
+  /** When 'season-split': stops at split. When 'season-split-league': cascades to league. */
+  depth?: 'season-split' | 'season-split-league';
+  /** Optional initial selection (used by MatchesManager which seeds from `activeSplitInfo`). */
+  initialSeasonId?: string | null;
+  initialSplitId?: string | null;
+  initialLeagueId?: string | null;
+}
 
-**Verification:**
-- `./init.sh` green.
-- `pnpm build` output lists every `(season, split)` from the DB under "○ (Static)" (or Next 16's equivalent indicator) for the `/archivo/[season]/[split]` route. For the current DB this should be at minimum every past split returned by `getAllSeasonsWithSplits()`.
-- `curl -I` (or browser DevTools "Network" → "x-nextjs-cache") on a pre-rendered archive URL after `pnpm start` shows the static HIT marker, not "DYNAMIC".
-- Visiting `/archivo/<bogus>/<bogus>` returns `404` (notFound path), confirming `dynamicParams = true` + `notFound()` still works.
+export interface UseLeagueSelectorResult {
+  seasons: Season[];
+  splits: Split[];
+  leagues: League[];
+  selectedSeasonId: string | null;
+  selectedSplitId: string | null;
+  selectedLeagueId: string | null;
+  setSeasonId: (id: string | null) => void;
+  setSplitId: (id: string | null) => void;
+  setLeagueId: (id: string | null) => void;
+  loadingSplits: boolean;
+  loadingLeagues: boolean;
+  error: string | null;
+  clearError: () => void;
+  /** Re-fetch splits/leagues at the current selection (used after mutations). */
+  refresh: () => Promise<void>;
+}
+```
 
-**Out of scope:** `/hub` and any other route. `/hub` is a fixed path (no `[param]`) whose data is per-request-live; F4 will handle its caching strategy with `'use cache'`.
+Semantics (extracted from the 3 Managers' shared behavior):
+- Default `selectedSeasonId`: the active season, else the first season, else `null`
+  (matches `SplitsManager.tsx:21-26`, `DivisionsManager.tsx:22-27`,
+  `ParticipantsManager.tsx:66-71`).
+- When `selectedSeasonId` changes, fetch splits for that season ordered by
+  `split_order ASC`; auto-select active split (else first) when
+  `depth === 'season-split-league'` (matches `DivisionsManager.tsx:51-77`).
+- When `selectedSplitId` changes (and `depth === 'season-split-league'`), fetch
+  leagues ordered by `tier_priority ASC`. Do not auto-select a league (matches
+  `DivisionsManager.tsx:80-108` and `ParticipantsManager`).
+- Errors are caught and stored in `error`; queries log `[useLeagueSelector] Error:`
+  per convention but never throw to the consumer.
+- The hook MUST use `@/lib/supabase/client` (it runs in the browser).
 
----
+**Scope note on `MatchesManager`:** the Manager runs TWO independent cascades
+(planning vs results) and seeds initial state from `activeSplitInfo`. For F3,
+`MatchesManager` MAY adopt the hook for its **planning** tab only (the simpler
+case), or remain on inline state. The implementer decides at runtime — if the
+results tab's auto-select-from-active-split logic complicates the hook contract,
+adoption is deferred to F6. Document the decision in `progress/history.md`.
 
-## REQ-22 — Granular Suspense per hub section
+**Verification Gate:**
+1. `./init.sh` passes green (typecheck + lint + build).
+2. `rg "from '@/lib/hooks/useLeagueSelector'" src/` returns at least 3 hits
+   (`SplitsManager`, `DivisionsManager`, `ParticipantsManager`).
+3. After the migration, each consuming Manager loses its local
+   `useState<Split[]>([])`, `useState<League[]>([])`, and the matching
+   `useEffect` cascade. Diff metric: net LOC reduction across the 3 Managers
+   greater than or equal to 80 lines (rough estimate based on current cascades).
 
-**While** a request to `/hub` (or its subroutes) is in flight, the system **shall** stream each independent data panel as its own Suspense boundary so a slow query for one panel does not block the others from hydrating.
-
-Targets and boundaries — one async server child per `<Suspense fallback={…}>`:
-
-| Route | Panels (each becomes a `<Suspense>` boundary) |
-|---|---|
-| `/hub` | `PhaseBanner+StoryBeat` (cheap, share a fetch of `seasonInfo`+`currentRound`); `StandingsLive` (uses `preview`+`matches`); `ProjectedBracketTeaser` (uses `preview`); `HubRightColumn` (uses `preview`+`matchesByRound`+`currentRound`); `NewsRail` (uses `preview`+`currentRound`) |
-| `/hub/clasificacion` | `ClasificacionView` (uses `preview`+`matches`) |
-| `/hub/calendario` | `CalendarView` (uses `matchesByRound`+`currentRound`) |
-| `/hub/entrenadores` | `RosterView` (uses `preview`+`matches`) |
-| `/hub/bracket` | `BracketView` (uses `preview`+`bracketData`+`currentRound`) |
-| `/hub/olimpo` | `OlimpoView` (uses `preview`+`matchesByRound`+`currentRound`) |
-| `/hub/entrenador/[id]` | `TrainerProfile` (uses `trainer`+`preview`+`matches`) |
-
-Each Suspense boundary:
-- Receives a section-appropriate skeleton via `<Suspense fallback={…}>` (see REQ-24 — extracted `<SectionSkeleton variant=…>`).
-- Pushes its data fetch inside an async leaf component (e.g. `async function StandingsLiveSection({ splitId }: { splitId: string })`). The leaf does its own `Promise.all([...])` of the queries it needs; siblings do not share a top-level `await` that blocks the rest.
-
-The top-level page (`HubPage`, `ClasificacionPage`, etc.) only awaits the cheap `getActiveSeasonWithSplit()` (used by every panel to decide the empty state). All heavier queries live inside the Suspense leaves so the shell ships as soon as `seasonInfo` resolves.
-
-**Verification:**
-- `./init.sh` green; no React "client component cannot be async" or "Suspense child not async" runtime errors during `pnpm build`.
-- Manual: in `pnpm dev`, throttle the network in DevTools (e.g. Slow 3G), load `/hub`, and confirm individual section skeletons render and replace independently (NOT all panels swapping at once).
-- React DevTools "Profiler" shows distinct render commits per panel rather than a single big tree render.
-- `view-source` on the streamed HTML (e.g. `curl http://localhost:3000/hub`) shows `<template>` islands for each panel — confirming streaming, not a single blocking render.
-
----
-
-## REQ-23 — `'use client'` push to leaves (pragmatic)
-
-**If** a component is currently `'use client'` only because of small piece of UI state (tab/filter/timeline), **then** the system **shall** isolate that interactive piece into a tiny client leaf and render the bulk of the markup as Server Components passed via `children` (or named slot props).
-
-Targets — confirmed by `'use client'` grep and the FR3/FR4/FR5/FR6 view files:
-
-1. **`src/components/hub/ClasificacionView.tsx`** (currently 180 LOC, `'use client'` for `useState<Division>`).
-   - Extract `<DivisionTabsShell>` (`'use client'`) — owns `useState<'primera' | 'segunda'>`, renders two tab buttons, and renders `{active === 'primera' ? primeraSlot : segundaSlot}` from props.
-   - Move `StandingsTable` + `TableRow` + `Pip` to a Server Component file (drop `'use client'`).
-   - Page composes: `<DivisionTabsShell primeraSlot={<StandingsTable rows={primera} />} segundaSlot={<StandingsTable rows={segunda} />} />`.
-
-2. **`src/components/hub/RosterView.tsx`** (133 LOC, `'use client'` for `useState<Filter>`).
-   - Extract `<RosterFilterShell>` (`'use client'`) owning the `all|1|2` filter pills + filtering logic.
-   - The card grid (the bulk) becomes Server: `<RosterGrid cards={…} />`.
-   - Filter shell receives `allCards` and renders the grid filtered. (Alternative: pass three pre-rendered grids as slots; pick the simpler form during impl — design.md picks one.)
-
-3. **`src/components/hub/CalendarView.tsx`** (221 LOC, `'use client'` for `useState<number>` round selector).
-   - Extract `<RoundSelectorShell>` (`'use client'`) owning the selected-round state.
-   - Per-round match listings become Server: `<RoundDetails round={selected} matchesByRound={…} />` — but because `selected` lives in client state, **either** (a) pass pre-rendered listings for **every** round as named slots/array and the client picks one (heavier HTML, zero client JS for rendering matches), **or** (b) keep listings client-rendered (no win). Choose (a) — designed in design.md.
-
-4. **`src/components/cross/PlayoffBracket.tsx` + `src/components/cross/MatchupCard.tsx`** — orphaned (only consumed by `src/components/shared/DivisionSection/DivisionSection.tsx`, which is itself orphan: zero callers in `app/`). **Decision:** the user's brief explicitly names them as client→server push candidates, but they are dead code in the live tree. Per F5 scope guidance ("not invent scope"), this REQ proposes:
-   - **Verify orphan status** (`rg "PlayoffBracket|MatchupCard|DivisionSection|DivisionBracket" src/app` → expect zero hits inside `src/app/`).
-   - **Delete** `src/components/cross/PlayoffBracket.tsx`, `src/components/cross/MatchupCard.tsx`, `src/components/cross/` (becomes empty), `src/components/shared/DivisionSection/`, and the corresponding re-exports in `src/components/shared/index.ts`.
-   - This is a dead-code cleanup, not a client→server push (the components are unreachable; pushing nothing into nothing is moot). If the user wants them kept as a future stub, downgrade this sub-REQ to "leave alone" and document in `progress/history.md`.
-
-**Verification:**
-- `./init.sh` green.
-- After REQ-23.1/2/3: `grep -L "'use client'" src/components/hub/ClasificacionView.tsx src/components/hub/RosterView.tsx src/components/hub/CalendarView.tsx` returns each path that no longer has the directive (because the bulk moved server). The new tiny client shells (`DivisionTabsShell`, `RosterFilterShell`, `RoundSelectorShell`) carry `'use client'` and live in `src/components/hub/clients/`.
-- Bundle: `pnpm build` shows a **decrease** in client JS for `/hub/clasificacion`, `/hub/entrenadores`, `/hub/calendario` versus the captured baseline (the row/card/match-detail JSX is no longer in the client bundle).
-- After REQ-23.4 (if executed): the four files are deleted, no import errors, `./init.sh` still green.
-
----
-
-## REQ-24 — Shared primitives extraction (deduplicate)
-
-**When** a piece of UI is duplicated across two or more routes, the system **shall** expose a single canonical implementation under `src/components/shared/ui/` (or `src/lib/utils/` for pure functions).
-
-Concrete duplications confirmed in the live tree:
-
-1. **Empty-state card** — duplicated in `src/app/hub/page.tsx:36`, `calendario/page.tsx:26`, `clasificacion/page.tsx:28`, `bracket/page.tsx:25`, `olimpo/page.tsx:55`, `entrenadores/page.tsx:22`. Same markup (`<div className="py-20 text-center"><h1 className="font-pixel ...">…</h1><p className="font-retro ...">…</p></div>`).
-   → Extract `<EmptyState title="…" body="…" />` to `src/components/shared/ui/EmptyState.tsx`. (Name chosen over `<ErrorCard>` from the original brief because these are "no active split" empty states, not errors.)
-
-2. **Starfield decoration** — duplicated as `<div className="starfield" />` in `HubRightColumn.tsx:118`, `BracketView.tsx:220`, `OlimpoView.tsx:44`, `PixelLanding.tsx:58, 408`.
-   → Extract `<BackgroundDecoration variant="starfield" />` to `src/components/shared/ui/BackgroundDecoration.tsx`. The component renders the same `<div className="starfield" />` today (CSS lives in `src/app/styles/pixel.css:364`); the wrapper centralizes future variants (e.g. scanline-only, fog).
-
-3. **Section skeleton** for Suspense fallbacks — REQ-22 needs one. Today no `PageSkeleton` exists.
-   → Add `<SectionSkeleton variant="standings" | "calendar" | "roster" | "bracket" | "olimpo" | "rightColumn" | "phaseBanner" | "newsRail" />` to `src/components/shared/ui/SectionSkeleton.tsx`. Each variant returns a sized placeholder that approximates the real panel's footprint to avoid CLS.
-
-4. **`formatSplitName()` util** — `${season.toUpperCase()} · ${split.toUpperCase()}` is duplicated in `src/app/archivo/[season]/[split]/page.tsx:22, 47`, `src/components/shared/layout/hub/SeasonSplitChip.tsx:28`, `src/components/hub/PhaseBanner.tsx:34`, `src/components/hub/OlimpoView.tsx:47`, and similar.
-   → Add `formatSeasonSplit(seasonName: string, splitName: string): string` to `src/lib/utils/formatters.ts` (new file or merge into an existing utils module — design.md picks). Returns `"${SEASON} · ${SPLIT}"`. The five call sites switch to the helper.
-
-**Verification:**
-- `./init.sh` green.
-- `rg '"py-20 text-center"' src/app` returns zero hits.
-- `rg 'className="starfield"' src` returns only the new `BackgroundDecoration.tsx` (one definition site).
-- `rg 'toUpperCase\(\).*toUpperCase\(\)' src/components src/app` returns only `formatters.ts` (the rest call the helper).
-- `<EmptyState>`, `<BackgroundDecoration>`, `<SectionSkeleton>`, and `formatSeasonSplit` are exported from `src/components/shared/index.ts` (or a dedicated barrel) and used by the call sites listed above.
+> Sequencing: REQ-26 may land before or after REQ-27 (Zod). It MUST land before
+> REQ-28 (pilot) ONLY if the pilot also touches the selector — it does not, since
+> `SeasonsManager` has no League cascade. They are independent.
 
 ---
 
-## REQ-25 — Performance polish (image + animation audit)
+### REQ-27 — Zod validation in admin forms
 
-**When** any `next/image` is rendered in the live `/hub` or `/archivo` tree, the system **shall** declare either explicit `width`/`height` **or** `fill` + `sizes`. **And when** any infinite-loop or JS-driven animation runs on a live page, the system **shall** prefer CSS keyframes over `motion`-driven `repeat: Infinity` to keep the React tree idle.
+**When** an admin form submits user-provided fields (`name`, `year`,
+`split_order`, `tier_name`, `tier_priority`, `nickname`, `avatar_url`, `bio`,
+`home_sets`, `away_sets`, `home_trainer_id`, `away_trainer_id`, `round`,
+`match_group`, `match_tag`), **the system shall** validate the payload with a
+Zod schema derived from `src/lib/types/schemas.ts` BEFORE the mutation is issued
+to Supabase, so invalid input surfaces as a user-visible error and never reaches
+the database round-trip.
 
-Live-tree audit (already performed; F5 only verifies and corrects):
-- `<Image>` usages in live routes: exactly **one** — `src/components/shared/layout/hub/TopBar.tsx:46` with `width={40}` `height={40}`. **No `fill` images exist in `/hub` or `/archivo`.** The original brief item is largely a no-op here; this REQ becomes a guard ("verify and document, do not regress").
-- Infinite `repeat: Number.POSITIVE_INFINITY` in live tree: **none**. The two occurrences (`Hero.tsx:72, 93`) are in `src/components/home/Hero/Hero.tsx`, which is dead code (not rendered by `src/app/page.tsx`, which renders `PixelLanding`). Out of scope; documented as cleanup debt.
-- CSS `animation-delay` cap audit: `src/app/styles/animations.css` delays max at `0.4s` (line 147); `src/app/styles/clouds.css` uses long *negative* delays for phase-shifted continuous animations (intentional). Nothing to cap.
-- Pokéball spin: `src/components/cross/PlayoffBracket.tsx:50-79` renders pure-CSS Pokéball decorations (no motion). Once that file is deleted (REQ-23.4), the brief's "CSS spin for Pokéballs" item is moot.
+Mapping (Manager → form fields → schema source). Schemas marked NEW must be added
+to `src/lib/types/schemas.ts` as `*InputSchema` (input schemas, not row schemas):
 
-So REQ-25 narrows to two checks:
+| Manager | Form | Source schema | Action |
+|---|---|---|---|
+| `SeasonsManager` create | `{name, year}` | `SeasonSchema.pick({name:true, year:true})` derived as `SeasonCreateInputSchema` | NEW (`name` `min(1)`; `year` `int().min(2000)`) |
+| `SplitsManager` create | `{name, split_order}` | `SplitSchema.pick({name:true, split_order:true})` derived as `SplitCreateInputSchema` | NEW (`split_order` `int().min(1)`) |
+| `DivisionsManager` create | `{tier_name, tier_priority}` | `LeagueSchema.pick({tier_name:true, tier_priority:true})` derived as `LeagueCreateInputSchema` | NEW (`tier_priority` `int().min(1)`) |
+| `ParticipantsManager` create/edit trainer | `{nickname, avatar_url, bio}` | `TrainerSchema.pick({nickname:true, avatar_url:true, bio:true})` derived as `TrainerInputSchema` | NEW (`nickname` `min(1)`; `avatar_url` accepts `''` → `null` via preprocess; `bio` accepts `''` → `null`) |
+| `MatchesManager` create/edit match | `{home_trainer_id, away_trainer_id, round, match_group, match_tag}` | Subset of `MatchSchema` derived as `MatchPlanningInputSchema` | NEW (`round` `int().min(1).max(16)`; trainer ids `uuid()`; refine `home !== away`) |
+| `MatchesManager` result edit | `{home_sets, away_sets}` | Derived as `MatchResultInputSchema` | NEW (`int().min(0).max(3)`) |
+| `RegulationsManager` upload | file (PDF, 50MB) | Inline `z.instanceof(File).refine(...)` (not a row schema) | LOCAL inline OR NEW `RegulationsUploadSchema` (implementer choice) |
 
-a. `next/image` audit — confirm `TopBar.tsx` keeps explicit dims; add an inline comment that future contributors must add `sizes` when using `fill`.
-b. Animation audit — confirm no live route renders an `motion` infinite loop; document the dead `Hero.tsx` in `progress/history.md` so the next sweep cleans it up.
+Validation pattern at the call site (all Managers):
 
-**Verification:**
-- `./init.sh` green.
-- `rg 'fill[^=]*=' src/app/hub src/app/archivo src/components/hub src/components/landing src/components/shared/layout/hub --type tsx` returns zero hits OR every hit also has a `sizes=` attribute on the same `<Image>`.
-- `rg 'Number.POSITIVE_INFINITY' src/app/hub src/app/archivo src/components/hub src/components/landing src/components/shared/layout/hub` returns zero hits.
-- `progress/history.md` gets an entry noting the dead `Hero.tsx`/`CurrentSeason.tsx`/`Navbar.tsx`/`LinkButton.tsx` cluster for a future sweep.
+```ts
+const parsed = SeasonCreateInputSchema.safeParse({ name: newSeason.name, year: newSeason.year });
+if (!parsed.success) {
+  setError(parsed.error.issues.map(i => i.message).join(' · '));
+  setSaving(false);
+  return;
+}
+// then use parsed.data instead of the raw state
+```
+
+This requirement DOES NOT migrate the Managers to React Hook Form / a form library
+— it adds a thin validation boundary before each Supabase call. Wholesale form
+library adoption is OUT OF SCOPE (push to F6 if desired).
+
+**Verification Gate:**
+1. `./init.sh` green.
+2. `rg "from '@/lib/types/schemas'" src/app/admin/` returns at least 5 matches
+   (one per Manager that has a form: Seasons, Splits, Divisions, Participants,
+   Matches; Regulations counted if `RegulationsUploadSchema` is adopted).
+3. Manual: submit `SeasonsManager` "New Season" with empty `name` → error banner
+   shows a Zod message; database does not receive the insert (verifiable via
+   network panel: no `POST /rest/v1/seasons`).
+4. `src/lib/types/schemas.ts` exports the NEW schemas listed above
+   (`rg "export const (Season|Split|League|TrainerInput|MatchPlanning|MatchResult).*Schema" src/lib/types/schemas.ts` returns the full set).
+
+> Sequencing: REQ-27 is independent of REQ-26 and REQ-28. Can land first.
 
 ---
 
-## Sequencing
+### REQ-28 — `SeasonsManager` migrated to Server Actions + `useOptimistic` (PILOT)
 
-- REQ-24 (primitives) lands **first** — REQ-22's Suspense fallbacks use `<SectionSkeleton>`, REQ-23's empty-state callers may want `<EmptyState>`, and REQ-21's archive metadata can adopt `formatSeasonSplit`.
-- REQ-23 (client→server push) lands **before** REQ-22 (Suspense) to avoid re-doing the page wiring twice — once for Suspense, once for the client/server split.
-- REQ-22 (Suspense) lands after REQ-23 so the streaming boundaries wrap the already-split components.
-- REQ-21 (SSG archive) is independent of REQ-22/23/24 except for the cookie-free Supabase client work, which is internal to `src/lib/supabase/` and `src/lib/queries/archive.queries.ts` + `seasons.queries.ts`.
-- REQ-25 (audit) is verification-only and runs last.
+**When** an admin invokes a CRUD operation on a season (create, delete, activate,
+deactivate) via `SeasonsManager`, **the system shall** route the mutation through
+a Server Action (not a browser-side `supabase.from(...).insert/update/delete`),
+and the UI shall reflect the change optimistically via `React.useOptimistic`
+BEFORE the server round-trip resolves, so the admin sees instant feedback while
+the database write happens server-side with auth enforced server-side.
 
-## Dependencies on other features
+Constraints (the PILOT pattern that F6 will replicate):
 
-- **F4 (caching)** depends on REQ-22 — `'use cache'` directives need Suspense boundaries to be useful, and `cacheComponents` (deferred from F1/REQ-5) needs them too. F5 unblocks F4.
-- F5 does **not** depend on F3.
+1. **Server Actions file:** Create `src/app/admin/dashboard/seasons/_actions.ts`
+   (colocated with the route, leading underscore matches the `_components/`
+   convention). File starts with `'use server';` directive at the top. Each
+   action uses `createClient()` from `@/lib/supabase/server`. Decision rationale:
+   colocation > a global `src/lib/actions/` because each Manager owns its own
+   write surface; F6 will follow the same colocation pattern.
+2. **Action surface:**
+   ```ts
+   // src/app/admin/dashboard/seasons/_actions.ts
+   'use server';
+   export async function createSeasonAction(input: { name: string; year: number }): Promise<{ ok: true } | { ok: false; error: string }>;
+   export async function deleteSeasonAction(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
+   export async function activateSeasonAction(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
+   export async function deactivateSeasonAction(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
+   ```
+   Each action returns a discriminated union — actions NEVER throw to the client
+   (matches the queries convention in `docs/conventions.md`). Each action
+   validates input with the REQ-27 schemas before hitting Supabase.
+3. **Revalidation:** After a successful mutation, each action calls
+   `revalidatePath('/admin/dashboard/seasons')` (from `next/cache`). NOTE: F4
+   will introduce `'use cache'` + `cacheTag` + `revalidateTag` — F3 uses
+   `revalidatePath` deliberately (no cache tags exist yet for the admin route;
+   `revalidatePath` is the v16 idiom that works without them and survives the F4
+   migration unchanged, since F4 owns adding cacheTag and is not retroactive to
+   admin routes per `features.json` F4 scope).
+4. **`useOptimistic` integration:** The Manager wraps `initialSeasons` in
+   `useOptimistic` and exposes an `addOptimisticSeason` reducer that handles all
+   4 mutation types (create / delete / activate / deactivate) as separate action
+   variants. The reducer must apply the optimistic state synchronously; the
+   `startTransition` async wrapper calls the Server Action; `revalidatePath`
+   reconciles by pushing the new server-rendered `initialSeasons` down.
+5. **`SeasonsManager` MUST remain a Client Component** (the form state, modal
+   visibility, and `useOptimistic` all need the browser). Only the data
+   mutations move server-side.
+6. **Removed code:** After migration, `SeasonsManager.tsx` MUST NOT import
+   `@/lib/supabase/client` and MUST NOT contain any `await supabase.from(...)`
+   calls. The 4 handlers (`handleCreate`, `handleDelete`, `handleActivate`,
+   `handleDeactivate` at lines 33–102) MUST be rewritten to call the actions
+   inside `startTransition`.
+7. **Auth:** `proxy.ts` already gates `/admin/*` (per `docs/conventions.md`). No
+   per-action auth re-check is required for F3 — the proxy plus Supabase RLS on
+   the server client are the existing guarantees. If a per-action `auth.getUser()`
+   check is desired, it is a F6 hardening item, not F3.
+
+**Verification Gate:**
+1. `./init.sh` green.
+2. `grep -c "'use server'" src/app/admin/dashboard/seasons/_actions.ts` returns 1.
+3. `rg "from '@/lib/supabase/client'" src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx` returns 0.
+4. `rg "useOptimistic" src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx` returns at least 1.
+5. `rg "supabase.from\(" src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx` returns 0.
+6. Manual: in `pnpm dev`, create a new season — the row appears in the table
+   BEFORE the network response (optimistic). Refresh page → row persists.
+7. Manual: cause an error (block the network in DevTools or violate a constraint)
+   → `AdminErrorBanner` shows the action's `{ ok: false; error }` payload;
+   optimistic state reconciles when `revalidatePath` re-pushes the canonical list.
+
+> Sequencing: REQ-28 SHOULD land AFTER REQ-27 so the pilot demonstrates the
+> Zod-validated action pattern from day one. If REQ-27 slips, REQ-28 can land
+> first with inline validation, but the F6 rollout will then have to backport
+> Zod.
+
+---
+
+### REQ-29 — Verification gate (cross-cutting)
+
+**When** the implementer signals "ready for review", **the system shall** have
+passed a full `./init.sh` invocation (not `--quick`) on the implementer's
+machine with: typecheck clean, lint 0 errors (warnings allowed only for the 2
+known F4-owned `noUnusedImports` in `fetchData.ts:5` and `matchService.ts:5`),
+build succeeds with no new dynamic-route count regression vs F5 baseline (23
+pages).
+
+**Verification Gate:**
+1. Implementer pastes the tail of `./init.sh` output into
+   `progress/history.md` under the F3 implementer entry, showing the green
+   checkmarks and the F4-owned warning count.
+2. Reviewer re-runs `./init.sh` independently and confirms the same output before
+   approving.
+3. If `pnpm lint` surfaces new warnings introduced by F3, they MUST be fixed
+   (not deferred) — F3 owns the new hook + new schemas + new actions file.
+
+---
+
+## Out of scope (deferred / pointers)
+
+- **F3 Item 1 (AdminModal/AdminErrorBanner extraction).** DROPPED — already
+  shipped in FR12 and 100% adopted (see "Scope reconciliation" above).
+- **Success banner in `RegulationsManager.tsx:115-128`.** Hand-rolled JSX, not
+  duplicated elsewhere. Future micro-batch can promote to `AdminSuccessBanner`
+  alongside `AdminErrorBanner`. NOT F3.
+- **`window.confirm()` replacement** (used in `SeasonsManager.tsx:53`,
+  `SplitsManager.tsx:110`, `DivisionsManager.tsx:150`, plus delete handlers in
+  the 2 big Managers). Owned by F6 (`features.json` F6: "Reusable confirmation
+  modal to replace window.confirm()"). DO NOT touch in F3.
+- **Server Actions migration for the 5 remaining Managers** (Splits, Divisions,
+  Regulations, Participants, Matches). Owned by F6 ("Migrate remaining managers
+  to Server Actions"). F3 is the PILOT only.
+- **`cacheTag` / `revalidateTag` adoption** in the new `_actions.ts` file.
+  Owned by F4 (`features.json` F4: "Migrate queries to 'use cache' + cacheTag;
+  Call revalidateTag('matches') from the Server Action that updates results").
+  F3 uses `revalidatePath` deliberately.
+- **React Hook Form / Formik adoption.** Not in `features.json` anywhere. If
+  desired, propose a new F-id.
+- **Per-action `auth.getUser()` re-checks.** F6 hardening (see REQ-28 §7).
+- **Atomic activate-season RPC** (REQ-3 deferred in F0). Out of scope: REQ-28
+  keeps the 2-step deactivate-all-then-activate-one flow; moving to an RPC is a
+  separate Supabase migration. Document in `progress/history.md` if the F3
+  pilot makes the non-atomic flow more painful to live with.

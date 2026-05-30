@@ -12,14 +12,14 @@ import {
   AdminSelect,
   AdminTextarea,
 } from '@/components/admin/ui';
+import { useLeagueSelector } from '@/lib/hooks/useLeagueSelector';
 import { createClient } from '@/lib/supabase/client';
 import type {
-  League,
   LeagueParticipant,
   Season,
-  Split,
   Trainer,
 } from '@/lib/types/database.types';
+import { TrainerInputSchema } from '@/lib/types/schemas';
 import { cn } from '@/lib/utils';
 
 type ParticipantWithTrainer = LeagueParticipant & { trainer: Trainer };
@@ -54,34 +54,51 @@ export default function ParticipantsManager({
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Assignment cascade (Season → Split → League) via shared hook
+  const {
+    splits,
+    leagues,
+    selectedSeasonId,
+    selectedSplitId,
+    selectedLeagueId,
+    setSeasonId,
+    setSplitId,
+    setLeagueId,
+    loadingSplits,
+    loadingLeagues,
+    error: selectorError,
+    clearError: clearSelectorError,
+  } = useLeagueSelector({ initialSeasons, depth: 'season-split-league' });
+
   // Assignment state
-  const [splits, setSplits] = useState<Split[]>([]);
-  const [leagues, setLeagues] = useState<League[]>([]);
   const [participants, setParticipants] = useState<ParticipantWithTrainer[]>(
     [],
   );
   const [pendingLivesChanges, setPendingLivesChanges] = useState<
     Record<string, number>
   >({});
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(
-    () => {
-      const active = initialSeasons.find((s) => s.is_active);
-      return active?.id ?? initialSeasons[0]?.id ?? null;
-    },
-  );
-  const [selectedSplitId, setSelectedSplitId] = useState<string | null>(null);
-  const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
-  const [loadingSplits, setLoadingSplits] = useState(false);
-  const [loadingLeagues, setLoadingLeagues] = useState(false);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string>('');
 
   // Common state
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
+
+  const error = localError ?? selectorError;
+  const setError = (value: string | null) => {
+    setLocalError(value);
+    if (value === null) clearSelectorError();
+  };
+
+  // Auto-select first league when leagues finish loading (preserves prior UX).
+  useEffect(() => {
+    if (leagues.length > 0 && !selectedLeagueId) {
+      setLeagueId(leagues[0].id);
+    }
+  }, [leagues, selectedLeagueId, setLeagueId]);
 
   // Filtered and paginated trainers
   const filteredTrainers = useMemo(() => {
@@ -122,81 +139,6 @@ export default function ParticipantsManager({
     }
   };
 
-  // Fetch splits when season changes
-  useEffect(() => {
-    if (!selectedSeasonId) {
-      setSplits([]);
-      setSelectedSplitId(null);
-      setLeagues([]);
-      setSelectedLeagueId(null);
-      setPendingLivesChanges({});
-      return;
-    }
-
-    const fetchSplits = async () => {
-      setLoadingSplits(true);
-      setSelectedSplitId(null);
-      setLeagues([]);
-      setSelectedLeagueId(null);
-      setPendingLivesChanges({});
-
-      const { data, error } = await supabase
-        .from('splits')
-        .select('*')
-        .eq('season_id', selectedSeasonId)
-        .order('split_order', { ascending: true });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setSplits(data ?? []);
-        const activeSplit = data?.find((s) => s.is_active) ?? data?.[0];
-        if (activeSplit) {
-          setSelectedSplitId(activeSplit.id);
-        }
-      }
-      setLoadingSplits(false);
-    };
-
-    fetchSplits();
-  }, [selectedSeasonId, supabase.from]);
-
-  // Fetch leagues when split changes
-  useEffect(() => {
-    if (!selectedSplitId) {
-      setLeagues([]);
-      setSelectedLeagueId(null);
-      setParticipants([]);
-      setPendingLivesChanges({});
-      return;
-    }
-
-    const fetchLeagues = async () => {
-      setLoadingLeagues(true);
-      setSelectedLeagueId(null);
-      setParticipants([]);
-      setPendingLivesChanges({});
-
-      const { data, error } = await supabase
-        .from('leagues')
-        .select('*')
-        .eq('split_id', selectedSplitId)
-        .order('tier_priority', { ascending: true });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setLeagues(data ?? []);
-        if (data?.[0]) {
-          setSelectedLeagueId(data[0].id);
-        }
-      }
-      setLoadingLeagues(false);
-    };
-
-    fetchLeagues();
-  }, [selectedSplitId, supabase.from]);
-
   // Fetch participants when league changes
   useEffect(() => {
     if (!selectedLeagueId) {
@@ -216,7 +158,7 @@ export default function ParticipantsManager({
         .order('initial_seed', { ascending: true });
 
       if (error) {
-        setError(error.message);
+        setLocalError(error.message);
       } else {
         setParticipants((data ?? []) as ParticipantWithTrainer[]);
       }
@@ -232,14 +174,21 @@ export default function ParticipantsManager({
     setSaving(true);
     setError(null);
 
+    const parsed = TrainerInputSchema.safeParse({
+      nickname: trainerForm.nickname,
+      avatar_url: trainerForm.avatar_url,
+      bio: trainerForm.bio,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((i) => i.message).join(' · '));
+      setSaving(false);
+      return;
+    }
+
     if (editingTrainer) {
       const { error } = await supabase
         .from('trainers')
-        .update({
-          nickname: trainerForm.nickname,
-          avatar_url: trainerForm.avatar_url || null,
-          bio: trainerForm.bio || null,
-        })
+        .update(parsed.data)
         .eq('id', editingTrainer.id);
 
       if (error) {
@@ -252,11 +201,7 @@ export default function ParticipantsManager({
         router.refresh();
       }
     } else {
-      const { error } = await supabase.from('trainers').insert({
-        nickname: trainerForm.nickname,
-        avatar_url: trainerForm.avatar_url || null,
-        bio: trainerForm.bio || null,
-      });
+      const { error } = await supabase.from('trainers').insert(parsed.data);
 
       if (error) {
         setError(error.message);
@@ -644,7 +589,7 @@ export default function ParticipantsManager({
             <SelectorField
               label="Temporada"
               value={selectedSeasonId ?? ''}
-              onChange={(v) => setSelectedSeasonId(v || null)}
+              onChange={(v) => setSeasonId(v || null)}
             >
               <option value="">Seleccionar</option>
               {initialSeasons.map((season) => (
@@ -657,7 +602,7 @@ export default function ParticipantsManager({
             <SelectorField
               label="Split"
               value={selectedSplitId ?? ''}
-              onChange={(v) => setSelectedSplitId(v || null)}
+              onChange={(v) => setSplitId(v || null)}
               disabled={!selectedSeasonId || loadingSplits}
             >
               <option value="">
@@ -673,7 +618,7 @@ export default function ParticipantsManager({
             <SelectorField
               label="División"
               value={selectedLeagueId ?? ''}
-              onChange={(v) => setSelectedLeagueId(v || null)}
+              onChange={(v) => setLeagueId(v || null)}
               disabled={!selectedSplitId || loadingLeagues}
             >
               <option value="">

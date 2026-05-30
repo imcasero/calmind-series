@@ -1,352 +1,207 @@
-# F5 — Performance / modernización · Design
+# Design — F3 (Fase 3 — Abstracciones admin)
 
-> Companion to `specs/requirements.md` (REQ-21..REQ-25). F5 is **mostly a refactor + structural batch**: no new domain logic, no new queries (one new Supabase client helper), no new dependencies.
+> Companion to `specs/requirements.md` (REQ-26..REQ-29). F3 is mostly structural:
+> one new shared hook, several new Zod input schemas, one pilot Server Actions
+> file + one Manager refactor. No new dependencies.
 
-## Scope decisions (locked 2026-05-28)
+## Scope reconciliation summary
 
-Recorded here so the Implementer doesn't re-relitigate them.
+- **Item 1 (modal/error primitives) DROPPED** — 100% adopted post-FR12. See
+  `specs/requirements.md` "Scope reconciliation" for evidence.
+- **Item 2 (`useLeagueSelector` hook)** — NEW `src/lib/hooks/useLeagueSelector.ts`.
+- **Item 3 (Zod in admin forms)** — NEW `*InputSchema` exports in
+  `src/lib/types/schemas.ts`; thin `safeParse` boundary at each form handler.
+- **Item 4 (`SeasonsManager` pilot)** — NEW `_actions.ts` colocated with route;
+  Manager rewritten to consume Server Actions + `useOptimistic`.
 
-1. **F5 retargets to `/hub/*` and `/archivo/*`.** The legacy `[season]/[split]/page.tsx` (and `cruces`/`final`) are redirect stubs (verified `src/app/[season]/[split]/page.tsx:14-27`). Do not modify them.
-2. **`generateStaticParams` only on `/archivo/[season]/[split]`** — past data, fully SSG-able. No `generateStaticParams` on `/hub` (it's a fixed path with no `[param]`) or any hub subroute (live data; F4 will handle with `'use cache'` + `cacheTag`).
-3. **Granular Suspense on `/hub/*`** — one boundary per panel, each panel does its own `Promise.all` inside an async leaf. Top-level page only awaits the cheap `getActiveSeasonWithSplit()` to decide the empty state vs render.
-4. **Pragmatic `'use client'` push** — only files where the bulk is presentational and the state is a single small slice (tabs/filters/timeline). The three live targets are `ClasificacionView`, `RosterView`, `CalendarView`. `PlayoffBracket` + `MatchupCard` (named in the original brief) are dead code — F5 deletes them rather than refactor unreachable code.
-5. **Pre-existing 2 noUnusedImports warnings (`fetchData.ts:5`, `matchService.ts:5`) stay** — F4 owns them. F5 does not patch them.
+## Files to touch
 
----
+### Create
 
-## REQ-21 — Static generation of archive split pages
-
-### Files to touch
-
-| Path | Change |
+| Path | Purpose |
 |---|---|
-| `src/app/archivo/[season]/[split]/page.tsx` | Add `generateStaticParams`, `export const dynamicParams = true`. Adopt `formatSeasonSplit` (REQ-24). |
-| `src/lib/supabase/server.ts` | **No change in default export.** Add a new helper alongside it (next row). |
-| `src/lib/supabase/public.ts` | **NEW.** Export `createPublicClient()` — anon Supabase client that **does not call `cookies()`**. Read-only, suitable for static rendering. |
-| `src/lib/queries/archive.queries.ts` | Swap `createClient` → `createPublicClient` (no auth needed for archive reads — RLS policies must allow anon SELECT on `matches`/`trainers`, which they already do since the data is read by anon RSCs today). |
-| `src/lib/queries/seasons.queries.ts` | Add `getArchiveSplitParams(): Promise<Array<{ season: string; split: string }>>` next to `getAllSeasonsWithSplits`. This is the cookie-free helper specifically for `generateStaticParams`. **Uses `createPublicClient`** to keep the call eligible for build-time static generation. Returns lowercased URL-shaped pairs (`{ season: season.name.toLowerCase(), split: split.name.toLowerCase() }`) for every split, including the active one (the active split's archive URL is still navigable — `getSplitByNames` matches case-insensitively). |
-| `src/lib/queries/index.ts` | Export `getArchiveSplitParams`. |
+| `src/lib/hooks/useLeagueSelector.ts` | REQ-26 — shared cascade hook. New `src/lib/hooks/` directory (no precedent — `src/hooks/useOptimizedFetch.ts` was deleted in F2; `lib/hooks/` matches the existing `lib/utils/`, `lib/queries/`, `lib/services/` layout and the import alias `@/lib/*`). |
+| `src/app/admin/dashboard/seasons/_actions.ts` | REQ-28 — colocated Server Actions for the Seasons pilot. Underscore prefix follows the existing `_components/` convention so Next does not treat it as a route. |
 
-### Cookie blocker — the real reason this is non-trivial
+### Edit
 
-`src/lib/supabase/server.ts:6-7` calls `await cookies()` from `next/headers`. In Next 16 / React Server Components, **reading `cookies()` opts a route out of static rendering** (even with `generateStaticParams`). Without addressing this, `generateStaticParams` would emit the URLs but `pnpm build` would still mark the route "λ (Dynamic)".
+| Path | Why | Notes |
+|---|---|---|
+| `src/lib/types/schemas.ts` | REQ-27 — add `*InputSchema` exports (Season/Split/League/Trainer/MatchPlanning/MatchResult) | Existing file already exports the row schemas these derive from (`SeasonSchema`, `SplitSchema`, `LeagueSchema`, `TrainerSchema`, `MatchSchema` at lines 5–52). Use `.pick({...})` then `.extend` to add bounds. |
+| `src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx` | REQ-27 + REQ-28 | Remove `createClient` from `@/lib/supabase/client`; remove all `supabase.from(...)` calls; wrap `initialSeasons` in `useOptimistic`; route handlers through Server Actions inside `startTransition`; validate inputs with `SeasonCreateInputSchema`. |
+| `src/app/admin/dashboard/splits/_components/SplitsManager.tsx` | REQ-26 + REQ-27 | Adopt `useLeagueSelector({depth:'season-split'})`; remove local `splits` cascade state (lines 27, 37–66, 68–81); validate create form with `SplitCreateInputSchema`. Browser `supabase.from(...)` mutations remain (not part of the F3 pilot). |
+| `src/app/admin/dashboard/divisions/_components/DivisionsManager.tsx` | REQ-26 + REQ-27 | Adopt `useLeagueSelector({depth:'season-split-league'})`; remove cascade state (lines 28–32, 44–108, 110–123); validate with `LeagueCreateInputSchema`. |
+| `src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx` | REQ-26 + REQ-27 | Adopt `useLeagueSelector({depth:'season-split-league'})` for the assignment cascade; validate trainer create/edit with `TrainerInputSchema`. The Manager has additional pagination/search state — leave untouched. |
+| `src/app/admin/dashboard/matches/_components/MatchesManager.tsx` | REQ-27 (Zod), REQ-26 OPTIONAL | Validate match create/edit with `MatchPlanningInputSchema`; validate result edit with `MatchResultInputSchema`. Hook adoption is OPTIONAL (see REQ-26 scope note); if the dual-cascade (planning vs results) complicates the contract, document the deferral in `progress/history.md` and leave inline state. |
+| `src/app/admin/dashboard/normativa/_components/RegulationsManager.tsx` | REQ-27 (file validation) | Replace inline `selectedFile.type !== 'application/pdf'` + size check at lines 32–48 with `RegulationsUploadSchema.safeParse(selectedFile)` OR keep inline as a `z.instanceof(File).refine(...)` per implementer call. |
 
-**Solution:** introduce `createPublicClient()` — a thin client built with `createBrowserClient`-equivalent server-side: `createServerClient(url, anonKey, { cookies: { getAll: () => [], setAll: () => {} } })`. This satisfies `@supabase/ssr`'s contract without ever calling `cookies()`. Archive queries (`getArchiveChampions`, `getDivisionPreview` when called from archive, `getSplitByNames`, the new `getArchiveSplitParams`) use it; all admin / auth-aware paths continue to use the cookie-aware default.
+### Do NOT touch
 
-**Risk:** `getDivisionPreview` is also used by `/hub` and `PixelShell`, where session-aware reads are fine. To keep blast radius minimal:
-- Option A (preferred): keep `getDivisionPreview` on the cookie-aware client; for the archive page only, accept the route stays dynamic on the data fetch step but `generateStaticParams` is still useful because Next will still treat the URL as known. **Reject** — the brief is explicit ("El build debe mostrar páginas SSG nuevas para `/archivo/[season]/[split]`"), and an SSG promise broken by `cookies()` is no promise.
-- Option B: split `getDivisionPreview` into `getDivisionPreviewPublic` (cookie-free) and a session-aware re-export. **Accept** — but the diff bloats. **Reject for simplicity.**
-- Option C (chosen): make `createClient()` in `lib/supabase/server.ts` accept an optional `{ session?: false }` flag that returns the cookie-free variant. Archive queries call `createClient({ session: false })`. Keeps a single helper, minimal diff. **Verify against `vercel:nextjs` for the Next 16 `cookies()`-vs-SSG interaction** before writing code — if Next 16 introduced a different escape (e.g. `'use cache'` + `cacheLife('max')` on the query itself), prefer that.
+- `src/components/admin/ui/*` — primitives are stable post-FR12.
+- `src/lib/queries/admin.queries.ts` — F3 does not add new server-side queries.
+  The new Server Actions in `seasons/_actions.ts` issue Supabase calls directly
+  (write surface, not read).
+- `src/lib/supabase/{server,client}.ts` — no client changes (the `session: false`
+  variant added in F5 stays untouched; admin actions use the default cookie-aware
+  variant for RLS/auth).
+- The 5 non-pilot Managers' write paths (Splits/Divisions/Regulations/
+  Participants/Matches `handleCreate`/`handleDelete`/etc.). Those migrate in F6.
 
-The Implementer **must** verify Option C's framework behavior live (Next 16 + React 19.2 + Supabase SSR) before settling. If the verification surfaces a cleaner path, document the deviation in `progress/history.md` and proceed; don't block.
+## Design decisions (locked)
 
-### Diff sketch
+### D1 — Hook lives at `src/lib/hooks/useLeagueSelector.ts`
+
+**Decision:** new directory `src/lib/hooks/`, not `src/hooks/`.
+
+**Rationale:**
+- `src/hooks/` was deleted in F2 (the orphan `useOptimizedFetch.ts` cleanup).
+  Reintroducing it as the canonical hooks location would resurrect a half-empty
+  top-level directory.
+- `@/lib/*` is the established alias for shared library code (`@/lib/queries`,
+  `@/lib/utils`, `@/lib/services`, `@/lib/types`, `@/lib/config`,
+  `@/lib/supabase`, `@/lib/constants`). A hook lives in `lib`.
+- Future hooks (the F6 confirmation modal hook, for example) slot into the same
+  directory.
+
+### D2 — Server Actions colocated under the route, not centralized
+
+**Decision:** `src/app/admin/dashboard/seasons/_actions.ts`, not
+`src/lib/actions/seasons.actions.ts`.
+
+**Rationale:**
+- Colocation matches the existing `_components/` convention (each route folder
+  owns its UI files).
+- The actions are write-surface for one route; sharing across routes is not a
+  current need (and would re-introduce the kind of god-module the F2 cleanup
+  removed).
+- F6 will follow the same pattern (`splits/_actions.ts`, `divisions/_actions.ts`,
+  etc.), keeping the rollout mechanically uniform.
+
+### D3 — `revalidatePath` now, not `revalidateTag`
+
+**Decision:** Server Actions call `revalidatePath('/admin/dashboard/seasons')`,
+not `revalidateTag('seasons')`.
+
+**Rationale:**
+- `cacheTag` is introduced in F4 (`features.json` F4 items 1–2). Adopting it in
+  F3 would either (a) require speccing the tag taxonomy now (F4's job), or
+  (b) wire a tag the queries do not yet emit.
+- `revalidatePath` is the path-based v16 idiom that works without tags and
+  survives the F4 migration unchanged — F4 can switch the call to
+  `revalidateTag` without altering the action's shape.
+- Verify against `vercel:nextjs` / `vercel:next-cache-components` that
+  `revalidatePath` from `next/cache` is the correct v16.1.1 entrypoint (not the
+  deprecated `unstable_revalidatePath`). The implementer should confirm at
+  import time; if the import has been renamed in 16.1.1 patch releases, follow
+  the live docs and update this design note in `progress/history.md`.
+
+### D4 — `useOptimistic` reducer shape (single reducer, tagged variants)
+
+**Decision:** the Manager declares one `useOptimistic` reducer with a tagged-union
+action argument, not 4 separate `useOptimistic` instances.
 
 ```ts
-// src/app/archivo/[season]/[split]/page.tsx
-import { getArchiveSplitParams } from '@/lib/queries';
+type OptimisticAction =
+  | { type: 'create'; season: Season }   // tempId until server replies
+  | { type: 'delete'; id: string }
+  | { type: 'activate'; id: string }     // sets is_active:true, others:false
+  | { type: 'deactivate'; id: string };
 
-export async function generateStaticParams() {
-  return getArchiveSplitParams();
-}
-export const dynamicParams = true;
-```
-
-```ts
-// src/lib/queries/seasons.queries.ts (new export)
-export const getArchiveSplitParams = cache(async (): Promise<Array<{ season: string; split: string }>> => {
-  const supabase = await createClient({ session: false }); // or createPublicClient()
-  const { data, error } = await supabase
-    .from('seasons')
-    .select('name, splits(name)')
-    .order('year', { ascending: false });
-  if (error || !data) return [];
-  return data.flatMap((season) =>
-    (season.splits ?? []).map((split) => ({
-      season: season.name.toLowerCase(),
-      split: split.name.toLowerCase(),
-    })),
-  );
-});
-```
-
-### Risks
-- **R1.** `getSplitByNames` uses `.ilike()` — already case-insensitive. Emitting lowercase params from `generateStaticParams` keeps URLs canonical. **No change to `getSplitByNames`.**
-- **R2.** If the DB has a season/split name with a space or special URL char, `generateStaticParams` will emit it as-is and Next will URL-encode at build time. Current DB names (`p2024`, `s2025`, `verano`, etc. — verify) appear safe; if not, encode explicitly via `encodeURIComponent` in the mapper.
-- **R3.** Supabase RLS — confirm anon SELECT is permitted on `seasons`, `splits`, `matches`, `trainers` (already true today since RSCs read them anonymously).
-
----
-
-## REQ-22 — Granular Suspense per hub section
-
-### Files to touch
-
-- All hub pages — restructure so the top-level component only awaits `getActiveSeasonWithSplit()`, then renders a tree of `<Suspense fallback={<SectionSkeleton variant=… />}>` wrappers, each containing a new async leaf component.
-- Each new leaf is named `<…Section>` and lives next to the existing view: `src/components/hub/sections/StandingsLiveSection.tsx`, `…/ProjectedBracketTeaserSection.tsx`, `…/HubRightColumnSection.tsx`, `…/NewsRailSection.tsx`, `…/PhaseHeaderSection.tsx`, `…/ClasificacionSection.tsx`, `…/CalendarSection.tsx`, `…/RosterSection.tsx`, `…/BracketSection.tsx`, `…/OlimpoSection.tsx`, `…/TrainerProfileSection.tsx`.
-
-### File-by-file plan
-
-**`src/app/hub/page.tsx`** — current shape awaits everything at once (lines 31, 45–49). New shape:
-
-```tsx
-export default async function HubPage() {
-  const seasonInfo = await getActiveSeasonWithSplit();
-  const split = seasonInfo?.activeSplit;
-  if (!seasonInfo || !split) {
-    return <EmptyState title="PRETEMPORADA" body="No hay un split activo…" />;
-  }
-  return (
-    <div className="flex flex-col gap-8">
-      <Suspense fallback={<SectionSkeleton variant="phaseBanner" />}>
-        <PhaseHeaderSection splitId={split.id} seasonName={seasonInfo.name} splitName={split.name} />
-      </Suspense>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
-        <div className="flex flex-col gap-8">
-          <Suspense fallback={<SectionSkeleton variant="standings" />}>
-            <StandingsLiveSection splitId={split.id} />
-          </Suspense>
-          <Suspense fallback={<SectionSkeleton variant="bracket" />}>
-            <ProjectedBracketTeaserSection splitId={split.id} />
-          </Suspense>
-        </div>
-        <Suspense fallback={<SectionSkeleton variant="rightColumn" />}>
-          <HubRightColumnSection splitId={split.id} />
-        </Suspense>
-      </div>
-      <Suspense fallback={<SectionSkeleton variant="newsRail" />}>
-        <NewsRailSection splitId={split.id} />
-      </Suspense>
-    </div>
-  );
-}
-```
-
-Each `*Section` async leaf does its own focused `await` (or `Promise.all` of its dependencies). Example:
-
-```tsx
-// src/components/hub/sections/StandingsLiveSection.tsx
-export async function StandingsLiveSection({ splitId }: { splitId: string }) {
-  const [preview, matchesByRound] = await Promise.all([
-    getDivisionPreview(splitId),
-    getMatchesByRound(splitId),
-  ]);
-  const allMatches = matchesByRound.flatMap((r) => r.matches);
-  return <StandingsLive preview={preview} matches={allMatches} />;
-}
-```
-
-**Same pattern for the other hub routes** (`/hub/clasificacion`, `/hub/calendario`, `/hub/entrenadores`, `/hub/bracket`, `/hub/olimpo`, `/hub/entrenador/[id]`). Each currently does one big `Promise.all` at the top and renders one main view component; refactor each into one `<Suspense>` boundary around an async section leaf.
-
-### Why this is a measurable win
-
-`react.cache()` (used throughout `lib/queries/*.queries.ts`) **deduplicates** repeated calls within a single request. So even though, say, both `StandingsLiveSection` and `ProjectedBracketTeaserSection` call `getDivisionPreview(splitId)`, the second call returns the memoized value — no DB round-trip duplication. Each Suspense boundary still gets to send its HTML as soon as its (deduped) data lands, independently of the others.
-
-### Risks
-- **R1.** React 19.2 has stricter "async component child of Suspense" semantics. Verify against `vercel:nextjs` and `vercel:next-cache-components` documentation that the leaf component being declared `async function` works inside `<Suspense>` without `'use cache'` — it should, because Server Components support this natively, but the Implementer must confirm via the build output.
-- **R2.** When `seasonInfo` is null (pretemporada), the whole page returns `<EmptyState>` early. That's fine; the Suspense tree never mounts.
-- **R3.** Per-section skeletons must approximate real footprint to avoid CLS. `<SectionSkeleton>` variants (REQ-24) are sized to match.
-- **R4.** Streaming requires the layout to use `app/` (it does) and not opt into `force-dynamic` at the page level (it doesn't). Verify no `export const dynamic = 'force-dynamic'` appears anywhere on the hub tree.
-
----
-
-## REQ-23 — `'use client'` push to leaves (pragmatic)
-
-### File-by-file plan
-
-**1. `src/components/hub/ClasificacionView.tsx`**
-
-Split into:
-- `src/components/hub/clients/DivisionTabsShell.tsx` (`'use client'`):
-  ```tsx
-  'use client';
-  import { useState, type ReactNode } from 'react';
-  type Division = 'primera' | 'segunda';
-  export function DivisionTabsShell({ primeraSlot, segundaSlot }: { primeraSlot: ReactNode; segundaSlot: ReactNode }) {
-    const [active, setActive] = useState<Division>('primera');
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-2 gap-3">
-          <TabButton label="División 1 · Élite" accent="magenta" active={active === 'primera'} onClick={() => setActive('primera')} />
-          <TabButton label="División 2 · Aspirantes" accent="cyan" active={active === 'segunda'} onClick={() => setActive('segunda')} />
-        </div>
-        {active === 'primera' ? primeraSlot : segundaSlot}
-      </div>
-    );
-  }
-  function TabButton(/* lifted verbatim from existing file */) { /* … */ }
-  ```
-- `src/components/hub/ClasificacionView.tsx` (no `'use client'`, Server) — keeps `StandingsTable`, `TableRow`, `Pip` as pure server JSX. The export becomes:
-  ```tsx
-  export function ClasificacionView({ primera, segunda }: ClasificacionViewProps) {
-    return (
-      <DivisionTabsShell
-        primeraSlot={<StandingsTable rows={primera} />}
-        segundaSlot={<StandingsTable rows={segunda} />}
-      />
-    );
-  }
-  ```
-  Both slots are rendered server-side; the client shell merely picks which one is visible.
-
-**2. `src/components/hub/RosterView.tsx`**
-
-Decision (named slot vs filter-on-client): pass **three** pre-rendered grids as named slots (`allSlot`, `d1Slot`, `d2Slot`) so the client shell only flips visibility. The filtered grids are computed server-side in the page:
-
-```tsx
-// src/app/hub/entrenadores/page.tsx (inside the section leaf)
-const all = cards;
-const d1 = cards.filter((c) => c.division === 1);
-const d2 = cards.filter((c) => c.division === 2);
-return (
-  <RosterFilterShell
-    allCount={all.length}
-    d1Count={d1.length}
-    d2Count={d2.length}
-    allSlot={<RosterGrid cards={all} />}
-    d1Slot={<RosterGrid cards={d1} />}
-    d2Slot={<RosterGrid cards={d2} />}
-  />
+const [optimisticSeasons, applyOptimistic] = useOptimistic(
+  initialSeasons,
+  (state: Season[], action: OptimisticAction): Season[] => { /* switch on type */ }
 );
 ```
 
-- `src/components/hub/clients/RosterFilterShell.tsx` (`'use client'`) — owns `useState<'all' | 1 | 2>`, renders the three pill buttons, and picks the matching slot.
-- `src/components/hub/RosterView.tsx` becomes the Server `RosterGrid` (pure JSX rendering `RosterCardVM[]`). Rename to `RosterGrid` and update the barrel.
+**Rationale:**
+- Single source of optimistic truth → no cross-state desync (the activate flow
+  mutates 2 rows).
+- The reducer is pure → trivially testable when a test runner lands.
+- Matches the React 19 canonical pattern for multi-mutation lists
+  (see `vercel:nextjs` Server Actions + `useOptimistic` guide).
 
-**3. `src/components/hub/CalendarView.tsx`**
+### D5 — Action return shape: discriminated union, not throw
 
-The round selector is harder because there are 16 rounds, each with potentially heavy match listings. The "pre-render all 16 server-side and let client pick one" strategy ships 16× the HTML, which is acceptable (~1KB per round body × 16 = ~16KB gzipped; verify during impl).
+**Decision:** every action returns
+`Promise<{ ok: true } | { ok: false; error: string }>`, never throws.
 
-- `src/components/hub/clients/RoundSelectorShell.tsx` (`'use client'`) — owns `useState<number>` for the selected round, renders the timeline strip, and conditionally reveals one of 16 pre-rendered slots via CSS (`hidden` toggling) rather than mount/unmount, to avoid losing Suspense boundaries.
-- `src/components/hub/CalendarView.tsx` becomes the Server orchestrator that pre-renders all 16 round details and hands them to `<RoundSelectorShell>` as a `roundSlots: { round: number; node: ReactNode }[]` prop.
+**Rationale:**
+- Mirrors the queries convention (`docs/conventions.md` "Error handling: queries
+  never throw to the UI"). A different contract on the write side would force
+  the Manager to mix `try/catch` (writes) and result-checking (reads).
+- The Manager checks `result.ok` after `await action(...)`; on failure it sets
+  the error banner. No `try/catch` needed in the client.
+- `useOptimistic` reconciliation happens regardless of `result.ok` via
+  `revalidatePath` on success (which re-pushes server-rendered
+  `initialSeasons`) or by leaving the optimistic state stale until the next
+  manual refresh on failure. The Manager surfaces the error via
+  `AdminErrorBanner`.
 
-**Alternative considered, rejected:** keeping the round body client-rendered. That keeps current bundle weight. Reject — the brief asks for bundle decrease where possible.
+### D6 — Zod input schemas live in `src/lib/types/schemas.ts`
 
-**4. `src/components/cross/PlayoffBracket.tsx` + `MatchupCard.tsx`** — orphan deletion.
+**Decision:** add `*InputSchema` exports next to the existing row schemas, not in
+a new file.
 
-Steps:
-- Verify zero callers in `src/app`: `rg "PlayoffBracket|MatchupCard|DivisionSection|DivisionBracket" src/app` returns nothing.
-- Delete `src/components/cross/PlayoffBracket.tsx`, `src/components/cross/MatchupCard.tsx`, and the empty `src/components/cross/` directory.
-- Delete `src/components/shared/DivisionSection/DivisionSection.tsx` and the empty `src/components/shared/DivisionSection/` directory.
-- Edit `src/components/shared/index.ts` — remove the `DivisionBracket`/`DivisionSection` re-export (lines 6-9).
-- Check `src/lib/types/matches.ts` — `Matchup` is still referenced by `lib/services/bracketService.ts` and `lib/services/matchService.ts`, so **do not delete the type**.
+**Rationale:**
+- `schemas.ts` is the documented "single source of truth" per `CLAUDE.md`.
+  Splitting input vs row schemas across files would break that guarantee.
+- The input schemas reuse `.pick({...})` from the row schemas → physical
+  proximity prevents drift.
+- Naming convention: `<Entity>CreateInputSchema` (or `<Entity>InputSchema` when
+  it covers both create and edit). Mirrors the existing `<Entity>Schema` and
+  `<Entity>WithXSchema` naming.
 
-**Risk:** if a future spec wants to revive a "cruces" overlay, this code is gone. Acceptable — git history preserves it; F2 already established that orphan clusters get deleted.
+### D7 — Hook owns its own Supabase client; queries-style centralization deferred
 
-### Server/client split decisions, summarized
+**Decision:** `useLeagueSelector` calls `createClient()` from
+`@/lib/supabase/client` inside the hook, not through a centralized
+`adminClientQueries.ts` module.
 
-| Component | Today | After F5 | Why |
-|---|---|---|---|
-| `ClasificacionView` (180 LOC) | All client (1 useState) | Server orchestrator + 30 LOC `DivisionTabsShell` client | `StandingsTable`/`TableRow`/`Pip` (~100 LOC) leave the client bundle |
-| `RosterView` (133 LOC) | All client (1 useState) | Server `RosterGrid` + small `RosterFilterShell` client | Card grid markup leaves the client bundle |
-| `CalendarView` (221 LOC) | All client (1 useState) | Server orchestrator + small `RoundSelectorShell` client | Match listings leave the client bundle (× 16 pre-rendered) |
-| `StandingsLive` | Server | Server | No change (already correct) |
-| `BracketView` | Server | Server (gains a `<Suspense>` parent in REQ-22) | No state in view itself |
-| `OlimpoView`, `TrainerProfile`, `PhaseBanner`, `StoryBeat`, `NewsRail`, `ProjectedBracketTeaser`, `HubRightColumn` | Server | Server (gain `<Suspense>` parents) | No state in view |
-| `PhaseChip`, `HubNav`, `TopBar`, `ShellClientEffects`, `SeasonSplitChip` | Client | Client (no change) | Genuinely need browser APIs (scroll, navigation) |
+**Rationale:**
+- Client-side reads in admin Managers are currently inline (see the 3 cascade
+  Managers). Introducing a `lib/client-queries/` layer is a separate refactor
+  that would touch the 5 non-pilot Managers — out of F3 scope.
+- The hook encapsulates the 2 cascade queries it owns; F6 can centralize
+  later if a clear duplication emerges.
 
----
+## Framework gotchas
 
-## REQ-24 — Shared primitives
+- **Next 16.1.1 — `revalidatePath`.** Import from `next/cache`, NOT
+  `next/navigation` or the old `unstable_*` path. Verify against
+  `vercel:nextjs` if the import path has shifted in the patch release stream.
+- **Next 16.1.1 — Server Actions.** Top-of-file `'use server';` is the v16
+  idiom for marking a whole module as actions. Inline `'use server';` directives
+  inside individual functions are also valid; the spec uses module-level for
+  clarity.
+- **React 19.2.3 — `useOptimistic`.** Requires the calling component to be a
+  Client Component (`'use client'`). The action invocation MUST be wrapped in
+  `startTransition` (from React) or use the form-action prop on a `<form>`. The
+  spec assumes the Manager stays a Client Component (see REQ-28 §5).
+- **Supabase v2 — server client + RLS.** Server Actions use
+  `createClient()` from `@/lib/supabase/server` (cookie-aware). RLS policies
+  applied to the `seasons` table (if any) will execute under the admin's
+  authenticated identity propagated by `proxy.ts`. If a write fails due to RLS,
+  the action surfaces `{ ok: false; error: <postgrest message> }` and the
+  Manager shows it — no silent swallowing.
+- **`useOptimistic` + `revalidatePath` ordering.** The implementer must call
+  `applyOptimistic` SYNCHRONOUSLY inside the `startTransition`, then `await
+  action(...)`. React reconciles the optimistic state with the new
+  `initialSeasons` prop pushed down by the revalidation. If the action throws
+  (it should not, per D5), the optimistic state is discarded automatically.
 
-### Files to touch
+## Sequencing
 
-| Path | Status | Purpose |
-|---|---|---|
-| `src/components/shared/ui/EmptyState.tsx` | **NEW** | Replaces 6 inline `<div className="py-20 text-center">…</div>` blocks in hub pages |
-| `src/components/shared/ui/BackgroundDecoration.tsx` | **NEW** | Wraps `<div className="starfield" />` (used 5×). Today renders only `variant="starfield"`; structured to extend |
-| `src/components/shared/ui/SectionSkeleton.tsx` | **NEW** | Variants: `phaseBanner`, `standings`, `bracket`, `rightColumn`, `newsRail`, `calendar`, `roster`, `olimpo`, `trainerProfile`. Each is a sized placeholder approximating the panel's footprint |
-| `src/lib/utils/formatters.ts` | **NEW** | `formatSeasonSplit(season, split)` returning `"${SEASON} · ${SPLIT}"`. No other formatters added now (one util per real duplication) |
-| `src/components/shared/index.ts` | Update | Re-export the new UI primitives. Keep barrel stable |
+1. **REQ-27 first** (additive: schemas + safeParse calls; lowest blast radius).
+2. **REQ-26 second** (hook lands, then 3 Managers migrate one at a time; each
+   migration is independently green-able).
+3. **REQ-28 last** (pilot consumes REQ-27 schemas; if REQ-27 slipped, the pilot
+   uses inline validation and F6 retrofits).
+4. **REQ-29 throughout** — `./init.sh` MUST be green after each REQ lands; no
+   batching all 3 then verifying. Reviewer rejects if the implementer batched
+   and the intermediate states cannot be reproduced.
 
-### Shape sketches
+## Verification (cross-cutting, gates REQ-29)
 
-```tsx
-// EmptyState.tsx — Server Component
-export function EmptyState({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="py-20 text-center">
-      <h1 className="font-pixel text-2xl text-px-ink">{title}</h1>
-      <p className="mt-4 font-retro text-lg text-px-ink-soft">{body}</p>
-    </div>
-  );
-}
-```
-
-```tsx
-// BackgroundDecoration.tsx — Server Component
-type Variant = 'starfield';
-export function BackgroundDecoration({ variant = 'starfield' }: { variant?: Variant }) {
-  return <div className={variant} />;
-}
-```
-
-```tsx
-// SectionSkeleton.tsx — Server Component
-type Variant = 'phaseBanner' | 'standings' | 'bracket' | 'rightColumn' | 'newsRail' | 'calendar' | 'roster' | 'olimpo' | 'trainerProfile';
-const SIZES: Record<Variant, string> = {
-  phaseBanner: 'h-32',
-  standings: 'h-[420px]',
-  bracket: 'h-64',
-  rightColumn: 'h-[480px]',
-  newsRail: 'h-36',
-  calendar: 'h-[600px]',
-  roster: 'h-[560px]',
-  olimpo: 'h-96',
-  trainerProfile: 'h-[640px]',
-};
-export function SectionSkeleton({ variant }: { variant: Variant }) {
-  return <div className={`${SIZES[variant]} animate-pulse border-[3px] border-px-border bg-px-elev`} aria-hidden="true" />;
-}
-```
-
-```ts
-// formatters.ts
-export function formatSeasonSplit(season: string, split: string): string {
-  return `${season.toUpperCase()} · ${split.toUpperCase()}`;
-}
-```
-
-### Call-site migrations (REQ-24 part of the same atomic step that introduces each primitive)
-
-- `<EmptyState>` replaces inline empty blocks in: `src/app/hub/page.tsx:36`, `clasificacion/page.tsx:28`, `calendario/page.tsx:26`, `entrenadores/page.tsx:22`, `bracket/page.tsx:25`, `olimpo/page.tsx:55`.
-- `<BackgroundDecoration variant="starfield" />` replaces inline starfield divs in: `src/components/hub/HubRightColumn.tsx:118`, `BracketView.tsx:220`, `OlimpoView.tsx:44`, `landing/PixelLanding.tsx:58, 408`.
-- `formatSeasonSplit` replaces inline string-builds in: `src/app/archivo/[season]/[split]/page.tsx:22, 47`, `src/components/shared/layout/hub/SeasonSplitChip.tsx:28`, `src/components/hub/PhaseBanner.tsx:34`, `src/components/hub/OlimpoView.tsx:47`.
-- `<SectionSkeleton>` is consumed exclusively by the new REQ-22 Suspense boundaries.
-
-### Risks
-- **R1.** `SectionSkeleton` heights are guesses; tweak after manual review against the actual panels. CLS will visualize miscalibrations.
-- **R2.** `BackgroundDecoration` is intentionally minimal (single-variant today). Don't add variants speculatively.
-
----
-
-## REQ-25 — Image + animation audit (verify-only)
-
-No code changes if the audit returns clean. Verification commands listed in `requirements.md` §REQ-25.
-
-If the audit finds a regression (e.g. someone added a `fill` `<Image>` without `sizes` between spec time and implementation time), correct it in place and document. Otherwise add a `progress/history.md` entry confirming the live tree is clean and listing the dead `home/Hero` + sibling cluster as future cleanup debt.
-
----
-
-## Implementation order (matches `tasks.md`)
-
-1. **REQ-24 (primitives).** Land `<EmptyState>`, `<BackgroundDecoration>`, `<SectionSkeleton>`, `formatSeasonSplit` and migrate their call sites. Self-contained refactor; `./init.sh` green at this point.
-2. **REQ-23 (client→server push).**
-   - 2a. `ClasificacionView` split (`DivisionTabsShell` extracted; bulk to Server).
-   - 2b. `RosterView` split (`RosterFilterShell` extracted; `RosterView` → `RosterGrid` Server).
-   - 2c. `CalendarView` split (`RoundSelectorShell` extracted; orchestrator pre-renders 16 round slots Server-side).
-   - 2d. `PlayoffBracket`/`MatchupCard`/`DivisionSection` orphan deletion.
-   - Re-run `./init.sh` after each sub-step; capture client bundle delta vs baseline.
-3. **REQ-22 (granular Suspense).** Add the `*Section` async leaves and wrap them in `<Suspense fallback={<SectionSkeleton …/>}>` across all hub routes.
-4. **REQ-21 (SSG archive).** Add `createClient({ session: false })` (or equivalent), `getArchiveSplitParams`, the page exports. Verify build output shows static archive routes.
-5. **REQ-25 (audit).** Run the verification greps, log results.
-
-After each step: `./init.sh` (full, not `--quick`) and capture the `pnpm build` route table. The Reviewer expects to see the build output deltas pinned in `progress/history.md`.
-
-## Framework-specific verifications
-
-The Implementer **must verify against `vercel:nextjs` and `vercel:next-cache-components`** before writing code for:
-
-- REQ-21's `cookies()`-vs-SSG interaction. The cookie-free-client approach is the design's best guess; the framework docs may surface a cleaner one (e.g. an `unstable_noStore` exemption, an Edge-runtime escape, or a Next 16-specific config).
-- REQ-22's "async component child of `<Suspense>`" behavior in React 19.2 without `cacheComponents` enabled. Should work natively for Server Components; confirm.
-
-If any of these verifications shows the design is wrong, **stop and report** to the leader before implementing — don't paper over.
+The implementer ships only after a full green `./init.sh` (not `--quick`).
+Reviewer re-runs independently. See REQ-29 for the exact gate; see `tasks.md`
+§final for the implementer's pre-handoff checklist.

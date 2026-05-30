@@ -9,8 +9,10 @@ import {
   AdminInput,
   AdminModal,
 } from '@/components/admin/ui';
+import { useLeagueSelector } from '@/lib/hooks/useLeagueSelector';
 import { createClient } from '@/lib/supabase/client';
-import type { Season, Split } from '@/lib/types/database.types';
+import type { Season } from '@/lib/types/database.types';
+import { SplitCreateInputSchema } from '@/lib/types/schemas';
 
 interface SplitsManagerProps {
   initialSeasons: Season[];
@@ -18,67 +20,32 @@ interface SplitsManagerProps {
 
 export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
   const router = useRouter();
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(
-    () => {
-      const active = initialSeasons.find((s) => s.is_active);
-      return active?.id ?? initialSeasons[0]?.id ?? null;
-    },
-  );
-  const [splits, setSplits] = useState<Split[]>([]);
-  const [loadingSplits, setLoadingSplits] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    splits,
+    selectedSeasonId,
+    setSeasonId,
+    loadingSplits,
+    error: selectorError,
+    clearError: clearSelectorError,
+    refresh,
+  } = useLeagueSelector({ initialSeasons, depth: 'season-split' });
+  const [localError, setLocalError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSplit, setNewSplit] = useState({ name: '', split_order: 1 });
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
 
-  // Fetch splits when season changes
-  useEffect(() => {
-    if (!selectedSeasonId) {
-      setSplits([]);
-      return;
-    }
-
-    const fetchSplits = async () => {
-      setLoadingSplits(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from('splits')
-        .select('*')
-        .eq('season_id', selectedSeasonId)
-        .order('split_order', { ascending: true });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setSplits(data ?? []);
-        setNewSplit((prev) => ({
-          ...prev,
-          split_order: (data?.length ?? 0) + 1,
-        }));
-      }
-      setLoadingSplits(false);
-    };
-
-    fetchSplits();
-  }, [selectedSeasonId, supabase.from]);
-
-  const refreshSplits = async () => {
-    if (!selectedSeasonId) return;
-
-    const { data } = await supabase
-      .from('splits')
-      .select('*')
-      .eq('season_id', selectedSeasonId)
-      .order('split_order', { ascending: true });
-
-    if (data) {
-      setSplits(data);
-      setNewSplit((prev) => ({ ...prev, split_order: data.length + 1 }));
-    }
+  const error = localError ?? selectorError;
+  const setError = (value: string | null) => {
+    setLocalError(value);
+    if (value === null) clearSelectorError();
   };
+
+  // Keep create-form `split_order` in sync with the loaded splits length.
+  useEffect(() => {
+    setNewSplit((prev) => ({ ...prev, split_order: splits.length + 1 }));
+  }, [splits.length]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,10 +54,19 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from('splits').insert({
-      season_id: selectedSeasonId,
+    const parsed = SplitCreateInputSchema.safeParse({
       name: newSplit.name,
       split_order: newSplit.split_order,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((i) => i.message).join(' · '));
+      setSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.from('splits').insert({
+      season_id: selectedSeasonId,
+      ...parsed.data,
       is_active: false,
     });
 
@@ -99,7 +75,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
     } else {
       setNewSplit({ name: '', split_order: splits.length + 2 });
       setShowCreateForm(false);
-      await refreshSplits();
+      await refresh();
       router.refresh();
     }
     setSaving(false);
@@ -118,7 +94,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
     if (error) {
       setError(error.message);
     } else {
-      await refreshSplits();
+      await refresh();
       router.refresh();
     }
   };
@@ -146,7 +122,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
     if (activateError) {
       setError(activateError.message);
     } else {
-      await refreshSplits();
+      await refresh();
       router.refresh();
     }
   };
@@ -160,7 +136,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
     if (error) {
       setError(error.message);
     } else {
-      await refreshSplits();
+      await refresh();
       router.refresh();
     }
   };
@@ -179,7 +155,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
           </span>
           <select
             value={selectedSeasonId ?? ''}
-            onChange={(e) => setSelectedSeasonId(e.target.value || null)}
+            onChange={(e) => setSeasonId(e.target.value || null)}
             className="pixel-input w-auto cursor-pointer"
           >
             <option value="">Seleccionar</option>

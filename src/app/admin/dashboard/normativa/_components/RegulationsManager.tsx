@@ -8,6 +8,7 @@ import {
   AdminErrorBanner,
 } from '@/components/admin/ui';
 import { createClient } from '@/lib/supabase/client';
+import { RegulationsUploadSchema } from '@/lib/types/schemas';
 
 interface RegulationsManagerProps {
   currentPdfUrl: string | null;
@@ -32,17 +33,13 @@ export default function RegulationsManager({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf') {
-        setError('Por favor selecciona un archivo PDF');
+      const parsed = RegulationsUploadSchema.safeParse(selectedFile);
+      if (!parsed.success) {
+        setError(parsed.error.issues.map((i) => i.message).join(' · '));
         setFile(null);
         return;
       }
-      if (selectedFile.size > 50 * 1024 * 1024) {
-        setError('El archivo es muy grande (máximo 50MB)');
-        setFile(null);
-        return;
-      }
-      setFile(selectedFile);
+      setFile(parsed.data);
       setError(null);
       setSuccess(false);
     }

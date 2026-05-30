@@ -21,6 +21,10 @@ import type {
   Split,
   Trainer,
 } from '@/lib/types/database.types';
+import {
+  MatchPlanningInputSchema,
+  MatchResultInputSchema,
+} from '@/lib/types/schemas';
 import { cn } from '@/lib/utils';
 
 type ParticipantWithTrainer = LeagueParticipant & { trainer: Trainer };
@@ -334,11 +338,20 @@ export default function MatchesManager({
     setSaving(true);
     setError(null);
 
+    const parsed = MatchResultInputSchema.safeParse({
+      home_sets: resultForm.home_sets,
+      away_sets: resultForm.away_sets,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((i) => i.message).join(' · '));
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from('matches')
       .update({
-        home_sets: resultForm.home_sets,
-        away_sets: resultForm.away_sets,
+        ...parsed.data,
         played: true,
       })
       .eq('id', matchId);
@@ -418,16 +431,24 @@ export default function MatchesManager({
     setSaving(true);
     setError(null);
 
+    const effectiveTag = matchForm.match_tag || `J${matchForm.round}`;
+    const parsed = MatchPlanningInputSchema.safeParse({
+      home_trainer_id: matchForm.home_trainer_id,
+      away_trainer_id: matchForm.away_trainer_id,
+      round: matchForm.round,
+      match_group: matchForm.match_group,
+      match_tag: effectiveTag,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((i) => i.message).join(' · '));
+      setSaving(false);
+      return;
+    }
+
     if (editingMatch) {
       const { error } = await supabase
         .from('matches')
-        .update({
-          home_trainer_id: matchForm.home_trainer_id || null,
-          away_trainer_id: matchForm.away_trainer_id || null,
-          round: matchForm.round,
-          match_group: matchForm.match_group,
-          match_tag: matchForm.match_tag,
-        })
+        .update(parsed.data)
         .eq('id', editingMatch.id);
 
       if (error) {
@@ -441,11 +462,7 @@ export default function MatchesManager({
       const { error } = await supabase.from('matches').insert({
         league_id: selectedLeagueId,
         split_id: selectedSplitId,
-        home_trainer_id: matchForm.home_trainer_id || null,
-        away_trainer_id: matchForm.away_trainer_id || null,
-        round: matchForm.round,
-        match_group: matchForm.match_group,
-        match_tag: matchForm.match_tag || `J${matchForm.round}`,
+        ...parsed.data,
         played: false,
       });
 

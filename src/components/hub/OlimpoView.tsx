@@ -1,8 +1,10 @@
+import { BackgroundDecoration } from '@/components/shared';
 import {
   MonsterSprite,
   PixelCrown,
   PixelLightning,
 } from '@/components/shared/ui/pixel';
+import { formatSeasonSplit } from '@/lib/utils/formatters';
 
 export interface OlimpoChampionVM {
   role: string;
@@ -41,10 +43,10 @@ export function OlimpoView({
     <div className="flex flex-col gap-10">
       {/* Hero */}
       <section className="relative overflow-hidden border-[3px] border-px-gold bg-px-deep px-6 py-12 text-center">
-        <div className="starfield" />
+        <BackgroundDecoration variant="starfield" />
         <div className="relative flex flex-col items-center gap-4">
           <span className="font-pixel text-[10px] uppercase tracking-[0.3em] text-px-ink-dim">
-            {seasonName.toUpperCase()} · {splitName.toUpperCase()}
+            {formatSeasonSplit(seasonName, splitName)}
           </span>
           <h1 className="title-chunk font-pixel text-5xl uppercase text-px-gold sm:text-7xl">
             Olimpo

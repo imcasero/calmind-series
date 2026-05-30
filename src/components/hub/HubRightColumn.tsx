@@ -1,3 +1,4 @@
+import { BackgroundDecoration } from '@/components/shared';
 import { MonsterSprite, PixelCrown } from '@/components/shared/ui/pixel';
 import type {
   DivisionPreview,
@@ -115,7 +116,7 @@ function OlympusProjectionCard({ preview }: { preview: DivisionPreview }) {
 
   return (
     <article className="relative overflow-hidden border-[3px] border-px-gold bg-px-deep p-4">
-      <div className="starfield" />
+      <BackgroundDecoration variant="starfield" />
       <div className="relative flex items-center justify-between gap-2">
         <div className="flex flex-col items-center gap-1">
           <MonsterSprite

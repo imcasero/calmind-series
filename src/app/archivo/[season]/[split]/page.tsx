@@ -4,22 +4,38 @@ import { HubPageHeader } from '@/components/hub';
 import { PixelCrown } from '@/components/shared/ui/pixel';
 import {
   getArchiveChampions,
-  getDivisionPreview,
+  getArchiveDivisionPreview,
+  getArchiveSplitParams,
   getSplitByNames,
 } from '@/lib/queries';
 import type { RankingEntry } from '@/lib/types/schemas';
+import { formatSeasonSplit } from '@/lib/utils/formatters';
 import { trainerColor } from '@/lib/utils/trainerColor';
 
 interface ArchiveDetailProps {
   params: Promise<{ season: string; split: string }>;
 }
 
+/**
+ * Static prerender of every persisted `(season, split)` pair (REQ-21). All four
+ * archive queries (`getArchiveSplitParams`, `getSplitByNames`,
+ * `getArchiveChampions`, `getDivisionPreview` + its leaf calls) use the
+ * `createClient({ session: false })` Supabase client, so the route stays
+ * eligible for build-time prerender despite Next 16's `cookies()` → dynamic
+ * bailout in `prerender-legacy` mode.
+ */
+export async function generateStaticParams() {
+  return getArchiveSplitParams();
+}
+
+export const dynamicParams = true;
+
 export async function generateMetadata({
   params,
 }: ArchiveDetailProps): Promise<Metadata> {
   const { season, split } = await params;
   return {
-    title: `${season.toUpperCase()} · ${split.toUpperCase()} · Archivo`,
+    title: `${formatSeasonSplit(season, split)} · Archivo`,
     description: `Resultado histórico del ${split} de ${season} en Pokemon Calmind Series.`,
   };
 }
@@ -37,14 +53,14 @@ export default async function ArchiveDetailPage({
 
   const [champions, preview] = await Promise.all([
     getArchiveChampions(),
-    getDivisionPreview(info.split.id),
+    getArchiveDivisionPreview(info.split.id),
   ]);
   const champ = champions.get(info.split.id);
 
   return (
     <div className="flex flex-col gap-8">
       <HubPageHeader
-        eyebrow={`${info.season.name.toUpperCase()} · ${info.split.name.toUpperCase()}`}
+        eyebrow={formatSeasonSplit(info.season.name, info.split.name)}
         title="Archivo del split"
       />
 

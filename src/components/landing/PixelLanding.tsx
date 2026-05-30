@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BattleScreen } from '@/components/landing/BattleScreen';
+import { BackgroundDecoration } from '@/components/shared';
 import {
   MonsterSprite,
   PixelArrow,
@@ -8,6 +9,7 @@ import {
   PixelSword,
 } from '@/components/shared/ui/pixel';
 import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
+import { formatSeasonSplit } from '@/lib/utils/formatters';
 import { TOTAL_ROUNDS } from '@/lib/utils/phase';
 
 export interface LandingSnapVM {
@@ -55,12 +57,12 @@ function HeroSection({ vm }: { vm: LandingVM }) {
 
   return (
     <section className="relative overflow-hidden px-6 py-16">
-      <div className="starfield" />
+      <BackgroundDecoration variant="starfield" />
       <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-12 lg:grid-cols-[1.4fr_1fr]">
         <div>
           <div className="mb-4 flex flex-wrap gap-2">
             <span className="pixel-badge pixel-badge--magenta blink">
-              ● {vm.seasonName.toUpperCase()} · {vm.splitName.toUpperCase()}
+              ● {formatSeasonSplit(vm.seasonName, vm.splitName)}
             </span>
             {vm.currentRound > 0 && (
               <span className="pixel-badge pixel-badge--cyan">
@@ -405,7 +407,7 @@ function OlimpoTeaser() {
           'linear-gradient(180deg, var(--color-px-void) 0%, #2d0a4a 50%, var(--color-px-void) 100%)',
       }}
     >
-      <div className="starfield" />
+      <BackgroundDecoration variant="starfield" />
       <div className="relative mx-auto w-full max-w-[1280px]">
         <div className="mb-4 flex items-center justify-center gap-3">
           <PixelCrown size={32} />

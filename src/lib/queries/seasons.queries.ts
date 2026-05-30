@@ -208,6 +208,42 @@ export const getSeasonByName = cache(
 );
 
 /**
+ * Cookie-free URL-shape pairs for every (season, split) in the DB. Powers
+ * `generateStaticParams()` on `/archivo/[season]/[split]` (REQ-21) — must use
+ * the `{ session: false }` client so the call stays eligible for build-time
+ * prerender. Lowercases both segments so the canonical SSG URL matches the
+ * case-insensitive lookup that `getSplitByNames` performs at request time.
+ */
+export const getArchiveSplitParams = cache(
+  async (): Promise<Array<{ season: string; split: string }>> => {
+    const supabase = await createClient({ session: false });
+
+    const { data, error } = await supabase
+      .from('seasons')
+      .select(`
+        name,
+        splits(name)
+      `)
+      .order('year', { ascending: false });
+
+    if (error || !data) {
+      console.error(
+        '[getArchiveSplitParams] Error:',
+        error?.message ?? 'No data',
+      );
+      return [];
+    }
+
+    return data.flatMap((season) =>
+      (season.splits ?? []).map((split) => ({
+        season: season.name.toLowerCase(),
+        split: split.name.toLowerCase(),
+      })),
+    );
+  },
+);
+
+/**
  * Resolves a split by season name and split name from URL params.
  * Returns the split with its season info if found.
  */
@@ -216,7 +252,7 @@ export const getSplitByNames = cache(
     seasonName: string,
     splitName: string,
   ): Promise<{ season: Season; split: Split } | null> => {
-    const supabase = await createClient();
+    const supabase = await createClient({ session: false });
 
     // Find season by name (case-insensitive)
     const { data: seasonData, error: seasonError } = await supabase

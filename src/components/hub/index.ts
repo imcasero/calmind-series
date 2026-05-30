@@ -15,7 +15,7 @@ export { NewsRail } from './NewsRail';
 export { type OlimpoChampionVM, OlimpoView } from './OlimpoView';
 export { PhaseBanner } from './PhaseBanner';
 export { ProjectedBracketTeaser } from './ProjectedBracketTeaser';
-export { RosterView } from './RosterView';
+export { RosterGrid } from './RosterGrid';
 export { StandingsLive } from './StandingsLive';
 export { StoryBeat } from './StoryBeat';
 export { TrainerProfile, type TrainerProfileVM } from './TrainerProfile';

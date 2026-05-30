@@ -22,8 +22,15 @@ export {
   type MatchWithTrainers,
   type ParticipantWithTrainer,
 } from './admin.queries';
-// Archive queries
-export { getArchiveChampions, type SplitChampions } from './archive.queries';
+// Archive queries (cookie-free public reads — see REQ-21)
+export {
+  getArchiveChampions,
+  getArchiveDivisionPreview,
+  getPublicActiveSeasonWithSplit,
+  getPublicAllSeasonsWithSplits,
+  getPublicCurrentRound,
+  type SplitChampions,
+} from './archive.queries';
 // Bracket / finals queries
 export { type BracketData, getBracketData } from './bracket.queries';
 // League queries (preferred for UI)
@@ -48,6 +55,7 @@ export {
   getActiveSeasonWithSplit,
   getAllSeasons,
   getAllSeasonsWithSplits,
+  getArchiveSplitParams,
   getSeasonByName,
   getSeasonWithSplits,
   getSplitByNames,

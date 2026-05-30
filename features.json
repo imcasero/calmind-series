@@ -1,9 +1,10 @@
 {
   "project": "calmind-series",
   "source": "ARCHITECTURE_REVIEW.html",
-  "updated": "2026-05-28",
+  "updated": "2026-05-30",
   "statusLegend": ["pending", "spec_ready", "in_progress", "done"],
   "activeBatch": [],
+  "_note_activeBatch": "F5 closed 2026-05-30 (reviewer signed off). No active batch — user decides next pick. Next-best candidate by leader: F3 (admin abstractions, 1-2 días) — unblocks F4 and indirectly F6.",
   "initiatives": {
     "architecture-review": "ARCHITECTURE_REVIEW.html — phases F0–F6 (F2 still pending)",
     "pixel-redesign": "docs/design_handoff_calmind_pixel/ — phases FR0–FR10 (active)"
@@ -99,16 +100,22 @@
       "id": "F5",
       "phase": "Fase 5 — Performance / modernización",
       "effort": "1 día",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F1"],
       "items": [
-        "generateStaticParams in [season] and [season]/[split]",
-        "Granular <Suspense> per section in [split]/page.tsx",
-        "Push 'use client' to minimal wrappers in CrucesBracket / MatchupCard / TableRow",
-        "Extract <ErrorCard>, <PageSkeleton>, <BackgroundDecoration>, formatSplitName()",
-        "Image sizes, capped animation delays, CSS spin for Pokéballs"
-      ]
+        "[DONE 2026-05-30] generateStaticParams in [season] and [season]/[split] — RETARGETED to /archivo/[season]/[split] only (active routes live under /hub/* post-FR11); 3 prerendered URLs in build manifest",
+        "[DONE 2026-05-30] Granular <Suspense> per section in [split]/page.tsx — RETARGETED to /hub/* parallel boundaries (11 Suspense boundaries across hub panels)",
+        "[DONE 2026-05-30] Push 'use client' to minimal wrappers — SCOPED to ClasificacionView, RosterView, CalendarView (3 client shells); dead PlayoffBracket/MatchupCard/DivisionSection deleted (6 files removed)",
+        "[DONE 2026-05-30] Extract <ErrorCard>, <PageSkeleton>, <BackgroundDecoration>, formatSplitName() (4 shared primitives in components/shared/ui/ + lib/utils/formatters.ts)",
+        "[DONE 2026-05-30] Image sizes, capped animation delays, CSS spin for Pokéballs"
+      ],
+      "deferred": [
+        "2 pre-existing warnings (fetchData.ts:5 J15Match/J16Match, matchService.ts:5 Matchup) — owned by F4 (which deletes fetchData + moves matchService). F5 preserved them untouched.",
+        "Dead cluster sweep (home/Hero.tsx, CurrentSeason.tsx, Navbar.tsx, LinkButton.tsx) — out of scope for F5; flagged for a future micro-batch.",
+        "Option C (cookie-free Supabase client) NOT escalated to /hub/* — narrowly scoped to archive queries only (hub stays cookie-aware/dynamic). Documented as live implementer decision below."
+      ],
+      "note": "F5 closed 2026-05-30 (reviewer signed off — './init.sh' green, 23 pages built). Net result: SSG on /archivo/[season]/[split] (3 prerendered URLs), 11 parallel <Suspense> boundaries across /hub/* (per-panel streaming), 3 client shells (ClasificacionView/RosterView/CalendarView) — parents pushed to RSC, 4 shared primitives extracted (ErrorCard/PageSkeleton/BackgroundDecoration + formatSplitName), bundle JS reduction ~110-114 KB on /hub/* routes, /hub/* remains ƒ Dynamic by design. Live decision: cookie-free Supabase overload (Option C from design.md) applied NARROWLY to archive queries only (NOT escalated to /hub/* — hub queries stay cookie-aware to preserve realtime/auth semantics). F4-owned warnings preserved untouched. Files net delta: 19 created (3 client shells, 11 sections, 4 primitives, formatters utility), ~25 edited (hub pages + archive route + layouts + queries), 6 deleted (dead bracket/matchup/division code)."
     },
     {
       "id": "F6",

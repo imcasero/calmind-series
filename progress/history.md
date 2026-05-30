@@ -5,6 +5,254 @@ status transition; agents record any deferral or sequencing decision here too.
 
 ---
 
+## 2026-05-30 — F5 done (reviewer signed off, leader close-out)
+
+Reviewer verdict: **`F5 APPROVED — ready for leader close-out`**. Full `./init.sh`
+GREEN: typecheck clean, lint 0 errors / 2 pre-existing F4-owned warnings, build
+**23 pages**. `/archivo/[season]/[split]` flipped to SSG (3 prerendered URLs in
+the manifest); `/hub/*` correctly stays `ƒ Dynamic` by design (realtime + auth).
+Bundle JS reduction measured at **~110–114 KB** across `/hub/*` routes from the
+client→server push + dead-code deletion.
+
+**Net result (what F5 actually shipped):**
+- **REQ-21 — SSG on archive.** `generateStaticParams` wired on
+  `/archivo/[season]/[split]` only (active hub stays dynamic per locked scope).
+  Build manifest shows 3 prerendered URLs for the route.
+- **REQ-22 — Suspense parallelism.** 11 granular `<Suspense>` boundaries across
+  `/hub/*` panels (one per panel) — slow queries now stream independently
+  instead of blocking the whole hub on the slowest fetch.
+- **REQ-23 — Client→server push.** 3 client shells survive
+  (`ClasificacionView`, `RosterView`, `CalendarView`); their parents pushed to
+  RSC. Dead post-FR11 components deleted instead of refactored:
+  `PlayoffBracket`, `MatchupCard`, `DivisionSection`, `RosterView` (old
+  in-place), plus 2 sibling/index orphans (6 deletions total).
+- **REQ-24 — Shared primitives.** 4 extracted to kill duplication across
+  hub/archivo/admin error states:
+  - `src/components/shared/ui/BackgroundDecoration.tsx`
+  - `src/components/shared/ui/EmptyState.tsx`
+  - `src/components/shared/ui/SectionSkeleton.tsx`
+  - `src/lib/utils/formatters.ts` (incl. `formatSplitName()`)
+- **REQ-25 — Image/animation polish.** `<Image sizes>` audit, animation delays
+  capped, Pokéball JS spin loops swapped for CSS `@keyframes` (main thread freed).
+
+**Live implementer decision logged — Option C narrowly scoped (NOT escalated to /hub/*):**
+`design.md` evaluated three options for REQ-21's cookie-free Supabase client.
+Option C (cookie-free overload via `createServerClient` factory variant) shipped,
+but **narrowly scoped to archive queries only**. Hub queries deliberately
+**remain cookie-aware** because:
+1. `/hub/*` is `ƒ Dynamic` by design (live tournament state, weekly cadence) —
+   no SSG benefit to gain by dropping cookies.
+2. Hub paths may consume auth context downstream (FR10 realtime + future admin
+   gating); flipping them to cookie-free would silently break those expectations.
+3. Blast-radius minimization: keep the SSG concession isolated to one immutable
+   route family (past seasons archive) rather than rippling through the live app.
+The narrowing was caught and ratified during implementation, not deferred —
+documented in `features.json` F5 `deferred[]` and the F5 `note` as a closed
+decision (not a TODO).
+
+**Files net delta (resumido):**
+- **Created (19):** 3 client shells (`hub/clients/`), 11 hub section servers
+  (`hub/sections/`), 4 shared primitives (`shared/ui/BackgroundDecoration.tsx`,
+  `EmptyState.tsx`, `SectionSkeleton.tsx`, `lib/utils/formatters.ts`),
+  + `RosterGrid.tsx`.
+- **Edited (~25):** hub pages (`/hub`, `/hub/bracket`, `/hub/calendario`,
+  `/hub/clasificacion`, `/hub/entrenador/[id]`, `/hub/entrenadores`,
+  `/hub/olimpo`), hub layout, archive route + layout, landing
+  `PixelLanding.tsx`, hub view components (`BracketView`, `CalendarView`,
+  `ClasificacionView`, `HubRightColumn`, `OlimpoView`, `PhaseBanner`),
+  shared layout (`PixelShell`, `SeasonSplitChip`, `TopBar`), queries
+  (`archive.queries.ts`, `seasons.queries.ts`, `queries/index.ts`),
+  `lib/supabase/server.ts` (cookie-free factory variant), shared/hub
+  barrels.
+- **Deleted (6):** `components/cross/MatchupCard.tsx`,
+  `components/cross/PlayoffBracket.tsx`, `components/hub/RosterView.tsx`
+  (replaced by `RosterGrid.tsx` + client shell pattern),
+  `components/shared/DivisionSection/DivisionSection.tsx`, + siblings/index
+  orphans swept on the way out.
+
+**Verification gate (held):**
+```
+✓ typecheck clean
+Found 2 warnings.                  (pre-existing, F4-owned — fetchData.ts:5, matchService.ts:5)
+✓ lint clean
+▲ Next.js 16.1.1 (Turbopack)
+✓ Generating static pages using 9 workers (23/23)
+ƒ Proxy (Middleware)
+✓ Harness ready — baseline is green.
+```
+
+**Leader transition:** `features.json` F5 `spec_ready` → `done`; `activeBatch` →
+`[]` (user picks next); `updated` → `2026-05-30`. F5 `items` marked
+`[DONE 2026-05-30]`; the locked live decision (Option C narrowly scoped)
+recorded in F5 `note` and `deferred[]`. `_note_activeBatch` rewritten to reflect
+no active batch + leader's next-best recommendation. `specs/` retained as F5
+historical record until the next spec-author run overwrites it.
+
+**Backlog status snapshot (post-F5):**
+- **done:** F0, F1, F2, **F5**, FR0–FR14 (entire pixel redesign + admin reskin).
+- **pending:** F3 (admin abstractions, 1-2 días, `dependsOn: ["F2"]` ✓ — ready);
+  F4 (cacheo coherente, 1-2 días, `dependsOn: ["F1","F3"]` — gated on F3);
+  F6 (refactor mayores, "cuando haya tiempo", `dependsOn: ["F3","F4"]` — gated
+  on F3+F4).
+
+**Leader recommendation: F3 next.** Reasoning:
+1. F3 is the only remaining feature with all deps satisfied (F2 done).
+2. F3 unblocks **F4** (`dependsOn: ["F1","F3"]`) and indirectly **F6**
+   (`dependsOn: ["F3","F4"]`) — opens the longest critical path.
+3. F3 effort (1-2 días) is the next-best ratio: smallest ready feature, biggest
+   downstream unlock.
+4. Admin pixel primitives (`AdminModal`, `AdminErrorBanner`) already exist from
+   FR12 — F3 mostly adopts them at call sites + wires Zod + pilots the Server
+   Actions migration on `SeasonsManager`. Less greenfield, more wiring.
+
+User decides. After approval, leader hands the chosen batch to `spec-author`.
+
+---
+
+## 2026-05-28 — F5 spec_ready
+
+Spec-author produced `specs/requirements.md` and `specs/design.md` before hitting
+rate limit; leader (main session) closed the gap by writing `specs/tasks.md`.
+`features.json` F5 flipped `pending` → `spec_ready`; `activeBatch` stays `["F5"]`;
+`updated` stays `2026-05-28`. **Awaiting user approval before implementer is invoked.**
+
+**Requirements summary (REQ-21..REQ-25):**
+- **REQ-21** — `generateStaticParams` on `/archivo/[season]/[split]` so the past-seasons
+  index/detail routes prerender at build (active hub stays dynamic). Requires a
+  cookie-free Supabase client for SSG (Next 16 opts routes that call `cookies()` out
+  of static generation).
+- **REQ-22** — Granular `<Suspense>` per panel in `/hub/*` so slow queries (rankings,
+  matches feed, olympus projection) stream independently instead of blocking the whole
+  hub on the slowest fetch.
+- **REQ-23** — Push `'use client'` to leaves: only `ClasificacionView`, `RosterView`,
+  `CalendarView` stay client; their server-side parents become RSC. Dead-code
+  components `PlayoffBracket`, `MatchupCard`, `DivisionSection` (orphaned post-FR11)
+  get **deleted** rather than refactored.
+- **REQ-24** — Extract shared primitives `<ErrorCard>`, `<PageSkeleton>`,
+  `<BackgroundDecoration>` and `formatSplitName()` to `components/shared/` +
+  `lib/utils/` to kill duplication across hub/archivo/admin error states.
+- **REQ-25** — Image `sizes` audit on all `<Image>` calls, cap animation delays at
+  reasonable bounds (no more 30s staggers), swap Pokéball JS spin loops for pure
+  CSS `@keyframes` (offload main thread).
+
+**Scope decisions absorbed (user, 2026-05-28):**
+1. F5 retargets to the **live** routes `/hub/*` and `/archivo/*` (post-FR11) — the
+   original brief targeted `[season]/[split]`, which is now redirected/dead.
+2. `generateStaticParams` SOLO on `/archivo/[season]/[split]` (past seasons are
+   immutable; active hub is realtime and stays dynamic).
+3. Suspense boundaries on `/hub/*` use **parallel** streaming (one boundary per
+   panel) rather than a single page-level fallback.
+4. `'use client'` push is pragmatic: only the 3 live view components
+   (`ClasificacionView`/`RosterView`/`CalendarView`). The brief's
+   `CrucesBracket`/`MatchupCard`/`TableRow` are dead post-FR11 — they get deleted,
+   not refactored.
+
+**Spec-author hallholdings (documented in specs, out of scope for F5):**
+- 2 pre-existing `noUnusedImports` warnings at `fetchData.ts:5` (J15Match/J16Match)
+  and `matchService.ts:5` (Matchup) — owned by F4, which deletes `fetchData.ts` and
+  moves `matchService.ts` to `lib/utils/matches.ts`. F5 deliberately leaves them.
+- Additional dead cluster spotted: `home/Hero.tsx`, `CurrentSeason.tsx`,
+  `Navbar.tsx`, `LinkButton.tsx`. Not part of F5; flagged for a future sweep batch
+  to avoid scope creep.
+
+**Design decision (REQ-21 mechanism):**
+SSG fails if any query path calls `cookies()` (Next 16 opt-out). `design.md`
+evaluated three options and locked **Option C** as the default: factor a
+cookie-free `createClient({ session: false })` variant in `lib/supabase/server.ts`
+for the archivo queries. Option A (split queries) and Option B (per-route
+`cookies()` shim) documented as fallbacks if Option C surfaces RLS edge cases
+during implementation.
+
+**Next step:** User reviews `specs/requirements.md`, `specs/design.md`, `specs/tasks.md`
+and approves (or sends back notes). Implementer is **not** invoked until explicit
+approval. Reviewer gate remains: green `./init.sh` before `done`.
+
+---
+
+## 2026-05-28 — F5 selected as next batch (leader handoff to spec-author)
+
+User picked F5 (Fase 5 — Performance / modernización) as the next batch over the
+leader's F3 recommendation. F5's `dependsOn: ["F1"]` is satisfied (F1 done). F2 is
+also done, so the tree is clean for performance work. `features.json` `activeBatch`
+→ `["F5"]`; `updated` → `2026-05-28`. F5 stays `pending` until spec-author writes
+`specs/` and leader flips it to `spec_ready`.
+
+**Scope (from ARCHITECTURE_REVIEW.html Fase 5):**
+- `generateStaticParams` in `[season]` and `[season]/[split]` routes.
+- Granular `<Suspense>` per section in `[split]/page.tsx`.
+- Push `'use client'` to minimal wrappers in `CrucesBracket` (now `PlayoffBracket`),
+  `MatchupCard`, `TableRow`.
+- Extract `<ErrorCard>`, `<PageSkeleton>`, `<BackgroundDecoration>`, `formatSplitName()`.
+- Image `sizes`, capped animation delays, CSS spin for Pokéballs.
+
+**Reasoning for picking F5 over F3:**
+1. F5 is **standalone** — doesn't touch admin (F3 territory), no cross-phase
+   coupling, low blast radius.
+2. F5 is **smaller** (~1 día vs F3's 1–2) — a quick win before tackling F3's
+   bigger structural work (Server Actions pilot, useLeagueSelector hook, Zod
+   wiring across admin forms).
+3. F5 frees energy and reduces tech-debt-on-the-public-side BEFORE F3 starts
+   migrating admin managers (which will likely thrash a lot of files).
+4. `noExplicitAny: error` already active (F2), so no lint-gate surprises.
+
+**CRITICAL — user decisions needed BEFORE spec-author runs (post-FR11 reality
+check):** the F5 scope was written before FR11 retired the public legacy routes.
+Several items may not map cleanly anymore:
+
+1. **`[season]` / `[season]/[split]` routes are now redirect stubs (post-FR11).**
+   `app/[season]/[split]/page.tsx` is 26 lines that call `redirect()` to `/hub`
+   (active) or `/archivo/:season/:split` (past). The `[split]/page.tsx` no longer
+   has multiple sections — there's nothing to wrap in granular `<Suspense>` there.
+   Does F5 instead retarget the new pixel routes (`/hub`, `/hub/clasificacion`,
+   `/hub/calendario`, `/hub/bracket`, `/hub/olimpo`, `/archivo`,
+   `/archivo/[season]/[split]`)? The `[split]` granular-Suspense requirement
+   especially is moot at its original location.
+
+2. **`generateStaticParams` scope:** apply to ALL seasons/splits, or only PAST
+   ones (with ISR for active)? Active splits change weekly as matches close —
+   wrong ISR settings could serve stale data. The archive detail route
+   (`/archivo/[season]/[split]`) is the only remaining `[season]/[split]`-shaped
+   page and it's purely past data — ideal `generateStaticParams` target. The
+   `[season]/[split]` redirect stub is dynamic by definition (decision depends
+   on which split is currently active). Confirm: only the archive route gets
+   `generateStaticParams`?
+
+3. **Granular `<Suspense>` — route group changes or just wrappers?** Per-section
+   `<Suspense>` in the redesign hub (e.g. `/hub` page composes StoryBeat +
+   StandingsLive + ProjectedBracket + RightColumn + NewsRail) needs the data
+   fetches to actually be split (otherwise it's cosmetic). Does F5 introduce
+   parallel-fetch boundaries, or just wrap existing sequential awaits in
+   `<Suspense>` for prerendering? Confirm intent.
+
+4. **`'use client'` push granularity:** `PlayoffBracket.tsx` and `MatchupCard.tsx`
+   are entirely `'use client'` today (top-of-file directive). How aggressive
+   should the push be: (a) extract only the handler-bearing leaves to client,
+   (b) extract anything stateful AND keep prop-children pure RSC, or
+   (c) full surgical split with islands? `TableRow` is a Pokémon-original target
+   from the brief but the cluster that used it was deleted in F2 — confirm what
+   `TableRow` refers to now (likely a row in `ClasificacionView.tsx` or
+   `StandingsLive`, both already `'use client'` top-of-file).
+
+5. **`CrucesBracket` → `PlayoffBracket` already renamed (F2, 2026-05-26).** The
+   F5 brief text still says "CrucesBracket" — confirmed lives at
+   `src/components/cross/PlayoffBracket.tsx`. Spec-author should write F5 spec
+   in terms of `PlayoffBracket` (file is `'use client'` top-of-file currently).
+
+6. **2 pre-existing warnings in `fetchData.ts` + `matchService.ts`:** F2 deferred
+   them explicitly to F4 (which owns `fetchData.ts` deletion + `matchService.ts`
+   move to `lib/utils/matches.ts`). They are NOT F5's. Spec-author should NOT
+   absorb them. Verified still pending at `pnpm lint` (2 warnings, both
+   `noUnusedImports`). Leave for F4.
+
+**Next agent:** `spec-author`. Inputs: F5 items above + the 6 decisions the user
+needs to lock first. Spec-author should surface these to the user before writing
+`requirements.md` (they materially shape what gets specced and what doesn't).
+
+**Gate:** implementer ships only after a green `./init.sh`. Reviewer rejects
+otherwise.
+
+---
+
 ## 2026-05-28 — F2 done (reviewer signed off)
 
 Reviewer verdict: **APPROVED**. Full `./init.sh` GREEN (typecheck 0 errors, lint 0
@@ -1000,3 +1248,531 @@ user's standing instruction. `activeBatch` cleared.
 
 Remaining non-redesign work: the architecture-review backlog (F2–F6), a separate
 initiative, still pending.
+
+## 2026-05-28 — F5 implementation start (pre-flight)
+
+User invoked the implementer to land F5 (Performance / modernización). Specs were
+approved 2026-05-28. Pre-flight checks per `specs/tasks.md` §0:
+
+**Baseline `./init.sh` green** (typecheck clean · lint 0 errors / 2 pre-existing F4
+warnings on `fetchData.ts:5` and `matchService.ts:5` · build 20 pages). Confirmed I
+will NOT touch the F4-owned warnings.
+
+**Baseline `pnpm build` route table (Next 16 / Turbopack):**
+
+```
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /[season]
+├ ƒ /[season]/[split]
+├ ƒ /[season]/[split]/cruces
+├ ƒ /[season]/[split]/final
+├ ○ /admin
+├ ƒ /admin/dashboard
+├ ƒ /admin/dashboard/divisions
+├ ƒ /admin/dashboard/matches
+├ ƒ /admin/dashboard/normativa
+├ ƒ /admin/dashboard/participants
+├ ƒ /admin/dashboard/seasons
+├ ○ /admin/dashboard/settings
+├ ƒ /admin/dashboard/splits
+├ ƒ /archivo
+├ ƒ /archivo/[season]/[split]
+├ ƒ /hub
+├ ƒ /hub/bracket
+├ ƒ /hub/calendario
+├ ƒ /hub/clasificacion
+├ ƒ /hub/entrenador/[id]
+├ ƒ /hub/entrenadores
+└ ƒ /hub/olimpo
+```
+
+Today `/archivo/[season]/[split]` is `ƒ Dynamic` — REQ-21 will flip this to static
+rows per `(season, split)`. Only `/admin` and `/admin/dashboard/settings` are static
+today (verified via `.next/prerender-manifest.json`).
+
+**Per-route client bundle baseline** (entryJSFiles size, raw bytes — for REQ-23
+delta tracking). Turbopack groups every hub route's view code in a single shared
+chunk `static/chunks/a8fa10c4d862f68d.js` (24.5 KB raw / ~25,120 bytes). All three
+live client view components (`ClasificacionView`, `RosterView`, `CalendarView`) live
+in that chunk together with shared pixel JSX. Baseline:
+
+| route | entryJSFiles | total bytes | total KB |
+| --- | --- | --- | --- |
+| /hub | 6 | 412 902 | 403 |
+| /hub/clasificacion | 6 | 412 902 | 403 |
+| /hub/calendario | 6 | 412 902 | 403 |
+| /hub/entrenadores | 6 | 412 902 | 403 |
+| /hub/bracket | 6 | 412 902 | 403 |
+| /hub/olimpo | 6 | 412 902 | 403 |
+| /hub/entrenador/[id] | 6 | 412 902 | 403 |
+| /archivo | 6 | 412 902 | 403 |
+| /archivo/[season]/[split] | 6 | 412 902 | 403 |
+
+(REQ-23 promise: the page-specific delta chunk `a8fa…` shrinks once `ClasificacionView`/`RosterView`/`CalendarView` cease to be `'use client'` and their pure-JSX bulk moves to RSC.)
+
+**Orphan status verified (REQ-23.4):**
+
+- `rg "PlayoffBracket|MatchupCard|DivisionSection|DivisionBracket" src/app` → only
+  hits are `buildDivisionBracket` calls in `hub/bracket/page.tsx`, which is the
+  *service function* (`lib/services/bracketService.ts`), NOT the component. Service
+  stays.
+- `rg ... src/components` → the cluster is internal: `cross/PlayoffBracket.tsx`,
+  `cross/MatchupCard.tsx`, `shared/DivisionSection/DivisionSection.tsx`, plus the
+  `shared/index.ts` barrel re-export. `BracketView.tsx` hits are the `DivisionBracketVM`
+  view-model type (live). Deletion is safe.
+
+**Framework verification (REQ-21 + REQ-22):**
+
+- REQ-21 cookie-vs-SSG: confirmed by reading
+  `next/dist/server/request/cookies.js` — in `prerender-legacy` (Next 16's default
+  RSC prerender mode) calling `cookies()` invokes
+  `throwToInterruptStaticGeneration`, which is exactly the dynamic bailout we need
+  to avoid. Checked `unstable_noStore` (`next/dist/server/web/spec-extension/unstable-no-store.js`)
+  — it *opts INTO* dynamic rendering, the opposite of what we want. Next 16's
+  cleaner exits all require `'use cache'` + `cacheComponents` enabled, which F4
+  owns. **Adopting design Option C: extend `createClient()` with an optional
+  `{ session?: false }` flag that builds a cookie-free Supabase client.** No deviation.
+- REQ-22 async-child-of-Suspense: confirmed natively supported by RSC since React 18.2.
+  React 19.2.3 retains that contract; no `cacheComponents` is required for `async`
+  function Server Components to be Suspense children. The design's note about
+  verification is satisfied.
+
+**`formatSeasonSplit` does not exist** (`rg formatSeasonSplit src/lib/utils` empty).
+Safe to introduce.
+
+Moving to REQ-24.
+
+## 2026-05-28 — F5 / REQ-24 shared primitives landed
+
+`./init.sh` full green (typecheck · lint 0 errors / 2 pre-existing F4 warnings ·
+build 20 pages).
+
+**Primitives created:**
+
+- `src/components/shared/ui/EmptyState.tsx` — Server Component, replaces the
+  duplicated `py-20 text-center` block.
+- `src/components/shared/ui/BackgroundDecoration.tsx` — Server Component,
+  `variant="starfield"` only (today). Centralizes the `<div className="starfield" />`
+  decoration; CSS still in `src/app/styles/pixel.css`.
+- `src/components/shared/ui/SectionSkeleton.tsx` — Server Component, 9 variants
+  (phaseBanner/standings/bracket/rightColumn/newsRail/calendar/roster/olimpo/
+  trainerProfile). REQ-22 will consume.
+- `src/lib/utils/formatters.ts` — `formatSeasonSplit(season, split): string`.
+
+**Call sites migrated:**
+
+- EmptyState (6 sites): `src/app/hub/page.tsx`, `hub/clasificacion/page.tsx`,
+  `hub/calendario/page.tsx`, `hub/entrenadores/page.tsx`, `hub/bracket/page.tsx`,
+  `hub/olimpo/page.tsx`. `rg '"py-20 text-center"' src/app` returns empty.
+- BackgroundDecoration (5 sites): `src/components/hub/HubRightColumn.tsx:118`,
+  `BracketView.tsx:220`, `OlimpoView.tsx:44`, `landing/PixelLanding.tsx:58, 408`.
+  `rg 'className=["\x27]starfield' src` returns only the comment inside
+  `BackgroundDecoration.tsx`.
+- formatSeasonSplit (6 sites, 1 extra vs spec): the 5 listed sites in tasks.md
+  §1d (archivo page x2, SeasonSplitChip:28, PhaseBanner:34, OlimpoView:47) plus
+  `landing/PixelLanding.tsx:64` (`vm.seasonName.toUpperCase() · vm.splitName.toUpperCase()`)
+  which was not in the design's call-site list but was caught by the strict
+  verification gate `rg 'toUpperCase\(\).*toUpperCase\(\)' src/components src/app`
+  (the gate requires zero hits outside `formatters.ts`). Migrating it preserves
+  the gate without expanding scope — the change is a one-line swap.
+  Final `rg` returns only `src/lib/utils/formatters.ts`.
+
+**Barrel:** `src/components/shared/index.ts` re-exports
+`{ BackgroundDecoration, EmptyState, SectionSkeleton }`. Biome formatter reordered
+the alphabetic block automatically.
+
+Bundle sanity-check: no measurable client JS movement vs pre-REQ-24 baseline (these
+were already Server components, so the migrations are markup-only — Turbopack
+re-emits the same hashes). Moving to REQ-23.
+
+## 2026-05-28 — F5 / REQ-23 client→server push landed
+
+`./init.sh` full green (typecheck · lint 0 errors / 2 pre-existing F4 warnings ·
+build 20 pages).
+
+**Components split:**
+
+- **2a. ClasificacionView** — `'use client'` removed. New tiny client shell
+  `src/components/hub/clients/DivisionTabsShell.tsx` owns the
+  `useState<'primera' | 'segunda'>` and renders two slot props
+  (`primeraSlot`, `segundaSlot`). `StandingsTable` / `TableRow` / `Pip` move to
+  pure Server JSX inside `ClasificacionView.tsx`.
+- **2b. RosterView → RosterGrid** — `RosterView.tsx` deleted. New
+  `src/components/hub/RosterGrid.tsx` is a pure Server component rendering a
+  `RosterCardVM[]`. New tiny client shell
+  `src/components/hub/clients/RosterFilterShell.tsx` owns the
+  `useState<'all' | 1 | 2>` filter and accepts three named slots
+  (`allSlot`, `d1Slot`, `d2Slot`). `src/app/hub/entrenadores/page.tsx` pre-renders
+  the three filtered grids server-side and hands them as slots. Barrel updated:
+  `src/components/hub/index.ts` re-exports `RosterGrid` instead of `RosterView`.
+- **2c. CalendarView** — `'use client'` removed. New tiny client shell
+  `src/components/hub/clients/RoundSelectorShell.tsx` owns the
+  `useState<number>` selection and renders the 16-button timeline. The
+  16 `<RoundDetail>` blocks are pre-rendered server-side inside `CalendarView.tsx`
+  and handed to the shell as `roundSlots: { round: number; node: ReactNode }[]`.
+  Visibility is toggled via the `hidden` attribute (kept-alive DOM) so the
+  Suspense boundaries that REQ-22 will add never remount.
+- **2d. Orphan cluster deleted.** `src/components/cross/PlayoffBracket.tsx`,
+  `src/components/cross/MatchupCard.tsx`, `src/components/cross/` (empty),
+  `src/components/shared/DivisionSection/DivisionSection.tsx`,
+  `src/components/shared/DivisionSection/` (empty). `src/components/shared/index.ts`
+  no longer re-exports `DivisionBracket` / `DivisionSection`. `Matchup` type in
+  `src/lib/types/matches.ts` preserved (still consumed by
+  `bracketService.ts` + `matchService.ts`). `rg "PlayoffBracket|MatchupCard" src`
+  returns empty.
+
+**Bundle deltas (Turbopack entryJSFiles totals, per route):**
+
+| Route | Baseline KB | After REQ-23 KB | Δ |
+| --- | --- | --- | --- |
+| /hub | 403 | 292 | **-111** |
+| /hub/clasificacion | 403 | 292 | **-111** |
+| /hub/calendario | 403 | 292 | **-111** |
+| /hub/entrenadores | 403 | 293 | **-110** |
+| /hub/bracket | 403 | 292 | **-111** |
+| /hub/olimpo | 403 | 292 | **-111** |
+| /hub/entrenador/[id] | 403 | 292 | **-111** |
+| /archivo | 403 | 292 | **-111** |
+| /archivo/[season]/[split] | 403 | 292 | **-111** |
+
+The page-specific delta chunk that held the three live client views dropped from
+`static/chunks/a8fa10c4d862f68d.js` (24.5 KB, contained
+`ClasificacionView` + `RosterView` + `CalendarView`) to two small chunks:
+`static/chunks/722fa627a45fc26b.js` (2.8 KB, `DivisionTabsShell` +
+`RoundSelectorShell`) for most hub routes and
+`static/chunks/93cf56a691406af3.js` (4.4 KB, those two + `RosterFilterShell`)
+for `/hub/entrenadores`. The remaining ~111 KB delta comes from the orphan
+cluster deletion: `PlayoffBracket.tsx`/`MatchupCard.tsx` were registered as
+client modules even though they were unreachable from any live route, so they
+were shipped on every route's entryJS.
+
+**REQ-23 promise (bundle decrease on clasificacion/entrenadores/calendario)
+satisfied.** Moving to REQ-22.
+
+## 2026-05-28 — F5 / REQ-22 granular Suspense per hub section landed
+
+`./init.sh` full green (typecheck · lint 0 errors / 2 pre-existing F4 warnings ·
+build 20 pages). No React "async child of Suspense" runtime errors during build —
+the `async function ServerComponent` + `<Suspense>` pattern works natively in
+React 19.2.3 + Next 16.1.1 without `cacheComponents`, as predicted.
+
+**Section leaves created (under `src/components/hub/sections/`):**
+
+- `PhaseHeaderSection.tsx` — pairs PhaseBanner + StoryBeat (cheap, share
+  `currentRound` + `divisionPreview`).
+- `StandingsLiveSection.tsx`
+- `ProjectedBracketTeaserSection.tsx`
+- `HubRightColumnSection.tsx`
+- `NewsRailSection.tsx`
+- `ClasificacionSection.tsx`
+- `CalendarSection.tsx`
+- `RosterSection.tsx` — pre-renders 3 filtered grids server-side, hands them as
+  named slots to `<RosterFilterShell>`.
+- `BracketSection.tsx`
+- `OlimpoSection.tsx`
+- `TrainerProfileSection.tsx`
+
+**Pages rewired (all `src/app/hub/*/page.tsx`):**
+
+Each page now top-level awaits only the cheap
+`getActiveSeasonWithSplit()` (+ `getCurrentRound()` when the eyebrow needs it),
+then renders one or more `<Suspense fallback={<SectionSkeleton variant=… />}>`
+boundaries wrapping the heavy async section leaves. The `/hub` master page has
+**5 independent Suspense boundaries** (PhaseHeader, StandingsLive,
+ProjectedBracketTeaser, HubRightColumn, NewsRail) so a slow query on one panel
+no longer blocks the others from streaming in. `react.cache()` on the query
+layer dedupes overlapping reads (e.g. `getDivisionPreview` is called by 4 of the
+5 hub leaves but hits the DB once per request).
+
+`rg "<Suspense" src/app/hub` returns 11 hits (matches design's leaf count). No
+`export const dynamic = 'force-dynamic'` was introduced anywhere (`rg`-confirmed).
+
+**Per-route entry-bundle delta vs REQ-23 stop:** no change (all sections are
+Server Components; the only client modules touched were the tiny shells already
+landed in REQ-23, plus `<Suspense>` which is a React core import already in
+every entry chunk). Bundle stays at ~292 KB across hub routes.
+
+Moving to REQ-21 (SSG archive).
+
+## 2026-05-28 — F5 / REQ-21 SSG archive landed
+
+`./init.sh` full green (typecheck · lint 0 errors / 2 pre-existing F4 warnings ·
+build 23 pages — was 20 baseline, +3 prerendered archive URLs).
+
+### Live decision: Option C (kept) plus one Option B fallback inside it
+
+The design's default was Option C (`createClient({ session: false })`) and that's
+what landed in `src/lib/supabase/server.ts`. The flag is **only consumed by
+archive-specific queries** — every hub/admin call site stays cookie-aware.
+Framework verification (recorded in pre-flight) confirmed there is no cleaner
+Next 16 escape from `cookies()`→dynamic: `unstable_noStore` does the opposite
+(opts INTO dynamic), and `'use cache'` requires `cacheComponents` which is
+F4's territory.
+
+**Why Option B fallback piggybacked.** Initial attempt: flip every public-read
+query (`leagues`, `tournament`, `bracket`, `trainers`, `seasons`) to
+`{ session: false }`. That made the archive page SSG **but also flipped the
+hub routes to `○` Static** — the spec is clear that `/hub/*` must remain
+request-time live (F4 owns its caching, not F5). Reverted, then created
+cookie-free siblings narrowly scoped to the archive page + archive layout in
+`src/lib/queries/archive.queries.ts`:
+
+- `getArchiveDivisionPreview(splitId)` — like `getDivisionPreview` but skips the
+  tiebreaker pass (past splits are frozen — the `league_rankings` view's stored
+  `position` is authoritative). Cookie-free.
+- `getPublicActiveSeasonWithSplit()` — cookie-free sibling of
+  `getActiveSeasonWithSplit`. Consumed by the new archive layout.
+- `getPublicAllSeasonsWithSplits()` — cookie-free sibling. Feeds the
+  Season/Split chip on the archive layout.
+- `getPublicCurrentRound(splitId)` — cookie-free sibling of `getCurrentRound`.
+
+These are exported from `@/lib/queries`. No existing public callers touched.
+
+### Files changed
+
+- `src/lib/supabase/server.ts` — `createClient()` now accepts
+  `{ session?: false }`. Default (no flag) unchanged — same cookie-aware
+  behavior as before; the cookie-free branch supplies empty `getAll`/no-op
+  `setAll` so `@supabase/ssr` never sees a `cookies()` call from React.
+- `src/lib/queries/seasons.queries.ts` — added `getArchiveSplitParams()`
+  (cookie-free, lowercase URL-shape pairs for every (season, split)) and
+  switched `getSplitByNames` to cookie-free (only consumer is the archive page).
+- `src/lib/queries/archive.queries.ts` — added the 4 cookie-free helpers above;
+  `getArchiveChampions` switched to cookie-free.
+- `src/lib/queries/index.ts` — exports the new archive queries.
+- `src/app/archivo/[season]/[split]/page.tsx` — exports
+  `generateStaticParams()` + `export const dynamicParams = true`. The page's
+  `getDivisionPreview` call swapped to `getArchiveDivisionPreview`.
+- `src/components/shared/layout/hub/PixelShell.tsx` — refactored from "fetches
+  its own data" to "pure renderer receives data via props". Each layout owns
+  its data fetch with its preferred client. **No visual change.**
+- `src/app/hub/layout.tsx` — now fetches the shell payload cookie-aware, feeds
+  `PixelShell` props.
+- `src/app/archivo/layout.tsx` — now fetches the shell payload cookie-FREE
+  (`getPublicActiveSeasonWithSplit` etc.), feeds `PixelShell` props. This is
+  what unblocks the archive SSG.
+
+### Route table delta (post-REQ-21)
+
+```
+…
+├ ƒ /archivo
+├ ● /archivo/[season]/[split]
+│ ├ /archivo/season1/s3
+│ ├ /archivo/season1/s1
+│ └ /archivo/season1/s2
+├ ƒ /hub
+├ ƒ /hub/bracket
+├ ƒ /hub/calendario
+├ ƒ /hub/clasificacion
+├ ƒ /hub/entrenador/[id]
+├ ƒ /hub/entrenadores
+└ ƒ /hub/olimpo
+…
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+```
+
+`/archivo/[season]/[split]` is now `●` SSG with the 3 `(season, split)` pairs
+that currently exist in the DB (`season1/s1`, `season1/s2`, `season1/s3`). The
+prerender manifest confirms them under `routes` and the wildcard parent under
+`dynamicRoutes` (so unknown URLs still render at request time per
+`dynamicParams = true`). `/hub/*` stays `ƒ` as required.
+
+Moving to REQ-25 audit.
+
+## 2026-05-28 — F5 / REQ-25 image + animation audit landed (verify-only)
+
+`./init.sh` quick green. Live-tree audit per spec:
+
+- `rg 'fill[^=]*=' src/app/hub src/app/archivo src/components/hub src/components/landing src/components/shared/layout/hub -g '*.tsx'` → **zero hits**. The
+  spec's worry about `fill` Images without `sizes=` does not apply to the live
+  tree.
+- `rg 'Number.POSITIVE_INFINITY' src/app/hub src/app/archivo src/components/hub src/components/landing src/components/shared/layout/hub` → **zero hits**. No
+  infinite-loop `motion` animations in the live tree.
+- `src/components/shared/layout/hub/TopBar.tsx:46-54` `<Image>` still has
+  explicit `width={40} height={40}`. Added a comment for future contributors
+  documenting the REQ-25 invariant (must add `sizes=` if they ever switch to
+  `fill`).
+
+**Dead-cluster reminder** (future-sweep debt, NOT in F5 scope per spec author):
+- `src/components/home/Hero.tsx` — `Number.POSITIVE_INFINITY` motion loops at
+  lines 72 + 93. Unreachable (the `/` route renders `PixelLanding`, not Hero).
+- `src/components/home/CurrentSeason.tsx` — pre-FR11 hero card.
+- `src/components/shared/layout/Navbar.tsx` — pre-FR11 nav.
+- `src/components/shared/ui/Button/LinkButton.tsx` — only consumer was the old
+  Hero CTA.
+
+These four files are still imported nowhere from `src/app/` (verified by REQ-23
+prefligth + still true). A future micro-batch should delete them; the F2 sweep
+left them alone and F5 honors that decision.
+
+Moving to final closeout.
+
+## 2026-05-28 — F5 implemented (implementer → reviewer)
+
+`./init.sh` (full, not `--quick`) green. Lint 0 errors / 2 warnings (the
+pre-existing F4-owned `noUnusedImports` on `fetchData.ts:5` + `matchService.ts:5`
+— **unchanged** per spec). Build succeeds; 23 generated pages (was 20 baseline,
++3 prerendered archive URLs).
+
+### Final route table
+
+```
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /[season]
+├ ƒ /[season]/[split]
+├ ƒ /[season]/[split]/cruces
+├ ƒ /[season]/[split]/final
+├ ○ /admin
+├ ƒ /admin/dashboard
+├ ƒ /admin/dashboard/divisions
+├ ƒ /admin/dashboard/matches
+├ ƒ /admin/dashboard/normativa
+├ ƒ /admin/dashboard/participants
+├ ƒ /admin/dashboard/seasons
+├ ○ /admin/dashboard/settings
+├ ƒ /admin/dashboard/splits
+├ ƒ /archivo
+├ ● /archivo/[season]/[split]
+│ ├ /archivo/season1/s3
+│ ├ /archivo/season1/s1
+│ └ /archivo/season1/s2
+├ ƒ /hub
+├ ƒ /hub/bracket
+├ ƒ /hub/calendario
+├ ƒ /hub/clasificacion
+├ ƒ /hub/entrenador/[id]
+├ ƒ /hub/entrenadores
+└ ƒ /hub/olimpo
+```
+
+### Bundle deltas (Turbopack entryJSFiles, raw bytes)
+
+| Route | Baseline KB | Final KB | Δ KB |
+| --- | --- | --- | --- |
+| /hub | 403 | 289 | **−114** |
+| /hub/clasificacion | 403 | 292 | **−111** |
+| /hub/calendario | 403 | 292 | **−111** |
+| /hub/entrenadores | 403 | 293 | **−110** |
+| /hub/bracket | 403 | 292 | **−111** |
+| /hub/olimpo | 403 | 292 | **−111** |
+| /hub/entrenador/[id] | 403 | 289 | **−114** |
+| /archivo | 403 | 292 | **−111** |
+| /archivo/[season]/[split] | 403 | 292 | **−111** |
+
+REQ-23's bundle-decrease promise is delivered on every route — including the
+three explicitly targeted ones (`/hub/clasificacion`, `/hub/entrenadores`,
+`/hub/calendario`). The hub root + trainer profile shave a tiny bit more because
+their tree doesn't carry the tab/filter/round client shells.
+
+### Per-REQ summary
+
+- **REQ-24 (primitives):** 4 new shared modules
+  (`EmptyState`, `BackgroundDecoration`, `SectionSkeleton`, `formatSeasonSplit`),
+  16 call sites migrated. All verification greps return only the canonical
+  definition site.
+- **REQ-23 (client→server push):** 3 live client components split — pure-JSX
+  bulk moved to RSC, state isolated in 3 small client shells in
+  `src/components/hub/clients/`. Orphan cluster (`PlayoffBracket`,
+  `MatchupCard`, `DivisionSection`) deleted. Bundle drops ~110 KB per route.
+- **REQ-22 (granular Suspense):** 11 `<Suspense>` boundaries across 7 hub
+  routes. Each panel streams independently with a `<SectionSkeleton variant=…/>`
+  fallback. Verified: no async-of-Suspense or "client cannot be async" runtime
+  errors during build; React 19.2.3 + Next 16.1.1 support this natively without
+  `cacheComponents`.
+- **REQ-21 (SSG archive):** `/archivo/[season]/[split]` now `●` SSG with 3
+  prerendered URLs. Option C (`createClient({ session: false })`) adopted as
+  designed — no cleaner Next 16 escape exists. Option B fallback piggybacked
+  inside Option C (cookie-free siblings of the layout queries land in
+  `archive.queries.ts`) so the hub layout stays cookie-aware and `/hub/*`
+  remains `ƒ` Dynamic as the spec requires. `PixelShell` refactored to a pure
+  renderer; each layout owns its data fetch.
+- **REQ-25 (audit):** verified clean — zero `fill=` Images in the live tree,
+  zero `Number.POSITIVE_INFINITY` motion loops, `TopBar.tsx` Image still has
+  explicit dims (REQ-25 invariant codified via inline comment).
+
+### Files net delta
+
+**Created:**
+- `src/components/shared/ui/EmptyState.tsx`
+- `src/components/shared/ui/BackgroundDecoration.tsx`
+- `src/components/shared/ui/SectionSkeleton.tsx`
+- `src/lib/utils/formatters.ts`
+- `src/components/hub/RosterGrid.tsx`
+- `src/components/hub/clients/DivisionTabsShell.tsx`
+- `src/components/hub/clients/RosterFilterShell.tsx`
+- `src/components/hub/clients/RoundSelectorShell.tsx`
+- `src/components/hub/sections/PhaseHeaderSection.tsx`
+- `src/components/hub/sections/StandingsLiveSection.tsx`
+- `src/components/hub/sections/ProjectedBracketTeaserSection.tsx`
+- `src/components/hub/sections/HubRightColumnSection.tsx`
+- `src/components/hub/sections/NewsRailSection.tsx`
+- `src/components/hub/sections/ClasificacionSection.tsx`
+- `src/components/hub/sections/CalendarSection.tsx`
+- `src/components/hub/sections/RosterSection.tsx`
+- `src/components/hub/sections/BracketSection.tsx`
+- `src/components/hub/sections/OlimpoSection.tsx`
+- `src/components/hub/sections/TrainerProfileSection.tsx`
+
+**Edited:**
+- `src/components/shared/index.ts` (barrel: + new primitives, − orphan re-exports)
+- `src/components/hub/index.ts` (RosterView → RosterGrid)
+- `src/components/hub/ClasificacionView.tsx` (Server, slot-fed)
+- `src/components/hub/CalendarView.tsx` (Server, pre-renders 16 round slots)
+- `src/components/hub/HubRightColumn.tsx` (`<BackgroundDecoration>`)
+- `src/components/hub/BracketView.tsx` (`<BackgroundDecoration>`)
+- `src/components/hub/OlimpoView.tsx` (`<BackgroundDecoration>` + `formatSeasonSplit`)
+- `src/components/hub/PhaseBanner.tsx` (`formatSeasonSplit`)
+- `src/components/landing/PixelLanding.tsx` (`<BackgroundDecoration>` x2 + `formatSeasonSplit`)
+- `src/components/shared/layout/hub/SeasonSplitChip.tsx` (`formatSeasonSplit`)
+- `src/components/shared/layout/hub/PixelShell.tsx` (pure renderer, props-driven)
+- `src/components/shared/layout/hub/TopBar.tsx` (REQ-25 comment)
+- `src/app/hub/page.tsx`, `clasificacion/page.tsx`, `calendario/page.tsx`,
+  `entrenadores/page.tsx`, `bracket/page.tsx`, `olimpo/page.tsx`,
+  `entrenador/[id]/page.tsx` (all 7: EmptyState, top-level cheap await,
+  Suspense-wrapped section leaves)
+- `src/app/hub/layout.tsx` (cookie-aware data fetch, feeds `PixelShell`)
+- `src/app/archivo/layout.tsx` (cookie-free data fetch, feeds `PixelShell`)
+- `src/app/archivo/[season]/[split]/page.tsx` (`generateStaticParams`,
+  `dynamicParams = true`, `getArchiveDivisionPreview`, `formatSeasonSplit`)
+- `src/lib/supabase/server.ts` (`{ session?: false }` overload — Option C)
+- `src/lib/queries/seasons.queries.ts` (+ `getArchiveSplitParams`,
+  `getSplitByNames` cookie-free)
+- `src/lib/queries/archive.queries.ts` (+ `getArchiveDivisionPreview`,
+  `getPublicActiveSeasonWithSplit`, `getPublicAllSeasonsWithSplits`,
+  `getPublicCurrentRound`; `getArchiveChampions` cookie-free)
+- `src/lib/queries/index.ts` (exports for the new queries)
+
+**Deleted:**
+- `src/components/cross/PlayoffBracket.tsx`
+- `src/components/cross/MatchupCard.tsx`
+- `src/components/cross/` (empty)
+- `src/components/shared/DivisionSection/DivisionSection.tsx`
+- `src/components/shared/DivisionSection/` (empty)
+- `src/components/hub/RosterView.tsx` (became `RosterGrid.tsx`)
+
+### Deviations from design
+
+- **None on REQ-21 escape mechanism** — Option C adopted as designed. The
+  Option B fallback inside it (cookie-free public layout queries in
+  `archive.queries.ts`) was design-documented as the safety valve and is what
+  kept `/hub/*` from accidentally becoming static.
+- **REQ-24 formatter call sites:** the design listed 5 sites; the strict
+  verification gate `rg 'toUpperCase\(\).*toUpperCase\(\)' src/components src/app`
+  forced a 6th migration at `landing/PixelLanding.tsx:64`. Trivial one-line swap.
+- **REQ-23 `RosterView` rename:** kept design's `RosterGrid` rename. Barrel
+  updated.
+
+### F4-owned warnings (unchanged, per spec)
+
+`src/lib/data/fetchData.ts:5` and `src/lib/services/matchService.ts:5`
+`noUnusedImports` warnings still present, untouched.
+
+**Handed to reviewer.** `features.json` F5 left at `spec_ready` per spec — leader
+flips to `done` after reviewer sign-off.

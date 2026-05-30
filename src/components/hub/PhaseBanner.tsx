@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { formatSeasonSplit } from '@/lib/utils/formatters';
 import { type Phase, TOTAL_ROUNDS } from '@/lib/utils/phase';
 
 interface PhaseBannerProps {
@@ -31,7 +32,7 @@ export function PhaseBanner({
         </div>
         <div className="flex flex-col gap-1">
           <span className="font-pixel text-[9px] uppercase tracking-widest text-px-ink-dim">
-            {seasonName.toUpperCase()} · {splitName.toUpperCase()}
+            {formatSeasonSplit(seasonName, splitName)}
           </span>
           <h2
             className="font-pixel text-lg uppercase"

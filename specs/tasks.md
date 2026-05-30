@@ -1,326 +1,416 @@
-# Tasks — Batch F2: Type cleanup & dead-code removal
+# Tasks — Batch F5: Performance / modernización
 
 Atomic checklist for the Implementer. Do **not** start until `./init.sh` is green
 and this spec is approved. Check items off as they land; log decisions in
 `progress/history.md`.
 
-> Follow the ordering in `design.md` §Sequencing. Steps 1→8 are dependent — do
-> not parallelize. REQ-17 (lint flip) MUST be the last edit; any earlier and
-> `./init.sh` turns red and the harness stalls.
+> Follow the ordering in `design.md` §Implementation order. Steps 1→5 are
+> dependent in the listed sequence — primitives first because Suspense fallbacks
+> need `SectionSkeleton`; client→server push before Suspense to avoid re-wiring
+> twice; SSG archive last so the cookie-free client change is isolated.
+
+---
 
 ## 0. Pre-flight
 
-- [ ] **Baseline green:** run `./init.sh --quick` once. Expect typecheck clean,
-      `pnpm lint` 0 errors + pre-existing warnings (`noExplicitAny` is still at
-      `warn`). If lint shows new (non-`noExplicitAny`,
-      non-`noUnusedImports/Variables`) errors, stop and surface to leader.
-- [ ] **Verify Supabase typed client:** `grep -n 'createClient<Database>' src/lib/supabase/server.ts`.
-      It MUST already type the client with `Database`. If it does not, stop —
-      that's an out-of-scope structural change; report to leader.
-- [ ] **Re-confirm cast counts (these drive REQ-13/14/14b done criteria):**
-      `grep -c " as " src/lib/queries/admin.queries.ts` → expect `9`.
-      `grep -c " as " src/lib/queries/seasons.queries.ts` → expect `18`.
-      `grep -c " as " src/lib/queries/leagues.queries.ts` → expect `5`.
-- [ ] **Re-confirm orphan cluster shape:**
-      `ls src/components/divisions/` → expect 6 orphan folders
-      (`SplitDataProvider`, `SplitContent`, `ClassificationSection`,
-      `MatchesSection`, `ParticipantsList`, `ClassificationTable`) plus
-      `index.ts` (all to be removed / cleaned in step 1).
+- [ ] **Baseline green:** run `./init.sh` once. Expect typecheck clean, lint 0
+      errors (2 pre-existing `noUnusedImports` warnings in `fetchData.ts:5` and
+      `matchService.ts:5` are F4 debt — they don't fail lint). If anything else
+      is red, stop and surface to leader.
+- [ ] **Capture build baseline:** save `pnpm build` route table to
+      `progress/history.md` (route, Size, First Load JS for `/hub*` and
+      `/archivo*` rows). This is the comparison target for REQ-23's bundle
+      decrease and REQ-21's new static rows.
+- [ ] **Verify orphan status (REQ-23.4):**
+  - `rg "PlayoffBracket|MatchupCard|DivisionSection|DivisionBracket" src/app`
+    must return **empty**.
+  - `rg "PlayoffBracket|MatchupCard|DivisionSection|DivisionBracket" src/components`
+    will return the dead cluster + its re-exports in `src/components/shared/index.ts`.
+    Sanity check: no other consumer.
+  - If any consumer in `src/app/` shows up, stop and report — the orphan
+    deletion sub-step in REQ-23 is invalid as designed.
+- [ ] **Verify Next 16 + React 19.2 framework assumptions** with `vercel:nextjs`
+      and `vercel:next-cache-components` skills BEFORE writing code:
+  - REQ-21: confirm a cookie-free Supabase client (no `await cookies()`) is the
+    right escape from `force-dynamic` for `generateStaticParams`. If the docs
+    surface a cleaner Next 16-specific exemption, adopt it and log the
+    deviation in `progress/history.md`.
+  - REQ-22: confirm `async function` Server Components work as direct children
+    of `<Suspense>` without `cacheComponents` enabled. (Should be native; just
+    verify.)
+- [ ] **Confirm `formatSeasonSplit` doesn't already exist:**
+      `rg "formatSeasonSplit|formatSplitName" src/lib/utils` empty. (Original
+      brief said `formatSplitName` — the new helper is `formatSeasonSplit`.)
 
-## 1. Delete the orphan divisions cluster (REQ-15 + REQ-15b)
+---
 
-This is the **first** code-changing step. It removes the 5 importers of
-`queries.types.ts`, the 10 `any` annotations in `SplitDataProvider.tsx`, and
-the now-orphan `ClassificationTable/` + barrel in one shot — REQ-11, REQ-15,
-REQ-15b, and most of REQ-16 collapse into a single deletion phase.
+## 1. REQ-24 — Shared primitives (lands first)
 
-### 1a. Pre-deletion verification (gate)
+Each primitive is its own atomic commit. Land + migrate call sites + green
+`./init.sh` before moving to the next.
 
-- [ ] **Pre-deletion verification (MUST all match expectations before any
-      `rm -r`).** Run these greps and capture their output for the closeout
-      log:
+### 1a. `<EmptyState>`
 
-      ```sh
-      rg "SplitDataProvider|SplitContent|ClassificationSection|MatchesSection|ParticipantsList" src/app/
-      rg -l "from '@/components/divisions/(SplitDataProvider|SplitContent|ClassificationSection|MatchesSection|ParticipantsList)'" src/
-      rg "from '@/components/divisions'" src/
-      rg "ClassificationTable" src/
-      ```
+- [ ] Create `src/components/shared/ui/EmptyState.tsx` (Server Component, shape
+      per `design.md` §REQ-24).
+- [ ] Re-export from `src/components/shared/index.ts`.
+- [ ] Migrate inline empty blocks (6 sites):
+  - [ ] `src/app/hub/page.tsx:36`
+  - [ ] `src/app/hub/clasificacion/page.tsx:28`
+  - [ ] `src/app/hub/calendario/page.tsx:26`
+  - [ ] `src/app/hub/entrenadores/page.tsx:22`
+  - [ ] `src/app/hub/bracket/page.tsx:25`
+  - [ ] `src/app/hub/olimpo/page.tsx:55`
+- [ ] Verify: `rg '"py-20 text-center"' src/app` returns **empty**.
+- [ ] `./init.sh` green.
 
-      - Greps 1–3 must return **empty**.
-      - Grep 4 (`ClassificationTable`) must return matches **only** inside:
-        `src/components/divisions/ClassificationTable/` itself,
-        `src/components/divisions/index.ts`, and
-        `src/components/divisions/ClassificationSection/ClassificationSection.tsx`.
-      - If any other consumer surfaces (especially under `src/app/` or
-        `src/components/shared/`), **stop** and surface to leader.
+### 1b. `<BackgroundDecoration>`
 
-### 1b. Delete the orphan cluster (REQ-15)
+- [ ] Create `src/components/shared/ui/BackgroundDecoration.tsx` (Server,
+      `variant="starfield"` only).
+- [ ] Re-export from `src/components/shared/index.ts`.
+- [ ] Migrate inline `<div className="starfield" />` (5 sites):
+  - [ ] `src/components/hub/HubRightColumn.tsx:118`
+  - [ ] `src/components/hub/BracketView.tsx:220`
+  - [ ] `src/components/hub/OlimpoView.tsx:44`
+  - [ ] `src/components/landing/PixelLanding.tsx:58`
+  - [ ] `src/components/landing/PixelLanding.tsx:408`
+- [ ] Verify: `rg 'className="starfield"' src` returns **only the new
+      `BackgroundDecoration.tsx` definition**.
+- [ ] `./init.sh` green.
 
-- [ ] `rm -r src/components/divisions/SplitDataProvider`
-- [ ] `rm -r src/components/divisions/SplitContent`
-- [ ] `rm -r src/components/divisions/ClassificationSection`
-- [ ] `rm -r src/components/divisions/MatchesSection`
-- [ ] `rm -r src/components/divisions/ParticipantsList`
+### 1c. `<SectionSkeleton>`
 
-### 1c. Delete `ClassificationTable/` and clean the barrel (REQ-15b)
+- [ ] Create `src/components/shared/ui/SectionSkeleton.tsx` (Server, 9 variants
+      per `design.md` §REQ-24 SIZES map).
+- [ ] Re-export from `src/components/shared/index.ts`.
+- [ ] No call-site migration yet (REQ-22 is the consumer).
+- [ ] `./init.sh` green (lint must accept the unused-export — barrel re-export
+      satisfies lint).
 
-- [ ] `rm -r src/components/divisions/ClassificationTable`
-- [ ] Edit `src/components/divisions/index.ts` — remove the two
-      `ClassificationTable` lines (currently 6–7):
-      `export type { ClassificationTableProps } from './ClassificationTable/ClassificationTable';`
-      `export { default as ClassificationTable } from './ClassificationTable/ClassificationTable';`
-- [ ] Run `cat src/components/divisions/index.ts`. If the file has no
-      remaining `export` statements (only the leading comment block and/or
-      whitespace), `rm src/components/divisions/index.ts`. If any other
-      export remains (none expected today), leave the file and report the
-      surprise to leader before continuing.
+### 1d. `formatSeasonSplit`
 
-### 1d. Post-deletion verification
+- [ ] Create `src/lib/utils/formatters.ts` exporting
+      `formatSeasonSplit(season: string, split: string): string`.
+- [ ] Migrate inline `${…toUpperCase()} · ${…toUpperCase()}` builds:
+  - [ ] `src/app/archivo/[season]/[split]/page.tsx:22`
+  - [ ] `src/app/archivo/[season]/[split]/page.tsx:47`
+  - [ ] `src/components/shared/layout/hub/SeasonSplitChip.tsx:28`
+  - [ ] `src/components/hub/PhaseBanner.tsx:34`
+  - [ ] `src/components/hub/OlimpoView.tsx:47`
+- [ ] Verify: `rg 'toUpperCase\(\).*toUpperCase\(\)' src/components src/app`
+      returns **only `src/lib/utils/formatters.ts`**.
+- [ ] `./init.sh` green.
 
-- [ ] All must hold:
-  - [ ] `test ! -d src/components/divisions/SplitDataProvider`
-  - [ ] `test ! -d src/components/divisions/SplitContent`
-  - [ ] `test ! -d src/components/divisions/ClassificationSection`
-  - [ ] `test ! -d src/components/divisions/MatchesSection`
-  - [ ] `test ! -d src/components/divisions/ParticipantsList`
-  - [ ] `test ! -d src/components/divisions/ClassificationTable`
-  - [ ] `rg ": any\b|any\[\]" src/components/divisions/ 2>/dev/null` returns
-        empty (the directory may not exist at all — also acceptable).
-  - [ ] `rg "ClassificationTable" src/` returns **empty**.
-  - [ ] `index.ts` either no longer exists, or exists with zero exports
-        (verified via `cat src/components/divisions/index.ts`).
-- [ ] `pnpm exec tsc --noEmit` is clean.
-- **Done criteria:** six directories gone, no residual `any` in `divisions/`,
-  no residual `ClassificationTable` references anywhere in `src/`,
-  `index.ts` correctly handled (deleted if empty), typecheck clean.
+### 1e. Closeout REQ-24
 
-## 2. Delete dead client utilities (REQ-12)
+- [ ] Append `progress/history.md` entry: primitive paths + sites migrated +
+      `./init.sh` evidence.
 
-- [ ] `rm src/components/performance/PerformanceMonitor.tsx`
-- [ ] `rmdir src/components/performance` (must be empty; if not, list contents
-      and stop).
-- [ ] `rm src/hooks/useOptimizedFetch.ts`
-- [ ] `rmdir src/hooks` (must be empty; if not, list contents and stop).
-- [ ] Sanity grep — both names must return zero hits:
-      `grep -rn 'useOptimizedFetch\|PerformanceMonitor' src/`
-- [ ] `pnpm exec tsc --noEmit` is clean.
-- **Done criteria:** four `rm`/`rmdir` succeed, sanity grep is empty, typecheck
-  is clean. The last `any` annotation outside the orphan cluster
-  (`PerformanceMonitor.tsx:186 gtag?: (...args: any[]) => void`) is gone with
-  the file.
+---
 
-## 3. Delete `queries.types.ts` (REQ-11)
+## 2. REQ-23 — `'use client'` push to leaves (pragmatic)
 
-After step 1, zero importers remain (the 5 importers were all inside the
-orphan cluster, now deleted).
+Each component split is its own atomic step. After each: re-run `./init.sh` and
+record the client-bundle delta for the affected route in `progress/history.md`
+(the design promises decrease on `/hub/clasificacion`, `/hub/entrenadores`,
+`/hub/calendario`).
 
-- [ ] Sanity grep — must return zero hits:
-      `rg "from '@/lib/types/queries.types'" src/`
-      `rg 'from "@/lib/types/queries.types"' src/`
-      If non-empty, stop — a consumer was missed in step 1's pre-flight grep.
-- [ ] `rm src/lib/types/queries.types.ts`
-- [ ] `pnpm exec tsc --noEmit` is clean.
-- **Done criteria:** sanity greps empty, file deleted, typecheck clean.
+### 2a. `ClasificacionView` split
 
-## 4. Strip casts in `admin.queries.ts` (REQ-13)
+- [ ] Create `src/components/hub/clients/DivisionTabsShell.tsx` (`'use client'`,
+      shape per `design.md` §REQ-23.1). Lift `TabButton` from current
+      `ClasificacionView.tsx` verbatim.
+- [ ] Rewrite `src/components/hub/ClasificacionView.tsx` — remove `'use client'`
+      directive, drop `useState`, accept `primera` + `segunda` rows, render
+      `<DivisionTabsShell primeraSlot=… segundaSlot=… />`. Move
+      `StandingsTable`/`TableRow`/`Pip` to pure Server JSX.
+- [ ] Update the consumer page (`src/app/hub/clasificacion/page.tsx`) — no shape
+      change should be needed; verify props match.
+- [ ] Verify: `grep -L "'use client'" src/components/hub/ClasificacionView.tsx`
+      lists the path (no client directive).
+- [ ] `./init.sh` green. Capture bundle delta for `/hub/clasificacion`.
 
-Edit `src/lib/queries/admin.queries.ts`. Drop these 9 casts in order:
+### 2b. `RosterView` split
 
-- [ ] **`getAdminSeasons` (line 84):** `return (data ?? []) as Season[];` →
-      `return data ?? [];`
-- [ ] **`getAdminSplitsBySeason` (line 106):** same pattern.
-- [ ] **`getAdminLeaguesBySplit` (line 129):** same pattern.
-- [ ] **`getAdminTrainers` (line 150):** same pattern.
-- [ ] **`getActiveSplitInfo` (lines 240, 254, 266):**
-      `const season = seasonData as Season;` → `const season = seasonData;`
-      `const split = splitData as Split;` → `const split = splitData;`
-      `leagues: (leaguesData ?? []) as League[],` → `leagues: leaguesData ?? [],`
-- [ ] **`getAdminParticipantsByLeague` (line 176, joined select):**
-      - Try removing the cast first; if Supabase v2 infers the join correctly
-        from `'*, trainer:trainers(*)'`, that's the cleanest fix.
-      - If inference fails (e.g. `trainer: Trainer[]` instead of `Trainer`), add
-        Zod schemas in `src/lib/types/schemas.ts`:
+- [ ] Create `src/components/hub/clients/RosterFilterShell.tsx` (`'use client'`,
+      named-slot pattern per `design.md` §REQ-23.2: `allCount`, `d1Count`,
+      `d2Count` + `allSlot`, `d1Slot`, `d2Slot`).
+- [ ] Rewrite `src/components/hub/RosterView.tsx` — remove `'use client'`,
+      rename to `RosterGrid` (pure Server JSX rendering `RosterCardVM[]`).
+      Update the barrel/exports.
+- [ ] Update `src/app/hub/entrenadores/page.tsx` — pre-render the three filtered
+      grids server-side, hand them as named slots to `RosterFilterShell`.
+- [ ] Verify: `grep -L "'use client'" src/components/hub/RosterView.tsx` (or
+      the renamed `RosterGrid.tsx`) returns the path.
+- [ ] `./init.sh` green. Capture bundle delta for `/hub/entrenadores`.
 
-        ```ts
-        export const LeagueParticipantSchema = z.object({
-          id: z.string().uuid(),
-          initial_seed: z.number().nullable(),
-          league_id: z.string().uuid().nullable(),
-          lives: z.number(),
-          status: z.string().nullable(),
-          trainer_id: z.string().uuid().nullable(),
-        });
-        export const ParticipantWithTrainerSchema = LeagueParticipantSchema.extend({
-          trainer: TrainerSchema,
-        });
-        export type ParticipantWithTrainer = z.infer<typeof ParticipantWithTrainerSchema>;
-        ```
+### 2c. `CalendarView` split
 
-        Then in `admin.queries.ts`, replace the cast with a per-row safeParse
-        loop modeled on `leagues.queries.ts:94-120`. Move the
-        `ParticipantWithTrainer` type alias on line 157-159 to a re-export of
-        the new Zod-derived type to avoid two definitions.
-      - Document the chosen path (inference vs Zod) in `progress/history.md`.
-- [ ] **`getAdminMatchesByLeague` (line 211, joined select):** same decision
-      tree as above. If Zod is needed, add `MatchWithTrainersSchema` extending
-      `MatchSchema` with `home_trainer: TrainerSchema.nullable()` +
-      `away_trainer: TrainerSchema.nullable()`, and rewrite the existing
-      `MatchWithTrainers` type alias (line 184-187) as the inferred type.
-- [ ] Sanity — must return zero hits:
-      `grep -nE "\\bas (Season|Split|League|Trainer|ParticipantWithTrainer|MatchWithTrainers)" src/lib/queries/admin.queries.ts`
-- [ ] `pnpm exec tsc --noEmit` is clean.
-- **Done criteria:** no `as Type[]` / `as Type` casts in the file, all functions
-  still throw on Supabase error (admin convention preserved), typecheck clean,
-  manual smoke at `/admin/dashboard` shows unchanged data.
+- [ ] Create `src/components/hub/clients/RoundSelectorShell.tsx` (`'use client'`,
+      shape per `design.md` §REQ-23.3). Owns `useState<number>`, renders
+      timeline strip, toggles visibility via CSS `hidden` on 16 pre-rendered
+      slots (do **not** mount/unmount — preserve Suspense boundaries).
+- [ ] Rewrite `src/components/hub/CalendarView.tsx` — remove `'use client'`,
+      become a Server orchestrator that pre-renders all 16 round detail blocks
+      and passes them as `roundSlots: { round: number; node: ReactNode }[]` to
+      `<RoundSelectorShell>`.
+- [ ] Update the page (`src/app/hub/calendario/page.tsx`) if its prop shape
+      changes.
+- [ ] Verify: `grep -L "'use client'" src/components/hub/CalendarView.tsx`
+      returns the path.
+- [ ] Bundle reality-check: confirm HTML weight increase from 16× pre-render is
+      under the ~16KB-gzipped estimate. If it's materially larger (e.g. heavy
+      images per match), stop and surface to leader — may need to fall back to
+      the rejected alternative.
+- [ ] `./init.sh` green. Capture bundle delta for `/hub/calendario`.
 
-## 5. Strip casts in `seasons.queries.ts` (REQ-14)
+### 2d. `PlayoffBracket` + `MatchupCard` + `DivisionSection` orphan deletion
 
-Edit `src/lib/queries/seasons.queries.ts`. There are 18 casts in 4 clusters.
+- [ ] Final orphan grep: `rg "PlayoffBracket|MatchupCard|DivisionSection|DivisionBracket" src/app`
+      must be empty. If something appeared since pre-flight, stop and report.
+- [ ] Delete files:
+  - [ ] `src/components/cross/PlayoffBracket.tsx`
+  - [ ] `src/components/cross/MatchupCard.tsx`
+  - [ ] `src/components/cross/` directory (should be empty after the two
+        deletes — verify with `ls` and remove the dir).
+  - [ ] `src/components/shared/DivisionSection/DivisionSection.tsx`
+  - [ ] `src/components/shared/DivisionSection/` directory (verify empty,
+        remove).
+- [ ] Edit `src/components/shared/index.ts` — remove the `DivisionBracket` /
+      `DivisionSection` re-exports (lines ~6-9 per design).
+- [ ] **Do NOT delete `src/lib/types/matches.ts` `Matchup`** — still consumed by
+      `lib/services/bracketService.ts` and `lib/services/matchService.ts`.
+      Verify with `rg "Matchup" src/lib/services` (should still hit).
+- [ ] Verify: `rg "PlayoffBracket|MatchupCard|DivisionSection|DivisionBracket" src/`
+      returns empty.
+- [ ] `./init.sh` green.
 
-- [ ] **`getActiveSeasonWithSplit` (lines 40-44):** remove the `Record<string, unknown>`
-      laundering and the `find` predicate cast.
+### 2e. Closeout REQ-23
 
-      ```ts
-      // before
-      const rawData = data as Record<string, unknown>;
-      const rawSplits = (rawData.splits as unknown[]) ?? [];
-      const activeSplit =
-        rawSplits.find(
-          (s) => (s as { is_active: boolean; created_at: string }).is_active,
-        ) ?? null;
-      const result = SeasonWithActiveSplitSchema.safeParse({ ...rawData, activeSplit });
+- [ ] Append `progress/history.md` entry: components split, files deleted,
+      bundle deltas per route, `./init.sh` evidence.
 
-      // after
-      const splits = data.splits ?? [];
-      const activeSplit = splits.find((s) => s.is_active) ?? null;
-      const result = SeasonWithActiveSplitSchema.safeParse({ ...data, activeSplit });
-      ```
+---
 
-- [ ] **`getAllSeasons` (line 80):** drop `as Season[]`. `return data ?? [];`.
-- [ ] **`getAllSeasonsWithSplits` (lines 109-114):** same pattern as
-      `getActiveSeasonWithSplit` — drop `Record<string, unknown>` cast on the
-      loop header (`for (const raw of data) {`) and the sort comparator cast
-      (`(a, b) => a.split_order - b.split_order`).
-- [ ] **`getSeasonWithSplits` (lines 157-163):** same.
-- [ ] **`getSeasonByName` (lines 202-208):** same.
-- [ ] **`getSplitByNames` (lines 248, 265):** drop both `as Season` and
-      `as Split` casts from the `.single()` returns.
-- [ ] Sanity — must return zero hits:
-      `grep -nE "\\bas (Season|Split|Record<string, unknown>|unknown\\[\\]|\\{ split_order|\\{ is_active)" src/lib/queries/seasons.queries.ts`
-- [ ] `pnpm exec tsc --noEmit` is clean.
-- **Done criteria:** all 18 casts gone, log-and-return-null behavior preserved
-  on errors, Zod `safeParse` boundaries unchanged, typecheck clean.
+## 3. REQ-22 — Granular Suspense per hub section
 
-## 6. Strip casts in `leagues.queries.ts` (REQ-14b)
+Land per hub route. Each route gets its own atomic step; `./init.sh` green
+between them.
 
-Edit `src/lib/queries/leagues.queries.ts`. 5 casts (new scope, 2026-05-28).
+### 3a. `/hub` (main page)
 
-- [ ] **`getAllLeagues` (line 46):** `return (data ?? []) as LeagueInfo[];` →
-      `return data ?? [];` — Supabase v2 infers
-      `Pick<Leagues, 'id' | 'tier_name' | 'tier_priority'>[]`, structurally
-      equal to `LeagueInfo` from `schemas.ts:80-84`.
-- [ ] **`getRankingsByLeague` (line 96):**
-      `for (const ranking of (rankingsData ?? []) as LeagueRanking[]) {` →
-      `for (const ranking of rankingsData ?? []) {`. The existing
-      `RankingEntrySchema.safeParse` on each row (lines 99-117) remains the
-      runtime guarantee.
-- [ ] **`getLeagueByTier` (line 197):** `return data as LeagueInfo;` →
-      `return data;` — `.single()` on the same column list as line 46.
-- [ ] **`getParticipantsByLeague` (line 253, joined select):**
-      - Select shape:
-        `.from('league_participants').select('trainer_id, lives, trainers!inner(id, nickname, avatar_url)')`.
-      - Try removing `((data ?? []) as ParticipantRow[])` first; `!inner`
-        constrains to a single trainer object so inference should yield
-        `{ trainer_id, lives, trainers: { id, nickname, avatar_url } }[]`.
-      - If inference yields `trainers: { ... }[]` (array) instead of the single
-        object the `.map` consumes, add `ParticipantWithTrainerJoinSchema` in
-        `src/lib/types/schemas.ts` and `safeParse` per row, modeled on
-        `leagues.queries.ts:99-117`.
-      - Local `ParticipantRow` alias at lines 243-251: if inference works,
-        delete the alias (redundant); if Zod is used, rewrite it as
-        `type ParticipantRow = z.infer<typeof ParticipantWithTrainerJoinSchema>;`.
-      - Document the chosen path in `progress/history.md`.
-- [ ] **`getMatchesByLeague` (line 358, joined select):**
-      - Select shape includes
-        `home_trainer:trainers!matches_home_trainer_id_fkey(*)` +
-        `away_trainer:trainers!matches_away_trainer_id_fkey(*)` (both nullable).
-      - Try removing the `as MatchRow[]` first.
-      - If inference fails (often happens with `!fkey_name` syntax — the
-        cardinality may be misreported), add `MatchWithTrainerJoinSchema` in
-        `schemas.ts` with
-        `home_trainer: TrainerSchema.nullable()` +
-        `away_trainer: TrainerSchema.nullable()`, then `safeParse` per row.
-      - Local `MatchRow` alias at lines 334-353: same delete-or-rewrite
-        decision as `ParticipantRow`.
-      - Document the chosen path in `progress/history.md`.
-- [ ] Sanity — must return zero hits:
-      `grep -c " as " src/lib/queries/leagues.queries.ts`
-- [ ] `pnpm exec tsc --noEmit` is clean.
-- **Done criteria:** all 5 casts gone, log-and-return-null behavior preserved
-  on errors, `RankingEntrySchema.safeParse` boundary untouched, manual smoke
-  at `/hub`, `/hub/clasificacion`, `/hub/calendario` shows unchanged data,
-  typecheck clean.
+- [ ] Create `src/components/hub/sections/PhaseHeaderSection.tsx` — async leaf
+      doing `getCurrentRound(splitId)` (+ whatever the existing
+      `PhaseBanner+StoryBeat` needs).
+- [ ] Create `src/components/hub/sections/StandingsLiveSection.tsx` — async
+      leaf doing `Promise.all([getDivisionPreview, getMatchesByRound])` then
+      rendering `<StandingsLive …/>`.
+- [ ] Create `src/components/hub/sections/ProjectedBracketTeaserSection.tsx`
+      — async leaf doing `getDivisionPreview` then rendering the teaser.
+- [ ] Create `src/components/hub/sections/HubRightColumnSection.tsx` — async
+      leaf for the right column's data deps.
+- [ ] Create `src/components/hub/sections/NewsRailSection.tsx` — async leaf for
+      the news rail.
+- [ ] Rewrite `src/app/hub/page.tsx`:
+  - [ ] Top-level `await` only `getActiveSeasonWithSplit()`.
+  - [ ] Render the section leaves wrapped in `<Suspense fallback={<SectionSkeleton variant=… />}>`
+        per the diff in `design.md` §REQ-22.
+  - [ ] Empty state stays at the top (returns `<EmptyState>` when no active
+        split — already migrated in REQ-24).
+- [ ] Verify no `export const dynamic = 'force-dynamic'` was added (would
+      break streaming).
+- [ ] Manual: `pnpm dev`, throttle to Slow 3G in DevTools, load `/hub`. Each
+      section skeleton should resolve independently. Record observation in
+      `progress/history.md` (one-line note is fine).
+- [ ] `./init.sh` green.
 
-## 7. Snapshot lint check (REQ-16 — gate before flip)
+### 3b. `/hub/clasificacion`
 
-- [ ] Run `pnpm check` to auto-fix any formatting drift introduced during edits.
-- [ ] Run `pnpm lint`. Expected output: **0 errors, 0 warnings.**
-- [ ] If warnings remain:
-  - List them with `pnpm lint 2>&1 | grep -E 'warn|×'`.
-  - If they are `noExplicitAny`: locate the offending file/line, type it, repeat.
-  - If they are anything else (`noUnusedImports`, `noUnusedVariables`,
-    `useExhaustiveDependencies`, etc.) that you introduced — fix them.
-  - If they are pre-existing in a file you did NOT touch, stop and surface to
-    leader. Do not silently expand scope.
-- **Done criteria:** `pnpm lint` exits with **0 errors and 0 warnings**.
+- [ ] Create `src/components/hub/sections/ClasificacionSection.tsx` — async
+      leaf doing `Promise.all([getDivisionPreview, getMatchesByRound])`,
+      returns `<ClasificacionView primera=… segunda=… />`.
+- [ ] Rewrite `src/app/hub/clasificacion/page.tsx`: top-level awaits only
+      `getActiveSeasonWithSplit()`, then `<Suspense fallback={<SectionSkeleton variant="standings"/>}>`
+      wrapping `<ClasificacionSection splitId=… />`.
+- [ ] `./init.sh` green.
 
-## 8. Flip `noExplicitAny` to `error` (REQ-17 — LAST STEP)
+### 3c. `/hub/calendario`
 
-- [ ] Edit `biome.json`, line ~50:
-      `"noExplicitAny": "warn"` → `"noExplicitAny": "error"`.
-- [ ] Run `pnpm lint`. Expected: still **0 errors / 0 warnings** (the rule was
-      green at warn, it's green at error too because step 7 zeroed the count).
-- [ ] Run the **full** `./init.sh` (no `--quick`). Expected: green through
-      typecheck, lint, build (20 pages — unchanged from FR11 baseline).
-- [ ] Confirm `grep -n '"noExplicitAny"' biome.json` shows `"error"`.
-- **Done criteria:** `./init.sh` (full) exits green; biome.json shows
-  `noExplicitAny: "error"`.
+- [ ] Create `src/components/hub/sections/CalendarSection.tsx` — async leaf
+      doing `Promise.all([getMatchesByRound, getCurrentRound])`, returns
+      `<CalendarView …/>`.
+- [ ] Rewrite `src/app/hub/calendario/page.tsx` with the same pattern.
+- [ ] `./init.sh` green.
 
-## 9. Closeout
+### 3d. `/hub/entrenadores`
 
-- [ ] Append a dated entry to `progress/history.md` summarizing: files/folders
-      deleted (orphan cluster + `ClassificationTable/` + barrel handling +
-      dead utilities + `queries.types.ts`), Zod schemas added (if any, per
-      REQ-13 / REQ-14b joined-select decisions), cast counts before/after
-      (9+18+5 → 0), the `noExplicitAny: error` flip, and the green
-      `./init.sh` evidence (key lines). Record whether
-      `src/components/divisions/index.ts` was deleted (empty post-cleanup) or
-      retained (some other export survived — unexpected; flag).
-- [ ] Note the orphaned status of `src/components/shared/DivisionSection/`
-      for the future dead-code sweep (different path; not in F2's deletion
-      list).
-- [ ] Tag the batch handoff in the log as ready for reviewer.
-- [ ] **Do not** modify `features.json` `status` — leader transitions F2 from
-      `in_progress` → `done` after reviewer sign-off.
+- [ ] Create `src/components/hub/sections/RosterSection.tsx` — async leaf
+      doing `Promise.all([getDivisionPreview, getMatchesByRound])`, computes
+      the three filtered card sets, renders `<RosterFilterShell>` with the
+      three named slots.
+- [ ] Rewrite `src/app/hub/entrenadores/page.tsx` per pattern.
+- [ ] `./init.sh` green.
 
-## Reviewer's evidence checklist (paste into review)
+### 3e. `/hub/bracket`
 
-| Check                                                              | Command                                                                                                  | Expected                          |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| Orphan cluster gone (6 dirs)                                       | `for d in SplitDataProvider SplitContent ClassificationSection MatchesSection ParticipantsList ClassificationTable; do test ! -d "src/components/divisions/$d"; done` | exit 0                            |
-| No `ClassificationTable` references                                | `rg "ClassificationTable" src/`                                                                          | empty                             |
-| `divisions/index.ts` correctly handled                             | `test ! -f src/components/divisions/index.ts \|\| ! grep -q '^export' src/components/divisions/index.ts` | exit 0 (file gone OR no exports)  |
-| Dead client utilities gone                                         | `test ! -e src/hooks/useOptimizedFetch.ts && test ! -e src/components/performance/PerformanceMonitor.tsx` | exit 0                            |
-| Dead dirs gone                                                     | `test ! -d src/hooks && test ! -d src/components/performance`                                            | exit 0                            |
-| `queries.types.ts` gone                                            | `test ! -f src/lib/types/queries.types.ts`                                                               | exit 0                            |
-| No legacy type-module imports                                      | `grep -Rn 'queries.types' src/`                                                                          | empty                             |
-| Zero casts in `admin.queries.ts`                                   | `grep -c ' as ' src/lib/queries/admin.queries.ts`                                                        | `0`                               |
-| Zero casts in `seasons.queries.ts`                                 | `grep -c ' as ' src/lib/queries/seasons.queries.ts`                                                      | `0`                               |
-| Zero casts in `leagues.queries.ts`                                 | `grep -c ' as ' src/lib/queries/leagues.queries.ts`                                                      | `0`                               |
-| Zero `any` annotations in `src/`                                   | `rg ': any\\b\|any\\[\\]' src/`                                                                          | empty                             |
-| `noExplicitAny` flipped                                            | `grep -n '"noExplicitAny"' biome.json`                                                                   | `"error"`                         |
-| Typecheck                                                          | `pnpm exec tsc --noEmit`                                                                                 | exit 0                            |
-| Lint                                                               | `pnpm lint`                                                                                              | 0 errors, 0 warnings              |
-| Build                                                              | `pnpm build`                                                                                             | 20 pages, exit 0                  |
-| Full harness                                                       | `./init.sh`                                                                                              | "Harness ready — baseline green." |
+- [ ] Create `src/components/hub/sections/BracketSection.tsx` — async leaf
+      doing `Promise.all([getDivisionPreview, bracket data fetch, getCurrentRound])`.
+- [ ] Rewrite `src/app/hub/bracket/page.tsx` per pattern.
+- [ ] `./init.sh` green.
+
+### 3f. `/hub/olimpo`
+
+- [ ] Create `src/components/hub/sections/OlimpoSection.tsx` — async leaf
+      doing the existing Olimpo data fetches.
+- [ ] Rewrite `src/app/hub/olimpo/page.tsx` per pattern.
+- [ ] `./init.sh` green.
+
+### 3g. `/hub/entrenador/[id]`
+
+- [ ] Create `src/components/hub/sections/TrainerProfileSection.tsx` — async
+      leaf doing `Promise.all([getTrainer, getDivisionPreview, getMatchesByRound])`.
+- [ ] Rewrite `src/app/hub/entrenador/[id]/page.tsx` per pattern.
+- [ ] `./init.sh` green.
+
+### 3h. Closeout REQ-22
+
+- [ ] Manual smoke: in `pnpm dev`, walk each hub route with DevTools network
+      throttled. Confirm independent panel hydration. One-line note per route
+      in `progress/history.md`.
+- [ ] `view-source http://localhost:3000/hub` → confirm `<template>` islands
+      per panel (Next.js streaming markers). Record evidence.
+- [ ] Append `progress/history.md` entry summarizing REQ-22.
+
+---
+
+## 4. REQ-21 — Static generation of `/archivo/[season]/[split]`
+
+### 4a. Cookie-free Supabase client
+
+- [ ] Decide between Option C (overload `createClient({ session: false })`) and
+      a separate `createPublicClient`. Default: Option C per design. If the
+      framework verification surfaced a cleaner Next 16-specific path, pick
+      that and log the deviation in `progress/history.md` before coding.
+- [ ] Edit `src/lib/supabase/server.ts` — add the `{ session?: false }` overload
+      that constructs the client with `{ cookies: { getAll: () => [], setAll: () => {} } }`
+      and never calls `await cookies()`. Default behavior (no flag) is
+      unchanged.
+- [ ] `pnpm exec tsc --noEmit` clean.
+
+### 4b. `getArchiveSplitParams`
+
+- [ ] Add `getArchiveSplitParams(): Promise<Array<{ season: string; split: string }>>`
+      to `src/lib/queries/seasons.queries.ts`. Uses `createClient({ session: false })`,
+      reads `seasons.name, splits(name)`, flatMaps to lowercase URL-shaped
+      pairs (per design §REQ-21 diff sketch).
+- [ ] Wrap with `react.cache` per repo convention.
+- [ ] Export from `src/lib/queries/index.ts`.
+- [ ] Quick smoke: write a temporary throwaway script or just trust the build
+      step — `pnpm build` will exercise it. Don't add a permanent test.
+
+### 4c. Page exports
+
+- [ ] Edit `src/app/archivo/[season]/[split]/page.tsx`:
+  - [ ] `export async function generateStaticParams() { return getArchiveSplitParams(); }`
+  - [ ] `export const dynamicParams = true;`
+  - [ ] Verify the rest of the page (heading uses `formatSeasonSplit` already
+        from REQ-24).
+- [ ] Migrate archive queries (`getArchiveChampions`, `getSplitByNames`, the
+      `getDivisionPreview` call **only when called from the archive page**) to
+      use `createClient({ session: false })` so the route is truly static.
+  - [ ] Cleanest path: keep `getDivisionPreview` on the cookie-aware client; if
+        the archive page's call to it forces `force-dynamic`, add an archive-
+        specific `getDivisionPreviewPublic` per-design Option B fallback.
+        Decide live, document.
+- [ ] **Verify** the `pnpm build` route table shows `/archivo/[season]/[split]`
+      rendered statically with one row per `(season, split)` pair. Capture and
+      paste into `progress/history.md`.
+
+### 4d. Verification
+
+- [ ] `./init.sh` green.
+- [ ] `pnpm build` output: every `(season, split)` from DB shows as static
+      under `/archivo/[season]/[split]`. Compare to baseline captured in
+      pre-flight.
+- [ ] `pnpm start` + curl an archive URL → response includes Next.js static
+      cache marker (header `x-nextjs-cache` should not be `DYNAMIC` for the
+      pre-rendered URLs).
+- [ ] `/archivo/<bogus>/<bogus>` returns `404` (notFound path via
+      `dynamicParams = true`).
+
+### 4e. Closeout REQ-21
+
+- [ ] Append `progress/history.md` entry: cookie-free helper shape, archive
+      queries migrated, static row count.
+
+---
+
+## 5. REQ-25 — Image + animation audit (verify-only)
+
+- [ ] `rg 'fill[^=]*=' src/app/hub src/app/archivo src/components/hub src/components/landing src/components/shared/layout/hub --type tsx`
+      → expect zero hits OR every hit also has a `sizes=` attribute.
+- [ ] `rg 'Number.POSITIVE_INFINITY' src/app/hub src/app/archivo src/components/hub src/components/landing src/components/shared/layout/hub`
+      → expect zero hits.
+- [ ] Confirm `src/components/shared/layout/hub/TopBar.tsx:46` `<Image>` still
+      has explicit `width={40} height={40}`.
+- [ ] If audit returns clean: append `progress/history.md` entry noting the
+      live tree is clean AND listing the dead `home/Hero.tsx`,
+      `home/CurrentSeason.tsx`, `shared/layout/Navbar.tsx`,
+      `shared/ui/Button/LinkButton.tsx` cluster as future-sweep debt.
+- [ ] If audit finds a regression: fix in place, document in the same entry.
+
+---
+
+## 6. Final closeout
+
+- [ ] `./init.sh` (full, not `--quick`) green.
+- [ ] `pnpm build` final route table captured in `progress/history.md`. Diff
+      vs baseline:
+  - [ ] New static rows for `/archivo/[season]/[split]` per (season, split).
+  - [ ] Client JS for `/hub/clasificacion`, `/hub/entrenadores`,
+        `/hub/calendario` **decreased** vs baseline (REQ-23 promise).
+  - [ ] No regression on other routes.
+- [ ] Append a final dated `progress/history.md` entry: `## 2026-05-28 — F5
+      implemented (implementer → reviewer)` summarizing per-REQ work, bundle
+      deltas, deviations from design (if any), and explicit confirmation that
+      the 2 F4-owned warnings are unchanged.
+- [ ] Leave `features.json` F5 at `spec_ready`. The leader flips to `done`
+      after reviewer sign-off.
+
+---
+
+## Reviewer's evidence checklist (for traceability)
+
+The Reviewer will independently re-run these. Surface command output verbatim
+in `progress/history.md` for each to keep the audit trail thick.
+
+| Check | Command |
+|---|---|
+| Empty-state migration | `rg '"py-20 text-center"' src/app` → empty |
+| Starfield centralized | `rg 'className="starfield"' src` → only `BackgroundDecoration.tsx` |
+| Format helper adoption | `rg 'toUpperCase\(\).*toUpperCase\(\)' src/components src/app` → only `formatters.ts` |
+| ClasificacionView is Server | `grep -L "'use client'" src/components/hub/ClasificacionView.tsx` returns path |
+| RosterView is Server | `grep -L "'use client'" src/components/hub/RosterView.tsx` (or renamed) returns path |
+| CalendarView is Server | `grep -L "'use client'" src/components/hub/CalendarView.tsx` returns path |
+| Orphan cluster gone | `rg "PlayoffBracket\|MatchupCard\|DivisionSection\|DivisionBracket" src` empty |
+| Suspense boundaries present | `rg "<Suspense" src/app/hub` returns ≥ 1 hit per hub route |
+| Archive SSG live | `pnpm build` output table shows static rows for every (season, split) under `/archivo/[season]/[split]` |
+| Lint clean | `pnpm lint` → 0 errors / 2 warnings (pre-existing only) |
+| `./init.sh` independent run | full green |
+| Bundle decrease | `/hub/clasificacion`, `/hub/entrenadores`, `/hub/calendario` client JS < baseline |
+
+---
+
+## Decisions the Implementer may need to make live (and must log)
+
+- **REQ-21 escape mechanism:** Option C (`{ session: false }` flag) vs a Next 16
+  framework-specific exemption surfaced by `vercel:nextjs` docs. Default: C.
+- **REQ-23.2 (Roster) slot strategy:** confirmed pre-rendered three slots
+  (per design), not "render all + filter on client". Don't switch.
+- **REQ-23.3 (Calendar) bundle reality:** if the 16× pre-render blows past ~32KB
+  gzipped delta, escalate before merging.
+- **REQ-22 leaf granularity:** if a section's data fetch is genuinely cheap
+  (e.g. `PhaseHeaderSection` only needs `getCurrentRound`), keep it in its own
+  Suspense anyway for consistency — the framework streams the cheap one first
+  with zero penalty.

@@ -4,7 +4,7 @@
   "updated": "2026-05-31",
   "statusLegend": ["pending", "spec_ready", "in_progress", "done"],
   "activeBatch": [],
-  "_note_activeBatch": "F3 closed 2026-05-31 (reviewer signed off — init.sh green, 23 pages, 0 lint errors, only the 2 known F4-owned warnings). Net result: useLeagueSelector hook adopted by 3 Managers (-137 LOC net), 7 new *InputSchema entries with safeParse boundaries in all 6 admin Managers, SeasonsManager pilot fully migrated to Server Actions + useOptimistic. MatchesManager hook adoption DEFERRED to F6 (legit dual-cascade). RegulationsUploadSchema ADOPTED. No deferrals breached. NEXT CANDIDATE: F4 (Cacheo coherente — dependsOn F1+F3 both done; owns 'use cache' + cacheTag, fetchData.ts deletion, matchService move, cacheComponents enable).",
+  "_note_activeBatch": "F4 closed 2026-05-31 (reviewer APPROVED). Next candidate: F6 (Refactor mayores) — dependsOn ['F3','F4'] both done.",
   "initiatives": {
     "architecture-review": "ARCHITECTURE_REVIEW.html — phases F0–F6 (F2 still pending)",
     "pixel-redesign": "docs/design_handoff_calmind_pixel/ — phases FR0–FR10 (active)"
@@ -96,16 +96,28 @@
       "id": "F4",
       "phase": "Fase 4 — Cacheo coherente",
       "effort": "1-2 días",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F1", "F3"],
       "items": [
-        "Migrate queries to 'use cache' + cacheTag",
-        "Call revalidateTag('matches') from the Server Action that updates results",
-        "Delete src/lib/data/fetchData.ts (dual-cache layer)",
-        "Move src/lib/services/matchService.ts (pure fns) to src/lib/utils/matches.ts",
-        "Enable cacheComponents in next.config.ts alongside 'use cache' (inherited from F1 / REQ-5)"
-      ]
+        "[DONE 2026-05-31] Delete src/lib/data/fetchData.ts (REQ-30)",
+        "[DONE 2026-05-31] Move src/lib/services/matchService.ts → src/lib/utils/matches.ts (REQ-31)",
+        "[DONE 2026-05-31] Remove dynamicParams=true from /archivo/[season]/[split] (REQ-32)",
+        "[DONE 2026-05-31] Flip 9 hub/archive query call-sites to createClient({session:false}) (REQ-33)",
+        "[DONE 2026-05-31] 'use cache' + cacheTag + cacheLife on 21 readers across archive/seasons/leagues/tournament/trainers/bracket (REQ-34/35/36)",
+        "[DONE 2026-05-31] Wrap 17 page-level awaits in <Suspense> (REQ-44) + extract Footer year to client leaf (REQ-43)",
+        "[DONE 2026-05-31] Enable cacheComponents:true in next.config.ts (REQ-40)",
+        "[DONE 2026-05-31] updateTag invalidation × 7 in seasons/_actions.ts (REQ-38)",
+        "[DONE 2026-05-31] Cache tag taxonomy section added to docs/conventions.md (REQ-41)",
+        "[DONE 2026-05-31] Build matrix regression guard: zero ƒ Dynamic, hub/archive ○, admin ◐ (REQ-37/39)"
+      ],
+      "deferred": [
+        "REQ-44 admin extension: 4 admin RSC awaits also wrapped (out of original spec, approved live by user before Wave B flip).",
+        "docs/conventions.md lines 24-27 still warn against the deleted src/lib/data/fetchData.ts — flagged by reviewer as stale, deferred to a F6 doc micro-batch.",
+        "ShellSkeleton fallback used for admin pages too — a tighter AdminShellSkeleton variant deferred to F6 polish.",
+        "Custom cacheLife profiles (beyond the 'minutes'/'hours' defaults) deferred to F6 if observed cache invalidation patterns demand it."
+      ],
+      "note": "F4 closed 2026-05-31 (reviewer APPROVED — ./init.sh green, 30 generated pages, zero ƒ Dynamic in build output). Net result: (a) dead code removed (fetchData.ts deleted, matchService.ts relocated to utils); (b) Next.js 16 Cache Components mode enabled (cacheComponents:true); (c) 21 hub/archive query readers wrapped with 'use cache' + cacheTag + cacheLife using the 8-tag taxonomy (seasons, splits:${id}, matches:${splitId}, rankings:${leagueId}, participants:${splitId}, bracket:${splitId}, trainers, archive); (d) seasons Server Actions wired with 7 updateTag invalidations on the success branch (graceful contract preserved); (e) build matrix: /hub/*, /archivo, / now ○ Static; /hub/entrenador/[id], /archivo/[season]/[split], /admin/* now ◐ Partial Prerender; legend collapsed to ○/◐ only under cacheComponents mode (no more ƒ); (f) Suspense boundaries added to 17 page-level awaits (13 hub/archive + 4 admin live decision); Footer.year extracted to client leaf to satisfy cacheComponents constraint; (g) cache tag taxonomy section appended to docs/conventions.md with per-query assignment, mutation recipe, staleness callout. Live decisions: Wave A pre-flights surfaced 4 admin awaits not in spec — wrapped them with user approval before Wave B flag flip; Wave B implemented as a single atomic operation (REQ-40 + REQ-34/35/36) since cacheComponents:true and 'use cache' are inseparable in Next 16.1.1 (red intermediate states acceptable, green at wave end); admin queries intentionally NOT cached (REQ-39 verified). Files net delta: 2 created (FooterYear.tsx, ShellSkeleton.tsx), 2 deleted (fetchData.ts, matchService.ts), 1 moved (matches.ts), ~25 edited. Two spec rewrites required (first drift: REQ-40 ordering; second drift: cacheComponents requires Suspense+'use cache' atomic ship + Footer Date leak)."
     },
     {
       "id": "F5",

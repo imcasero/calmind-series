@@ -1,10 +1,10 @@
+import type { J15Match, J16Match, Matchup } from '@/lib/types/matches';
+import type { RankingEntry } from '@/lib/types/schemas';
 import {
   buildJ15Matchups,
   getFromJ15Match,
   getJ16Match,
-} from '@/lib/services/matchService';
-import type { J15Match, J16Match, Matchup } from '@/lib/types/matches';
-import type { RankingEntry } from '@/lib/types/schemas';
+} from '@/lib/utils/matches';
 
 /**
  * Redesign bracket builder (FR7). Reuses the proven matchService helpers and the

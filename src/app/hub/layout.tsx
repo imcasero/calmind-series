@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
+import { ShellSkeleton } from '@/components/shared';
 import { PixelShell } from '@/components/shared/layout/hub/PixelShell';
 import {
   type DivisionPreview,
@@ -13,8 +14,13 @@ import {
  * Supabase client so `/hub/*` routes stay request-time live. The actual chrome
  * (`PixelShell`) is a pure renderer — see
  * `components/shared/layout/hub/PixelShell.tsx`.
+ *
+ * Wave A REQ-44: the async fetch block lives inside `HubShell` so the
+ * Suspense boundary owns the await. This is the contract under
+ * `cacheComponents: true` (Wave B); the page can stream while the shell
+ * resolves.
  */
-export default async function HubLayout({ children }: { children: ReactNode }) {
+async function HubShell({ children }: { children: ReactNode }) {
   const seasonInfo = await getActiveSeasonWithSplit();
   const activeSplitId = seasonInfo?.activeSplit?.id ?? null;
 
@@ -36,5 +42,13 @@ export default async function HubLayout({ children }: { children: ReactNode }) {
     >
       {children}
     </PixelShell>
+  );
+}
+
+export default function HubLayout({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<ShellSkeleton />}>
+      <HubShell>{children}</HubShell>
+    </Suspense>
   );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { HubPageHeader } from '@/components/hub';
+import { SectionSkeleton } from '@/components/shared';
 import { PixelCrown } from '@/components/shared/ui/pixel';
 import {
   getArchiveChampions,
@@ -28,8 +30,6 @@ export async function generateStaticParams() {
   return getArchiveSplitParams();
 }
 
-export const dynamicParams = true;
-
 export async function generateMetadata({
   params,
 }: ArchiveDetailProps): Promise<Metadata> {
@@ -40,10 +40,14 @@ export async function generateMetadata({
   };
 }
 
-/** Archive split detail (FR9): champions + final podium for a past split. */
-export default async function ArchiveDetailPage({
-  params,
-}: ArchiveDetailProps) {
+/**
+ * Archive split detail (FR9): champions + final podium for a past split.
+ *
+ * Wave A REQ-44: the data joins live inside `ArchiveDetailPageInner` under a
+ * Suspense boundary so `cacheComponents: true` (Wave B) keeps the SSG
+ * prerender valid.
+ */
+async function ArchiveDetailPageInner({ params }: ArchiveDetailProps) {
   const { season, split } = await params;
   const info = await getSplitByNames(season, split);
 
@@ -90,6 +94,14 @@ export default async function ArchiveDetailPage({
         />
       </section>
     </div>
+  );
+}
+
+export default function ArchiveDetailPage(props: ArchiveDetailProps) {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="standings" />}>
+      <ArchiveDetailPageInner {...props} />
+    </Suspense>
   );
 }
 

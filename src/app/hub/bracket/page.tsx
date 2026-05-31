@@ -13,11 +13,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Bracket page (FR7 / REQ-22). Top-level awaits only
- * `getActiveSeasonWithSplit()` + `getCurrentRound()` (for the eyebrow); the
- * heavy bracket build lives in the streamed `BracketSection`.
+ * Bracket page (FR7 / REQ-22). Wave A REQ-44: the cheap top-level awaits
+ * (`getActiveSeasonWithSplit`, `getCurrentRound`) live inside
+ * `BracketPageInner` under an OUTER Suspense; the heavy bracket build lives
+ * in the streamed `BracketSection` (existing F5 boundary).
  */
-export default async function BracketPage() {
+async function BracketPageInner() {
   const seasonInfo = await getActiveSeasonWithSplit();
   const split = seasonInfo?.activeSplit;
 
@@ -37,5 +38,13 @@ export default async function BracketPage() {
         <BracketSection splitId={split.id} />
       </Suspense>
     </div>
+  );
+}
+
+export default function BracketPage() {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="bracket" />}>
+      <BracketPageInner />
+    </Suspense>
   );
 }

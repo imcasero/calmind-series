@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -36,6 +36,7 @@ export async function createSeasonAction(
   }
 
   revalidatePath(SEASONS_PATH);
+  updateTag('seasons');
   return { ok: true };
 }
 
@@ -57,6 +58,8 @@ export async function deleteSeasonAction(id: string): Promise<ActionResult> {
   }
 
   revalidatePath(SEASONS_PATH);
+  updateTag('seasons');
+  updateTag('archive');
   return { ok: true };
 }
 
@@ -93,6 +96,8 @@ export async function activateSeasonAction(id: string): Promise<ActionResult> {
   }
 
   revalidatePath(SEASONS_PATH);
+  updateTag('seasons');
+  updateTag('archive');
   return { ok: true };
 }
 
@@ -116,5 +121,7 @@ export async function deactivateSeasonAction(
   }
 
   revalidatePath(SEASONS_PATH);
+  updateTag('seasons');
+  updateTag('archive');
   return { ok: true };
 }

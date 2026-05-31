@@ -13,12 +13,13 @@ export const metadata: Metadata = {
 };
 
 /**
- * Full standings page (FR4 / REQ-22). The top-level shell only awaits the cheap
- * `getActiveSeasonWithSplit()` + `getCurrentRound()` (for the eyebrow) and
- * streams the heavy `ClasificacionSection` (preview + matches join) inside a
+ * Full standings page (FR4 / REQ-22). Wave A REQ-44: the cheap top-level
+ * awaits (`getActiveSeasonWithSplit`, `getCurrentRound`) live inside
+ * `ClasificacionPageInner` under an OUTER Suspense; the heavy
+ * `ClasificacionSection` (preview + matches join) stays in its own inner
  * Suspense boundary.
  */
-export default async function ClasificacionPage() {
+async function ClasificacionPageInner() {
   const seasonInfo = await getActiveSeasonWithSplit();
   const split = seasonInfo?.activeSplit;
 
@@ -46,5 +47,13 @@ export default async function ClasificacionPage() {
       </Suspense>
       <ZoneCards />
     </div>
+  );
+}
+
+export default function ClasificacionPage() {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="standings" />}>
+      <ClasificacionPageInner />
+    </Suspense>
   );
 }

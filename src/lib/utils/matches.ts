@@ -2,7 +2,6 @@ import { MATCH_TAGS } from '@/lib/constants/matches';
 import type {
   J15Match,
   J16Match,
-  Matchup,
   MatchupsGroup,
   Team,
 } from '@/lib/types/matches';

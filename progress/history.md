@@ -5,6 +5,446 @@ status transition; agents record any deferral or sequencing decision here too.
 
 ---
 
+## 2026-05-31 — F4 CLOSED (reviewer APPROVED → leader)
+
+Cache Components mode (Next 16.1.1) is now live across the public surface. F4
+shipped in 3 waves after two spec rewrites that resolved framework drift.
+
+**Waves shipped:**
+- Wave A (pre-flight): REQ-32 (dynamicParams gone from archive route), REQ-43
+  (Footer year extracted to `FooterYear.tsx` client leaf to remove `new Date()`
+  from RSC root layout), REQ-44 (Suspense wrap on 17 page-level awaits — 13
+  hub/archive + 4 admin live extension approved before Wave B). New shared
+  primitive: `ShellSkeleton`.
+- Wave B (atomic flip): REQ-40 (`cacheComponents: true` in `next.config.ts`) +
+  REQ-34/35/36 (`'use cache' + cacheTag + cacheLife` on 21 readers: archive 5,
+  seasons 7, leagues 6, tournament/trainers/bracket 1 each). Shipped as ONE
+  atomic operation because `cacheComponents: true` and `'use cache'` are
+  inseparable in 16.1.1 — intermediate `./init.sh` red was expected and
+  documented in the spec.
+- Wave C (invalidation + docs): REQ-38 (7 `updateTag` calls in `seasons/_actions.ts`
+  — `seasons` × 1, `archive` × 2 across the 4 actions, all on success branch),
+  REQ-37 build matrix regression check, REQ-39 admin inspection (admin queries
+  intentionally NOT cached), REQ-41 (added "Cache tag taxonomy" section to
+  `docs/conventions.md` with the 8 tag families, per-query assignment, mutation
+  recipe, staleness callout, admin-never-cache rule), REQ-42 close-out.
+
+**Build matrix after F4:**
+- `○ Static`: `/`, `/admin`, `/hub`, `/hub/bracket`, `/hub/calendario`,
+  `/hub/clasificacion`, `/hub/entrenadores`, `/hub/olimpo`, `/archivo`.
+- `◐ Partial Prerender`: `/hub/entrenador/[id]`, `/archivo/[season]/[split]`
+  (3 prerendered URLs preserved), `/[season]/...` legacy redirects,
+  `/admin/dashboard/**`.
+- `ƒ Dynamic`: ZERO. Cache Components mode collapses the legend to `○`/`◐` only.
+- 30 generated pages (≥23 baseline).
+
+**Spec drift resolved across two rewrites:**
+1. First drift: spec ordered REQ-40 last but Next 16.1.1 SWC rejects `'use cache'`
+   when `cacheComponents: false`. Reordered to put REQ-40 before the cache waves.
+2. Second drift: REQ-40 alone failed because (a) `Footer.tsx` had `new Date()`
+   in root layout and (b) hub/archive page-level awaits lacked Suspense. Added
+   REQ-43 + REQ-44 as pre-flights; bundled REQ-40 + REQ-34/35/36 atomically.
+
+**Live decisions:**
+- `dynamicParams = true` removed from archive route (user-approved trade: 404
+  for unknown slugs, generateStaticParams remains source of truth).
+- `/hub/*` static shift accepted (user-approved): FR10 realtime subscriptions
+  live in hydrated client components, so the static server shell is safe with
+  `updateTag` invalidation from Server Actions.
+- REQ-44 extended live to wrap 4 admin RSC awaits (user-approved before Wave B
+  flip); admin queries themselves stay uncached.
+- Wave B shipped atomic (red intermediates allowed); the spec mandated commit
+  boundary aligns with logical waves, but the user opted to keep everything in
+  working tree and commit themselves.
+
+**Deferred to F6:**
+- `docs/conventions.md:24-27` stale callout about deleted `fetchData.ts`
+  (reviewer flagged as out-of-scope cleanup).
+- Admin-specific `AdminShellSkeleton` (current admin pages use the generic
+  `ShellSkeleton`).
+- Custom `cacheLife` profiles if observed invalidation patterns demand them.
+
+**Files net delta:** 2 created (`FooterYear.tsx`, `ShellSkeleton.tsx`),
+2 deleted (`fetchData.ts`, `matchService.ts`), 1 moved (`matchService.ts` →
+`src/lib/utils/matches.ts`), ~25 edited. `./init.sh` GREEN at close.
+
+NEXT: F4 closed. activeBatch cleared. F6 (Refactor mayores) unblocked
+(dependsOn `['F3','F4']` both done). F2 architecture-review initiative still
+shows F2 done; only F6 remains pending in that initiative.
+
+---
+
+## 2026-05-31 — F4 PARTIAL — BLOCKED ON SPEC DRIFT (implementer → leader)
+
+Implemented REQ-30, REQ-31, REQ-33 successfully (`./init.sh` green between each).
+Hit a spec/framework drift at REQ-34 that prevents continuing without leader
+re-spec. Stopped per implementer rule 4 ("PARA y reporta").
+
+**Pre-flight finding — `features.json` JSON parse error.** Baseline `./init.sh`
+was RED on entry because `features.json:7` was missing a comma after the
+`_note_activeBatch` string (before the `initiatives` key). Biome's JSON parser
+flagged it. Fixed by adding the comma — no semantic change. Then ran `./init.sh`
+clean (23 pages, 0 lint warnings) before starting REQ-30.
+
+**REQ-30 — DONE.** Deleted `src/lib/data/fetchData.ts` and the now-empty
+`src/lib/data/` dir. `grep -rn fetchData src/` returns 0. `./init.sh` green;
+lint dropped 2 → 1 warning.
+
+**REQ-31 — DONE.** Moved `src/lib/services/matchService.ts` →
+`src/lib/utils/matches.ts` (dropped the unused `Matchup` import in the move).
+Updated single consumer `src/lib/services/bracketService.ts:1-5` (Biome
+auto-fixed import order after the path change). `grep` gates all pass.
+`./init.sh` green; lint dropped 1 → 0 warnings (both F4-owned warnings cleared).
+
+**REQ-33 — DONE.** Flipped 9 hub-query call sites to
+`createClient({ session: false })` across `leagues.queries.ts` (5 calls),
+`seasons.queries.ts` (5 of 7 — lines 219/255 were already cookie-free per F5),
+`tournament.queries.ts` (1), `trainers.queries.ts` (1), `bracket.queries.ts`
+(1). `admin.queries.ts` (8 readers) untouched per REQ-37. Sanity grep confirms.
+`./init.sh` green.
+
+**Side-effect — `/hub/*` and `/archivo` flipped from `ƒ` to `○`.** With the
+cookie-free flip in place (and before any `'use cache'` directive), the build
+manifest now shows `○ /hub`, `○ /hub/bracket`, `○ /hub/calendario`,
+`○ /hub/clasificacion`, `○ /hub/entrenadores`, `○ /hub/olimpo`, `○ /archivo`
+all as STATIC (was `ƒ Dynamic` per F5 baseline). `/hub/entrenador/[id]` stays
+`ƒ`. `● /archivo/[season]/[split]` still SSG with 3 prerendered URLs.
+This is a net win, but it is a behavior shift the spec did not call out —
+worth flagging because `/hub/*` was deliberately designed as `ƒ Dynamic` per
+F5 close-out note ("hub stays cookie-aware/dynamic" to preserve realtime/auth
+semantics). REQ-33's design.md justification (D4) explicitly disproves the
+F5 cookie-aware gating for server reads — that is consistent — but the routes
+themselves now bake at build time, which has implications for FR10's
+realtime subscriptions on `/hub/*`. Flagged for reviewer/leader; no action
+taken.
+
+**REQ-34 — BLOCKED. Build hard-fails with `'use cache'` when
+`cacheComponents` is off.** Ran REQ-34 exactly per spec (5 readers in
+`archive.queries.ts` converted from `cache(async () => {})` to
+`async function() { 'use cache'; cacheLife(...); cacheTag(...); ... }`;
+React `cache` import dropped; `cacheLife`/`cacheTag` imported from
+`next/cache`; all gate greps pass `5/5/5`). `./init.sh` fails at build:
+
+```
+To use "use cache", please enable the feature flag `cacheComponents`
+in your Next.js config.
+
+Import trace:
+  Server Component:
+    ./src/lib/queries/archive.queries.ts
+    ./src/lib/queries/index.ts
+    ...
+    at <unknown> (./src/lib/queries/archive.queries.ts:36:3)
+    at <unknown> (./src/lib/queries/archive.queries.ts:105:3)
+    at <unknown> (./src/lib/queries/archive.queries.ts:192:3)
+    at <unknown> (./src/lib/queries/archive.queries.ts:241:3)
+    at <unknown> (./src/lib/queries/archive.queries.ts:288:3)
+```
+
+The error originates from Next 16.1.1's SWC compiler at BUILD time, not
+runtime. The spec (tasks.md REQ-34 step + design.md §6 #4) predicted that
+`'use cache'` would compile fine and only `cacheLife()` would throw at request
+time. That prediction is wrong for this Next version — the SWC transform
+itself rejects the directive when `cacheComponents` is off.
+
+REQ-34 reverted to keep baseline green.
+
+**Then tested: can we flip `cacheComponents: true` early (REQ-40 before
+REQ-34)?** Edited `next.config.ts` to add `cacheComponents: true`. Build
+fails with a DIFFERENT error:
+
+```
+Route segment config "dynamicParams" is not compatible with
+`nextConfig.cacheComponents`. Please remove it.
+    at <unknown> (./src/app/archivo/[season]/[split]/page.tsx:31:14)
+```
+
+F5 shipped `export const dynamicParams = true;` at
+`src/app/archivo/[season]/[split]/page.tsx:31`. With `cacheComponents: true`
+that line must be removed. The spec did not call this out — it claimed the
+flip is safe once `'use cache'` directives are in place (design.md §6 #4).
+
+`cacheComponents: true` reverted. Baseline restored green.
+
+**Drift summary for the leader.**
+
+1. **Sequencing inverted vs spec.** The spec's REQ-40-last ordering is
+   incompatible with Next 16.1.1's SWC behavior. `cacheComponents: true`
+   must be flipped BEFORE any `'use cache'` directive can compile. The
+   correct order is the reverse of what the spec locked: flip the flag
+   first (REQ-40), THEN ship the directives (REQ-34/35/36). The user's
+   rule #3 warning ("if you flip cacheComponents early, cacheLife throws
+   in queries that don't yet have 'use cache' and breaks the build")
+   does NOT apply — `cacheLife()` is only ever called inside `'use cache'`
+   bodies (we never call it from a free function). The premise of the
+   user's warning doesn't materialize in our codebase.
+
+2. **`dynamicParams = true` must be removed.** F5's
+   `src/app/archivo/[season]/[split]/page.tsx:31` is incompatible with
+   `cacheComponents: true`. The spec did not address this. Removing it
+   is a behavior change for the route: with `dynamicParams = true`,
+   unknown `(season, split)` URLs render dynamically; without it, they
+   404. Given the archive only has 3 known URLs and the season set is
+   admin-controlled (no user-generated URLs), 404 on unknown slugs is
+   likely the correct behavior — but this is a product decision the
+   spec author did not weigh.
+
+3. **`/hub/*` route shift to STATIC (post-REQ-33).** Already documented
+   above. May interact with FR10 realtime expectations. Worth a leader
+   check before continuing.
+
+**Recommended re-spec from leader.**
+
+- Re-order F4 to: REQ-30 → REQ-31 (done) → REQ-33 (done) → [new REQ-39.5:
+  remove `dynamicParams = true` from archive page] → REQ-40 (flip
+  cacheComponents) → REQ-34 → REQ-35 → REQ-36 → REQ-38 → REQ-37/REQ-39
+  guard checks.
+- Confirm `/hub/*` STATIC shift is acceptable (or scope a fix:
+  add `await connection()` to a leaf in each hub page to force dynamic,
+  per Next 16 cache-components docs).
+- Decide product behavior for unknown archive URLs (404 vs ignore the
+  whole batch).
+
+**State on hand-back.** All REQ-30/31/33 file mutations are committed to the
+working tree (no git commits — implementer doesn't commit unless asked).
+`./init.sh` is GREEN. `features.json` JSON parse error fix is included.
+Specs not modified by implementer.
+
+**Files mutated in this session (net):**
+- DELETED: `src/lib/data/fetchData.ts` (+ empty `src/lib/data/` dir).
+- DELETED: `src/lib/services/matchService.ts`.
+- CREATED: `src/lib/utils/matches.ts` (matchService contents minus `Matchup`).
+- EDITED: `src/lib/services/bracketService.ts` (import path + auto-sort).
+- EDITED: `src/lib/queries/leagues.queries.ts` (5× `{ session: false }`).
+- EDITED: `src/lib/queries/seasons.queries.ts` (5× `{ session: false }`).
+- EDITED: `src/lib/queries/tournament.queries.ts` (1× `{ session: false }`).
+- EDITED: `src/lib/queries/trainers.queries.ts` (1× `{ session: false }`).
+- EDITED: `src/lib/queries/bracket.queries.ts` (1× `{ session: false }`).
+- EDITED: `features.json` (added missing comma at line 7).
+
+**`./init.sh` tail (last green run, post-revert):**
+```
+✓ typecheck clean
+Checked 157 files in 27ms. No fixes applied.
+✓ lint clean
+▲ Next.js 16.1.1 (Turbopack)
+✓ build succeeds
+✓ Harness ready — baseline is green.
+```
+Page count: 23 (matches F5 baseline). Lint: 0 errors, 0 warnings (REQ-30 + REQ-31
+each cleared one F4-owned warning).
+
+`features.json` F4 stays `in_progress`. No `[DONE]` annotations applied yet
+because only 3 of 12 REQs landed and the batch did not close cleanly.
+
+---
+
+## 2026-05-31 — F4 specs approved, status → in_progress (user → implementer)
+
+User approved `specs/{requirements,design,tasks}.md` produced by spec-author. F4 status
+flipped `pending` → `in_progress`; `spec` field set to `"specs/"`. Implementer
+dispatched with REQs in the spec-locked order; `./init.sh` (REQ-41) green between
+each REQ — reviewer will reject any REQ that lacks a green gate.
+
+**REQ summary (full text in `specs/requirements.md`):**
+- REQ-30/31 — Cleanup: delete `src/lib/data/fetchData.ts`, move
+  `src/lib/services/matchService.ts` → `src/lib/utils/matches.ts` (clears the 2
+  pre-existing F2-era warnings as a side-effect).
+- REQ-32 — Tag taxonomy locked: `seasons`, `splits:${id}`, `matches:${splitId}`,
+  `rankings:${leagueId}`, `participants:${splitId}`, `bracket:${splitId}`,
+  `trainers`, `archive`. `cacheLife` profiles use Next 16 built-ins only (no
+  custom profiles in `next.config.ts`).
+- REQ-33 — Flip 9 hub-query call sites to `createClient({ session: false })`
+  (prerequisite for `'use cache'` — cookies/auth aren't readable inside cached
+  scopes). Verified safe via `grep "supabase.auth" src/lib/queries/` → ZERO hits.
+- REQ-34/35/36 — Three `'use cache'` waves in order: archive 5 → seasons 7 → hub
+  9. REQ-35 mandates ≥3 prerendered URLs preserved post-migration
+  (`generateStaticParams` regression guard).
+- REQ-37 — 8 readers in `admin.queries.ts` stay cookie-aware/dynamic
+  (RLS-scoped to admin identity — caching would leak across sessions).
+- REQ-38 — `updateTag(...)` (NOT `revalidateTag`) wired into the 4 F3 Server
+  Actions in `seasons/_actions.ts`. Rationale: `updateTag` is Server-Action-only
+  with immediate expiration and read-your-own-writes semantics; `revalidateTag`
+  is now 2-arg required (single-arg deprecated) and is for general on-demand
+  invalidation.
+- REQ-39 — Document Option A staleness gap: 13 browser-side writes across 5
+  non-pilot Managers stay on `router.refresh()` and are deferred to F6.
+  Worst-case staleness bounded by `cacheLife('minutes')` = 60s on
+  match-derived data.
+- REQ-40 — `cacheComponents: true` enabled in `next.config.ts` as the LAST step
+  (cacheLife throws without the flag per
+  `node_modules/next/dist/server/use-cache/cache-life.js:67-75`).
+- REQ-41 — Cross-cutting `./init.sh` gate between every REQ.
+
+**Coherence gap decision — Option A (locked).** Options B/C would either blur the
+F3↔F6 boundary or directly violate F3's `deferred[]` list. Option A keeps F4
+scoped: only the 4 seasons actions get `updateTag`; the other 5 Managers'
+writes remain unbusted by F4 (F6 owns their Server Actions migration).
+
+**Deferrals captured by spec-author:**
+- 5 non-pilot Managers' Server Actions migration (with `updateTag` wiring) → F6.
+- Custom `cacheLife` profiles → F6 (only if FR10 realtime needs sub-minute freshness).
+- `SplitDataProvider` render-prop refactor → F6.
+- `window.confirm()` replacement → F6.
+
+---
+
+## 2026-05-31 — F4 opened (leader → spec-author)
+
+User selected F4 (Fase 4 — Cacheo coherente) as the next batch. `dependsOn: ["F1","F3"]`
+both satisfied. `features.json` `activeBatch` → `["F4"]`; status stays `pending`
+until spec-author writes `specs/{requirements,design,tasks}.md` (same convention
+used for F0/F1/F2/F3/F5).
+
+**Pre-spec audit (leader, before dispatching spec-author):**
+
+This is **Next 16.1.1** — F4 uses the modern Cache Components API (`'use cache'`
+directive, `cacheTag`, `cacheLife`, `revalidateTag`). NOT the legacy
+`unstable_cache` pattern (which exists only in the about-to-be-deleted
+`fetchData.ts`). F1 deliberately deferred `cacheComponents`; F5 shipped 11
+`<Suspense>` boundaries across `/hub/*` clearing the strict-mode prerequisite.
+Now is the moment to flip it on alongside `'use cache'`.
+
+**Query inventory — `src/lib/queries/` (7 files, 28 exported readers).**
+All 28 wrapped in React `cache()` for per-request dedupe; F4 layers Next 16
+`'use cache'` + `cacheTag` on the candidates and leaves the dynamic ones alone.
+
+- **`archive.queries.ts` (5 readers)** — ALREADY cookie-free (uses
+  `createClient({ session: false })` per F5 Option C). Strong `'use cache'`
+  candidates because they read immutable past-season data:
+  `getArchiveChampions`, `getArchiveDivisionPreview`,
+  `getPublicActiveSeasonWithSplit`, `getPublicAllSeasonsWithSplits`,
+  `getPublicCurrentRound`. `cacheLife('hours' | 'days')` looks right;
+  `cacheTag` per `splitId` enables granular invalidation when an admin
+  closes out a season retroactively.
+- **`leagues.queries.ts` (6 readers)** — cookie-aware today, but read public
+  tournament data (rankings, participants, matches by round). Candidates IF
+  spec-author can prove no auth dependency: `getLeaguesBySplit`,
+  `getRankingsByLeague`, `getDivisionPreview`, `getLeagueByTier`,
+  `getParticipantsBySplit`, `getMatchesByRound`. These are the **hot path**
+  for `/hub/*` — `'use cache'` here is where the perf win lives. Tag scheme
+  likely: `matches:${splitId}`, `rankings:${leagueId}`, `participants:${splitId}`.
+  Verified zero `supabase.auth.*` calls anywhere in `src/lib/queries/` —
+  cookie-aware client is used for RLS-safe reads but the data itself is public.
+- **`seasons.queries.ts` (7 readers)** — `getActiveSeasonWithSplit`,
+  `getAllSeasons`, `getAllSeasonsWithSplits`, `getSeasonWithSplits`,
+  `getSeasonByName`, `getArchiveSplitParams`, `getSplitByNames`. Most are
+  derived from `seasons` + `splits` tables which only change via admin actions
+  → strong candidates with tag `seasons`. Note `getArchiveSplitParams` already
+  feeds `generateStaticParams` so it MUST stay statically resolvable.
+- **`bracket.queries.ts` (1 reader)** — `getBracketData` aggregates finals data;
+  candidate with tag `bracket:${splitId}` invalidated by match mutations.
+- **`trainers.queries.ts` (1 reader)** — `getTrainerById` for `/hub/entrenador/[id]`.
+  Candidate with tag `trainers` (rarely changes).
+- **`tournament.queries.ts` (1 reader)** — `getCurrentRound` derives current
+  round from matches. Tied to `matches` tag — invalidates whenever a match
+  result is recorded.
+- **`admin.queries.ts` (7 readers)** — `getDashboardStats`, `getAdminSeasons`,
+  `getAdminSplitsBySeason`, `getAdminLeaguesBySplit`, `getAdminTrainers`,
+  `getAdminParticipantsByLeague`, `getAdminMatchesByLeague`, `getActiveSplitInfo`.
+  **DYNAMIC — stay cookie-aware, NO `'use cache'`**. RLS-scoped to the
+  authenticated admin identity; caching them would leak across sessions.
+  Spec-author MUST confirm this stays untouched.
+
+**Candidates summary: ~21 of 28 readers eligible (5 archive + 6 leagues + 7 seasons + 1 bracket + 1 trainers + 1 tournament). 7 admin readers stay dynamic.**
+
+**`fetchData.ts` consumers — ZERO.** Verified `grep -rn fetchData
+/Users/diego/Developer/calmind-series/src/` returns no imports anywhere
+outside the file itself. Already a dead module post-F5 (the new hub queries
+went through `lib/queries/`, never through `lib/data/`). Delete is a clean
+no-op + clears the `J15Match/J16Match` `noUnusedImports` warning at
+`fetchData.ts:5`.
+
+**`matchService.ts` consumers — ONE.** `src/lib/services/bracketService.ts:5`
+imports `buildJ15Matchups`, `getFromJ15Match`, `getJ16Match`. Move
+`matchService.ts` → `src/lib/utils/matches.ts` and update that single import.
+The `Matchup` `noUnusedImports` warning at `matchService.ts:5` disappears as
+part of the move (the type isn't re-exported by any consumer). NOTE
+`bracketService.ts` itself stays in `lib/services/` — only `matchService.ts`
+moves; the rename also drops the misleading "service" label for pure functions.
+
+**`next.config.ts` re `cacheComponents` — currently ABSENT.** F1 left it
+undeclared (not commented — fully omitted) because enabling it without
+Suspense + `'use cache'` would have broken the build. F5 shipped the Suspense
+prerequisite; F4 supplies the `'use cache'` prerequisite. Spec-author should
+add `cacheComponents: true` as the LAST step (gated on a green build with
+`'use cache'` directives in place — wrong order = red build).
+
+**Mutation paths that need `revalidateTag` from F4:**
+
+1. **Server Actions in `src/app/admin/dashboard/seasons/_actions.ts` (4 actions,
+   shipped by F3)** — currently use `revalidatePath('/admin/dashboard/seasons')`.
+   F4 should evaluate adding `revalidateTag('seasons')` (and `'matches'` for
+   activate which cascades — activating a season can flip the active split
+   that hub queries depend on). Spec-author decides: keep both, replace path
+   with tag, or layer them.
+2. **Browser-side Supabase writes still in 5 non-pilot Managers** (per F3
+   close-out — F6 owns their Server Action migration):
+   - `ParticipantsManager.tsx` — 4 writes: trainer insert/delete, league_participants insert/update (lives).
+   - `MatchesManager.tsx` — 4 writes: match insert/delete + 2 batch inserts (J15/J16 generators).
+   - `DivisionsManager.tsx` — 2 writes: leagues insert/delete.
+   - `SplitsManager.tsx` — 2 writes: splits insert/delete.
+   - `RegulationsManager.tsx` — 1 storage upload to PDF bucket.
+   These call `router.refresh()` today. F4 does NOT migrate these to Server
+   Actions (that's F6) — but spec-author must decide: does F4 leave them on
+   `router.refresh()` (which won't invalidate `'use cache'` entries), or
+   does F4 require ALL mutations to flow through Server Actions to keep
+   cache coherence honest? If left as-is, the cached views would go stale
+   on admin writes. Likely answer: F4 introduces tags + a minimal set of
+   Server Actions for the high-traffic mutations (matches in particular —
+   the spec item literally says "Call revalidateTag('matches') from the
+   Server Action that updates results"), and either flags the rest as F6
+   work OR adds thin server-action wrappers around the existing writes.
+
+**Red flags spec-author must resolve:**
+
+1. **Cookie-aware vs cookie-free for the `leagues.queries.ts` candidates.**
+   `'use cache'` cannot run code that calls `cookies()`. Today these queries
+   use the cookie-aware `createClient()` even though they don't actually
+   touch `supabase.auth.*`. Spec-author needs to either (a) flip them to
+   `createClient({ session: false })` (the F5 Option C overload) before
+   adding `'use cache'`, or (b) prove the cookie touch is incidental and
+   can be dropped. Option (a) is the safer path — already proven in archive
+   queries — but it broadens the "narrowly scoped" decision F5 made. Logic
+   note: F5 explicitly kept hub queries cookie-aware "to preserve realtime/auth
+   semantics" — F4 needs to either disprove that gating or accept the perf
+   ceiling.
+2. **`generateStaticParams` interaction.** `getArchiveSplitParams` already
+   feeds `generateStaticParams` for `/archivo/[season]/[split]` (3 prerendered
+   URLs in F5 build manifest). Adding `'use cache'` to it must not regress
+   that — `generateStaticParams` runs at build time and needs the function
+   to return a list synchronously-resolvable from the data layer. Spec-author
+   should verify `'use cache'` plays nicely with `generateStaticParams` in
+   Next 16.1.1 (it does, per docs, but worth a sanity test in the spec).
+3. **Mutation coherence gap.** As above — if F4 caches hub queries but leaves
+   5 Managers writing directly to Supabase + `router.refresh()`, the cache
+   never invalidates on admin writes. Either F4 escalates a minimal Server
+   Action migration for the write paths it cares about (matches at minimum),
+   or it documents the staleness window as a F6 follow-up.
+4. **`cacheLife` defaults.** Next 16 ships `default`, `seconds`, `minutes`,
+   `hours`, `days`, `weeks`, `max` profiles. Spec-author should pick per
+   query class: archive = `days/max`, public hub reads = `minutes/hours`
+   with `revalidateTag` backing, season metadata = `hours/days`.
+5. **No circular dependency risk on the `matchService.ts` move.**
+   `matches.ts` will import from `@/lib/constants/matches` and
+   `@/lib/types/{matches,schemas}` — none of those import back from
+   `lib/utils/`. Clean.
+
+**2 pre-existing F4-owned warnings preserved.** Both clear as side-effects of
+items 3 (fetchData delete) and 4 (matchService move). Reviewer should verify
+post-build `pnpm lint` reports **0 warnings** when F4 closes (not 2).
+
+**Next agent:** `spec-author`. Inputs: F4 items in `features.json` + this
+history entry + `ARCHITECTURE_REVIEW.html §F4` + the 5 red flags above.
+Output: `specs/{requirements.md, design.md, tasks.md}` overwriting the F3
+batch. After spec-author returns, leader presents to user for approval
+before implementer dispatch (no implementation without explicit user approval).
+
+**Gate:** implementer ships only after a green `./init.sh` post-`cacheComponents`
+flip — reviewer rejects otherwise.
+
+---
+
 ## 2026-05-31 — F3 closed (reviewer signed off)
 
 Re-ran `./init.sh` independently — GREEN (23 pages, 0 lint errors, 2 known F4-owned

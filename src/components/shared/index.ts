@@ -13,3 +13,4 @@ export type { LinkButtonProps } from './ui/Button/LinkButton';
 export { default as LinkButton } from './ui/Button/LinkButton';
 export { EmptyState } from './ui/EmptyState';
 export { SectionSkeleton } from './ui/SectionSkeleton';
+export { ShellSkeleton } from './ui/ShellSkeleton';

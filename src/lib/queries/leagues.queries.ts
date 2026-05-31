@@ -1,4 +1,4 @@
-import { cache } from 'react';
+import { cacheLife, cacheTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import {
   type DivisionPreview,
@@ -27,201 +27,218 @@ export type {
 /**
  * Gets all leagues for a specific split, ordered by tier priority
  */
-export const getLeaguesBySplit = cache(
-  async (splitId: string): Promise<LeagueInfo[]> => {
-    const supabase = await createClient();
+export async function getLeaguesBySplit(
+  splitId: string,
+): Promise<LeagueInfo[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('seasons', `splits:${splitId}`);
 
-    const { data, error } = await supabase
-      .from('leagues')
-      .select('id, tier_name, tier_priority')
-      .eq('split_id', splitId)
-      .order('tier_priority', { ascending: true });
+  const supabase = await createClient({ session: false });
 
-    if (error) {
-      console.error('[getLeaguesBySplit] Error:', error.message);
-      return [];
-    }
+  const { data, error } = await supabase
+    .from('leagues')
+    .select('id, tier_name, tier_priority')
+    .eq('split_id', splitId)
+    .order('tier_priority', { ascending: true });
 
-    return data ?? [];
-  },
-);
+  if (error) {
+    console.error('[getLeaguesBySplit] Error:', error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
 
 /**
  * Gets rankings for a specific league, formatted for UI
  */
-export const getRankingsByLeague = cache(
-  async (leagueId: string): Promise<RankingEntry[]> => {
-    const supabase = await createClient();
+export async function getRankingsByLeague(
+  leagueId: string,
+): Promise<RankingEntry[]> {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag(`rankings:${leagueId}`);
 
-    // Fetch rankings and lives in parallel (Next.js best practice)
-    const [
-      { data: rankingsData, error: rankingsError },
-      { data: participantsData, error: participantsError },
-    ] = await Promise.all([
-      supabase
-        .from('league_rankings')
-        .select('*')
-        .eq('league_id', leagueId)
-        .not('position', 'is', null)
-        .not('nickname', 'is', null)
-        .order('position', { ascending: true }),
-      supabase
-        .from('league_participants')
-        .select('trainer_id, lives')
-        .eq('league_id', leagueId),
-    ]);
+  const supabase = await createClient({ session: false });
 
-    if (rankingsError) {
-      console.error('[getRankingsByLeague] Error:', rankingsError.message);
-      return [];
-    }
+  // Fetch rankings and lives in parallel (Next.js best practice)
+  const [
+    { data: rankingsData, error: rankingsError },
+    { data: participantsData, error: participantsError },
+  ] = await Promise.all([
+    supabase
+      .from('league_rankings')
+      .select('*')
+      .eq('league_id', leagueId)
+      .not('position', 'is', null)
+      .not('nickname', 'is', null)
+      .order('position', { ascending: true }),
+    supabase
+      .from('league_participants')
+      .select('trainer_id, lives')
+      .eq('league_id', leagueId),
+  ]);
 
-    if (participantsError) {
-      console.error(
-        '[getRankingsByLeague] Error fetching lives:',
-        participantsError.message,
-      );
-      return [];
-    }
+  if (rankingsError) {
+    console.error('[getRankingsByLeague] Error:', rankingsError.message);
+    return [];
+  }
 
-    // Create a map of trainer_id to lives
-    const livesMap = new Map(
-      (participantsData ?? []).map((p) => [p.trainer_id, p.lives]),
+  if (participantsError) {
+    console.error(
+      '[getRankingsByLeague] Error fetching lives:',
+      participantsError.message,
     );
+    return [];
+  }
 
-    // Use Zod to validate and format the rankings
-    const rankings: RankingEntry[] = [];
+  // Create a map of trainer_id to lives
+  const livesMap = new Map(
+    (participantsData ?? []).map((p) => [p.trainer_id, p.lives]),
+  );
 
-    for (const ranking of rankingsData ?? []) {
-      const lives = livesMap.get(ranking.trainer_id ?? '') ?? 0;
+  // Use Zod to validate and format the rankings
+  const rankings: RankingEntry[] = [];
 
-      const result = RankingEntrySchema.safeParse({
-        position: ranking.position,
-        nickname: ranking.nickname,
-        totalPoints: ranking.total_points ?? 0,
-        avatarUrl: ranking.avatar_url,
-        setBalance: ranking.set_balance ?? 0,
-        matchesPlayed: ranking.matches_played ?? 0,
-        totalSetsWon: ranking.total_sets_won ?? 0,
-        trainerId: ranking.trainer_id,
-        lives,
-      });
+  for (const ranking of rankingsData ?? []) {
+    const lives = livesMap.get(ranking.trainer_id ?? '') ?? 0;
 
-      if (!result.success) {
-        console.error(
-          '[getRankingsByLeague] Skipping invalid ranking:',
-          result.error.flatten(),
-        );
-        continue;
-      }
+    const result = RankingEntrySchema.safeParse({
+      position: ranking.position,
+      nickname: ranking.nickname,
+      totalPoints: ranking.total_points ?? 0,
+      avatarUrl: ranking.avatar_url,
+      setBalance: ranking.set_balance ?? 0,
+      matchesPlayed: ranking.matches_played ?? 0,
+      totalSetsWon: ranking.total_sets_won ?? 0,
+      trainerId: ranking.trainer_id,
+      lives,
+    });
 
-      rankings.push(result.data);
+    if (!result.success) {
+      console.error(
+        '[getRankingsByLeague] Skipping invalid ranking:',
+        result.error.flatten(),
+      );
+      continue;
     }
 
-    return rankings;
-  },
-);
+    rankings.push(result.data);
+  }
+
+  return rankings;
+}
 
 /**
  * Gets both divisions with their rankings for a split.
  * Returns data formatted and ready for UI display with tiebreaker rules applied.
  */
-export const getDivisionPreview = cache(
-  async (splitId: string): Promise<DivisionPreview> => {
-    const leagues = await getLeaguesBySplit(splitId);
+export async function getDivisionPreview(
+  splitId: string,
+): Promise<DivisionPreview> {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag(`splits:${splitId}`, `matches:${splitId}`);
 
-    if (leagues.length === 0) {
-      return { primera: [], segunda: [] };
-    }
+  const leagues = await getLeaguesBySplit(splitId);
 
-    // Find leagues by tier priority (1 = Primera, 2 = Segunda)
-    const primeraLeague = leagues.find((l) => l.tier_priority === 1);
-    const segundaLeague = leagues.find((l) => l.tier_priority === 2);
+  if (leagues.length === 0) {
+    return { primera: [], segunda: [] };
+  }
 
-    // Fetch rankings and matches in parallel
-    const [primeraRankings, segundaRankings, matchesByRound] =
-      await Promise.all([
-        primeraLeague
-          ? getRankingsByLeague(primeraLeague.id)
-          : Promise.resolve([]),
-        segundaLeague
-          ? getRankingsByLeague(segundaLeague.id)
-          : Promise.resolve([]),
-        getMatchesByRound(splitId),
-      ]);
+  // Find leagues by tier priority (1 = Primera, 2 = Segunda)
+  const primeraLeague = leagues.find((l) => l.tier_priority === 1);
+  const segundaLeague = leagues.find((l) => l.tier_priority === 2);
 
-    // Extract all matches from the grouped structure
-    const allMatches = matchesByRound.flatMap((round) => round.matches);
+  // Fetch rankings and matches in parallel
+  const [primeraRankings, segundaRankings, matchesByRound] = await Promise.all([
+    primeraLeague ? getRankingsByLeague(primeraLeague.id) : Promise.resolve([]),
+    segundaLeague ? getRankingsByLeague(segundaLeague.id) : Promise.resolve([]),
+    getMatchesByRound(splitId),
+  ]);
 
-    // Filter matches by league and apply tiebreaker rules
-    const primeraMatches = primeraLeague
-      ? allMatches.filter((m) => m.leagueId === primeraLeague.id)
+  // Extract all matches from the grouped structure
+  const allMatches = matchesByRound.flatMap((round) => round.matches);
+
+  // Filter matches by league and apply tiebreaker rules
+  const primeraMatches = primeraLeague
+    ? allMatches.filter((m) => m.leagueId === primeraLeague.id)
+    : [];
+  const segundaMatches = segundaLeague
+    ? allMatches.filter((m) => m.leagueId === segundaLeague.id)
+    : [];
+
+  const primera =
+    primeraRankings.length > 0
+      ? applyTiebreakerRules(primeraRankings, primeraMatches)
       : [];
-    const segundaMatches = segundaLeague
-      ? allMatches.filter((m) => m.leagueId === segundaLeague.id)
+  const segunda =
+    segundaRankings.length > 0
+      ? applyTiebreakerRules(segundaRankings, segundaMatches)
       : [];
 
-    const primera =
-      primeraRankings.length > 0
-        ? applyTiebreakerRules(primeraRankings, primeraMatches)
-        : [];
-    const segunda =
-      segundaRankings.length > 0
-        ? applyTiebreakerRules(segundaRankings, segundaMatches)
-        : [];
-
-    return { primera, segunda };
-  },
-);
+  return { primera, segunda };
+}
 
 /**
  * Gets a single league by split and tier priority
  */
-export const getLeagueByTier = cache(
-  async (splitId: string, tierPriority: number): Promise<LeagueInfo | null> => {
-    const supabase = await createClient();
+export async function getLeagueByTier(
+  splitId: string,
+  tierPriority: number,
+): Promise<LeagueInfo | null> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('seasons', `splits:${splitId}`);
 
-    const { data, error } = await supabase
-      .from('leagues')
-      .select('id, tier_name, tier_priority')
-      .eq('split_id', splitId)
-      .eq('tier_priority', tierPriority)
-      .single();
+  const supabase = await createClient({ session: false });
 
-    if (error) {
-      console.error('[getLeagueByTier] Error:', error.message);
-      return null;
-    }
+  const { data, error } = await supabase
+    .from('leagues')
+    .select('id, tier_name, tier_priority')
+    .eq('split_id', splitId)
+    .eq('tier_priority', tierPriority)
+    .single();
 
-    return data;
-  },
-);
+  if (error) {
+    console.error('[getLeagueByTier] Error:', error.message);
+    return null;
+  }
+
+  return data;
+}
 
 /**
  * Gets all participants for a split, grouped by division
  */
-export const getParticipantsBySplit = cache(
-  async (splitId: string): Promise<ParticipantsByDivision> => {
-    const supabase = await createClient();
+export async function getParticipantsBySplit(
+  splitId: string,
+): Promise<ParticipantsByDivision> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag(`participants:${splitId}`);
 
-    // Get leagues for this split
-    const leagues = await getLeaguesBySplit(splitId);
+  const supabase = await createClient({ session: false });
 
-    if (leagues.length === 0) {
-      return { primera: [], segunda: [] };
-    }
+  // Get leagues for this split
+  const leagues = await getLeaguesBySplit(splitId);
 
-    const primeraLeague = leagues.find((l) => l.tier_priority === 1);
-    const segundaLeague = leagues.find((l) => l.tier_priority === 2);
+  if (leagues.length === 0) {
+    return { primera: [], segunda: [] };
+  }
 
-    // Fetch participants for each league
-    const fetchParticipants = async (
-      leagueId: string,
-    ): Promise<ParticipantEntry[]> => {
-      const { data, error } = await supabase
-        .from('league_participants')
-        .select(
-          `
+  const primeraLeague = leagues.find((l) => l.tier_priority === 1);
+  const segundaLeague = leagues.find((l) => l.tier_priority === 2);
+
+  // Fetch participants for each league
+  const fetchParticipants = async (
+    leagueId: string,
+  ): Promise<ParticipantEntry[]> => {
+    const { data, error } = await supabase
+      .from('league_participants')
+      .select(
+        `
           trainer_id,
           lives,
           trainers!inner(
@@ -230,62 +247,66 @@ export const getParticipantsBySplit = cache(
             avatar_url
           )
         `,
-        )
-        .eq('league_id', leagueId)
-        .eq('status', 'active');
+      )
+      .eq('league_id', leagueId)
+      .eq('status', 'active');
 
-      if (error) {
-        console.error('[getParticipantsBySplit] Error:', error.message);
-        return [];
-      }
+    if (error) {
+      console.error('[getParticipantsBySplit] Error:', error.message);
+      return [];
+    }
 
-      return (data ?? []).map((p) => ({
-        trainerId: p.trainers.id,
-        nickname: p.trainers.nickname,
-        avatarUrl: p.trainers.avatar_url,
-        lives: p.lives,
-      }));
-    };
+    return (data ?? []).map((p) => ({
+      trainerId: p.trainers.id,
+      nickname: p.trainers.nickname,
+      avatarUrl: p.trainers.avatar_url,
+      lives: p.lives,
+    }));
+  };
 
-    const [primera, segunda] = await Promise.all([
-      primeraLeague ? fetchParticipants(primeraLeague.id) : Promise.resolve([]),
-      segundaLeague ? fetchParticipants(segundaLeague.id) : Promise.resolve([]),
-    ]);
+  const [primera, segunda] = await Promise.all([
+    primeraLeague ? fetchParticipants(primeraLeague.id) : Promise.resolve([]),
+    segundaLeague ? fetchParticipants(segundaLeague.id) : Promise.resolve([]),
+  ]);
 
-    // Sort alphabetically
-    primera.sort((a, b) => a.nickname.localeCompare(b.nickname));
-    segunda.sort((a, b) => a.nickname.localeCompare(b.nickname));
+  // Sort alphabetically
+  primera.sort((a, b) => a.nickname.localeCompare(b.nickname));
+  segunda.sort((a, b) => a.nickname.localeCompare(b.nickname));
 
-    return { primera, segunda };
-  },
-);
+  return { primera, segunda };
+}
 
 /**
  * Gets all matches for a split, grouped by round (jornada).
  * Only returns regular season matches (match_group = 'regular').
  */
-export const getMatchesByRound = cache(
-  async (splitId: string): Promise<MatchesByRound> => {
-    const supabase = await createClient();
+export async function getMatchesByRound(
+  splitId: string,
+): Promise<MatchesByRound> {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag(`matches:${splitId}`);
 
-    // Get leagues for tier lookup (use priority to identify Primera/Segunda)
-    const leagues = await getLeaguesBySplit(splitId);
-    // Map league_id to normalized tier name based on priority
-    const leagueMap = new Map(
-      leagues.map((l) => [
-        l.id,
-        l.tier_priority === 1
-          ? 'Primera'
-          : l.tier_priority === 2
-            ? 'Segunda'
-            : l.tier_name,
-      ]),
-    );
+  const supabase = await createClient({ session: false });
 
-    const { data, error } = await supabase
-      .from('matches')
-      .select(
-        `
+  // Get leagues for tier lookup (use priority to identify Primera/Segunda)
+  const leagues = await getLeaguesBySplit(splitId);
+  // Map league_id to normalized tier name based on priority
+  const leagueMap = new Map(
+    leagues.map((l) => [
+      l.id,
+      l.tier_priority === 1
+        ? 'Primera'
+        : l.tier_priority === 2
+          ? 'Segunda'
+          : l.tier_name,
+    ]),
+  );
+
+  const { data, error } = await supabase
+    .from('matches')
+    .select(
+      `
         id,
         round,
         match_group,
@@ -305,61 +326,60 @@ export const getMatchesByRound = cache(
           avatar_url
         )
       `,
-      )
-      .eq('split_id', splitId)
-      .eq('match_group', 'regular')
-      .order('round', { ascending: true })
-      .order('league_id', { ascending: true });
+    )
+    .eq('split_id', splitId)
+    .eq('match_group', 'regular')
+    .order('round', { ascending: true })
+    .order('league_id', { ascending: true });
 
-    if (error) {
-      console.error('[getMatchesByRound] Error:', error.message);
-      return [];
-    }
+  if (error) {
+    console.error('[getMatchesByRound] Error:', error.message);
+    return [];
+  }
 
-    if (!data || data.length === 0) {
-      return [];
-    }
+  if (!data || data.length === 0) {
+    return [];
+  }
 
-    // Transform and group by round
-    const matchesByRoundMap = new Map<number, MatchEntry[]>();
+  // Transform and group by round
+  const matchesByRoundMap = new Map<number, MatchEntry[]>();
 
-    for (const row of data) {
-      const match: MatchEntry = {
-        id: row.id,
-        round: row.round,
-        matchGroup: row.match_group,
-        matchTag: row.match_tag,
-        played: row.played ?? false,
-        homeSets: row.home_sets ?? 0,
-        awaySets: row.away_sets ?? 0,
-        leagueId: row.league_id,
-        leagueTierName: row.league_id
-          ? (leagueMap.get(row.league_id) ?? null)
-          : null,
-        homeTrainer: row.home_trainer
-          ? {
-              id: row.home_trainer.id,
-              nickname: row.home_trainer.nickname,
-              avatarUrl: row.home_trainer.avatar_url,
-            }
-          : null,
-        awayTrainer: row.away_trainer
-          ? {
-              id: row.away_trainer.id,
-              nickname: row.away_trainer.nickname,
-              avatarUrl: row.away_trainer.avatar_url,
-            }
-          : null,
-      };
+  for (const row of data) {
+    const match: MatchEntry = {
+      id: row.id,
+      round: row.round,
+      matchGroup: row.match_group,
+      matchTag: row.match_tag,
+      played: row.played ?? false,
+      homeSets: row.home_sets ?? 0,
+      awaySets: row.away_sets ?? 0,
+      leagueId: row.league_id,
+      leagueTierName: row.league_id
+        ? (leagueMap.get(row.league_id) ?? null)
+        : null,
+      homeTrainer: row.home_trainer
+        ? {
+            id: row.home_trainer.id,
+            nickname: row.home_trainer.nickname,
+            avatarUrl: row.home_trainer.avatar_url,
+          }
+        : null,
+      awayTrainer: row.away_trainer
+        ? {
+            id: row.away_trainer.id,
+            nickname: row.away_trainer.nickname,
+            avatarUrl: row.away_trainer.avatar_url,
+          }
+        : null,
+    };
 
-      const roundMatches = matchesByRoundMap.get(row.round) ?? [];
-      roundMatches.push(match);
-      matchesByRoundMap.set(row.round, roundMatches);
-    }
+    const roundMatches = matchesByRoundMap.get(row.round) ?? [];
+    roundMatches.push(match);
+    matchesByRoundMap.set(row.round, roundMatches);
+  }
 
-    // Convert to array sorted by round
-    return Array.from(matchesByRoundMap.entries())
-      .sort(([a], [b]) => a - b)
-      .map(([round, matches]) => ({ round, matches }));
-  },
-);
+  // Convert to array sorted by round
+  return Array.from(matchesByRoundMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([round, matches]) => ({ round, matches }));
+}

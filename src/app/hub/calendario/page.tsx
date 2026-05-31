@@ -13,11 +13,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Calendar page (FR5 / REQ-22). The top-level only awaits the cheap
- * `getActiveSeasonWithSplit()` + `getCurrentRound()` (for the eyebrow); the
- * heavy `getMatchesByRound` lives inside the streamed `CalendarSection`.
+ * Calendar page (FR5 / REQ-22). Wave A REQ-44: the cheap top-level awaits
+ * (`getActiveSeasonWithSplit`, `getCurrentRound`) live inside
+ * `CalendarioPageInner` under an OUTER Suspense; the heavy
+ * `getMatchesByRound` lives inside the streamed `CalendarSection`.
  */
-export default async function CalendarioPage() {
+async function CalendarioPageInner() {
   const seasonInfo = await getActiveSeasonWithSplit();
   const split = seasonInfo?.activeSplit;
 
@@ -44,5 +45,13 @@ export default async function CalendarioPage() {
         <CalendarSection splitId={split.id} />
       </Suspense>
     </div>
+  );
+}
+
+export default function CalendarioPage() {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="calendar" />}>
+      <CalendarioPageInner />
+    </Suspense>
   );
 }

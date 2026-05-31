@@ -12,11 +12,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * El Olimpo page (FR8 / REQ-22). Top-level only awaits
- * `getActiveSeasonWithSplit()`; the heavy preview + matches join lives in the
- * streamed `OlimpoSection`.
+ * El Olimpo page (FR8 / REQ-22). Wave A REQ-44: the cheap top-level
+ * `getActiveSeasonWithSplit()` await lives inside `OlimpoPageInner` under an
+ * OUTER Suspense; the heavy preview + matches join stays in the inner
+ * `OlimpoSection` Suspense boundary.
  */
-export default async function OlimpoPage() {
+async function OlimpoPageInner() {
   const seasonInfo = await getActiveSeasonWithSplit();
   const split = seasonInfo?.activeSplit;
 
@@ -37,5 +38,13 @@ export default async function OlimpoPage() {
         />
       </Suspense>
     </div>
+  );
+}
+
+export default function OlimpoPage() {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="olimpo" />}>
+      <OlimpoPageInner />
+    </Suspense>
   );
 }

@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
+import { ShellSkeleton } from '@/components/shared';
 import { PixelShell } from '@/components/shared/layout/hub/PixelShell';
 import {
   type DivisionPreview,
@@ -13,12 +14,12 @@ import {
  * **cookie-free** Supabase client so `/archivo/[season]/[split]` stays
  * eligible for `generateStaticParams` SSG. The chrome itself (`PixelShell`)
  * is a pure renderer shared with the hub.
+ *
+ * Wave A REQ-44: the async fetch block lives inside `ArchivoShell` under a
+ * Suspense boundary so `cacheComponents: true` (Wave B) can land without
+ * aborting prerender.
  */
-export default async function ArchivoLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+async function ArchivoShell({ children }: { children: ReactNode }) {
   const seasonInfo = await getPublicActiveSeasonWithSplit();
   const activeSplitId = seasonInfo?.activeSplit?.id ?? null;
 
@@ -40,5 +41,13 @@ export default async function ArchivoLayout({
     >
       {children}
     </PixelShell>
+  );
+}
+
+export default function ArchivoLayout({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<ShellSkeleton />}>
+      <ArchivoShell>{children}</ArchivoShell>
+    </Suspense>
   );
 }

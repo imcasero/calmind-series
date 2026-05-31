@@ -11,11 +11,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Roster page (FR6 / REQ-22). The top-level only awaits
- * `getActiveSeasonWithSplit()`; the heavy data + grid pre-rendering lives in
- * the streamed `RosterSection`.
+ * Roster page (FR6 / REQ-22). Wave A REQ-44: the cheap top-level
+ * `getActiveSeasonWithSplit()` await lives inside `EntrenadoresPageInner`
+ * under an OUTER Suspense; the heavy data + grid pre-rendering stays in the
+ * inner `RosterSection` Suspense boundary.
  */
-export default async function EntrenadoresPage() {
+async function EntrenadoresPageInner() {
   const seasonInfo = await getActiveSeasonWithSplit();
   const split = seasonInfo?.activeSplit;
 
@@ -32,5 +33,13 @@ export default async function EntrenadoresPage() {
         <RosterSection splitId={split.id} />
       </Suspense>
     </div>
+  );
+}
+
+export default function EntrenadoresPage() {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="roster" />}>
+      <EntrenadoresPageInner />
+    </Suspense>
   );
 }

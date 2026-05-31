@@ -16,11 +16,14 @@ export const metadata: Metadata = {
 /**
  * Hub master dashboard (FR3 / REQ-22): each panel lives in its own Suspense
  * boundary so a slow query for one does not block the others from streaming in.
- * The top-level only awaits the cheap `getActiveSeasonWithSplit()`; every other
- * fetch happens inside its own async leaf under `components/hub/sections/`.
  * `react.cache` in the query layer dedupes overlapping reads across siblings.
+ *
+ * Wave A REQ-44: the cheap top-level `getActiveSeasonWithSplit()` await
+ * moves into `HubPageInner` under an OUTER Suspense boundary so
+ * `cacheComponents: true` (Wave B) can land. The existing per-section F5
+ * Suspense boundaries stay as additive inner children.
  */
-export default async function HubPage() {
+async function HubPageInner() {
   const seasonInfo = await getActiveSeasonWithSplit();
   const split = seasonInfo?.activeSplit;
 
@@ -61,5 +64,13 @@ export default async function HubPage() {
         <NewsRailSection splitId={split.id} />
       </Suspense>
     </div>
+  );
+}
+
+export default function HubPage() {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="phaseBanner" />}>
+      <HubPageInner />
+    </Suspense>
   );
 }

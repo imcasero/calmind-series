@@ -23,12 +23,13 @@ export async function generateMetadata({
 }
 
 /**
- * Single trainer profile (FR6 / REQ-22). The page-level check guarantees the
- * trainer exists (otherwise `notFound()` short-circuits). The streamed
- * `TrainerProfileSection` does the per-split data join under its own Suspense
- * boundary.
+ * Single trainer profile (FR6 / REQ-22). Wave A REQ-44: the top-level
+ * `getTrainerById` await lives inside `TrainerPageInner` under an OUTER
+ * Suspense boundary so `cacheComponents: true` (Wave B) can land. The
+ * `notFound()` short-circuit stays inside the helper; the inner
+ * `TrainerProfileSection` keeps its existing Suspense boundary.
  */
-export default async function TrainerPage({ params }: TrainerPageProps) {
+async function TrainerPageInner({ params }: TrainerPageProps) {
   const { id } = await params;
   const trainer = await getTrainerById(id);
 
@@ -39,6 +40,14 @@ export default async function TrainerPage({ params }: TrainerPageProps) {
   return (
     <Suspense fallback={<SectionSkeleton variant="trainerProfile" />}>
       <TrainerProfileSection trainerId={id} />
+    </Suspense>
+  );
+}
+
+export default function TrainerPage(props: TrainerPageProps) {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="trainerProfile" />}>
+      <TrainerPageInner {...props} />
     </Suspense>
   );
 }

@@ -1,7 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  startTransition,
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useState,
+} from 'react';
 import {
   AdminBadge,
   AdminButton,
@@ -27,6 +32,15 @@ import {
   MatchResultInputSchema,
 } from '@/lib/types/schemas';
 import { cn } from '@/lib/utils';
+import {
+  clearMatchResultAction,
+  createMatchAction,
+  deleteMatchAction,
+  generateJ15MatchesAction,
+  generateJ16MatchesAction,
+  saveMatchResultAction,
+  updateMatchAction,
+} from '../_actions';
 
 type ParticipantWithTrainer = LeagueParticipant & { trainer: Trainer };
 type MatchWithTrainers = Match & {
@@ -39,6 +53,49 @@ type PendingMatchConfirm =
   | { kind: 'delete-match'; matchId: string }
   | null;
 
+type MatchOptimistic =
+  | { type: 'result'; id: string; homeSets: number; awaySets: number }
+  | { type: 'clear'; id: string }
+  | { type: 'create'; match: MatchWithTrainers }
+  | { type: 'update'; match: MatchWithTrainers }
+  | { type: 'delete'; id: string }
+  | { type: 'bulk-insert'; matches: MatchWithTrainers[] };
+
+function matchesReducer(
+  state: MatchWithTrainers[],
+  action: MatchOptimistic,
+): MatchWithTrainers[] {
+  switch (action.type) {
+    case 'result':
+      return state.map((m) =>
+        m.id === action.id
+          ? {
+              ...m,
+              home_sets: action.homeSets,
+              away_sets: action.awaySets,
+              played: true,
+            }
+          : m,
+      );
+    case 'clear':
+      return state.map((m) =>
+        m.id === action.id
+          ? { ...m, home_sets: null, away_sets: null, played: false }
+          : m,
+      );
+    case 'create':
+      return [...state, action.match];
+    case 'update':
+      return state.map((m) => (m.id === action.match.id ? action.match : m));
+    case 'delete':
+      return state.filter((m) => m.id !== action.id);
+    case 'bulk-insert':
+      return [...state, ...action.matches];
+    default:
+      return state;
+  }
+}
+
 interface MatchesManagerProps {
   initialSeasons: Season[];
   activeSplitInfo: ActiveSplitInfo | null;
@@ -48,8 +105,6 @@ export default function MatchesManager({
   initialSeasons,
   activeSplitInfo,
 }: MatchesManagerProps) {
-  const router = useRouter();
-
   // Tab state
   const [activeTab, setActiveTab] = useState<'results' | 'planning'>('results');
 
@@ -62,6 +117,10 @@ export default function MatchesManager({
     [],
   );
   const [matches, setMatches] = useState<MatchWithTrainers[]>([]);
+  const [optimisticMatches, applyMatchOptimistic] = useOptimistic(
+    matches,
+    matchesReducer,
+  );
 
   // Results tab - auto-select active split
   const [resultsLeagueId, setResultsLeagueId] = useState<string | null>(
@@ -113,70 +172,24 @@ export default function MatchesManager({
   const [pendingConfirm, setPendingConfirm] =
     useState<PendingMatchConfirm>(null);
 
+  // Browser-side READ client (no writes — all mutations flow through Server
+  // Actions in `../_actions.ts`). Kept for the four read effects below
+  // (splits, leagues, matches, participants) and the post-mutation
+  // `refreshMatches` reconciliation.
   const supabase = createClient();
-
-  // Helper functions for J15/J16 generation
-  const fetchRankingsByLeague = async (leagueId: string) => {
-    const { data, error } = await supabase
-      .from('league_rankings')
-      .select('trainer_id, position, nickname')
-      .eq('league_id', leagueId)
-      .not('position', 'is', null)
-      .order('position', { ascending: true })
-      .limit(8);
-
-    if (error) throw error;
-    return data ?? [];
-  };
-
-  const fetchJ15Matches = async (leagueId: string) => {
-    const { data, error } = await supabase
-      .from('matches')
-      .select(
-        'id, match_tag, played, home_trainer_id, away_trainer_id, home_sets, away_sets',
-      )
-      .eq('league_id', leagueId)
-      .eq('round', 15);
-
-    if (error) throw error;
-    return data ?? [];
-  };
-
-  const getMatchOutcome = (
-    match: {
-      played: boolean | null;
-      home_trainer_id: string | null;
-      away_trainer_id: string | null;
-      home_sets: number | null;
-      away_sets: number | null;
-    },
-    type: 'winner' | 'loser',
-  ): string | null => {
-    if (!match.played) return null;
-    const homeWins = (match.home_sets || 0) > (match.away_sets || 0);
-    if (type === 'winner') {
-      return homeWins ? match.home_trainer_id : match.away_trainer_id;
-    }
-    return homeWins ? match.away_trainer_id : match.home_trainer_id;
-  };
-
-  const getLeagueTier = (leagueId: string): 'primera' | 'segunda' => {
-    const league = leagues.find((l) => l.id === leagueId);
-    return league?.tier_priority === 1 ? 'primera' : 'segunda';
-  };
 
   // Get unique rounds from matches
   const availableRounds = useMemo(() => {
-    const rounds = [...new Set(matches.map((m) => m.round))].sort(
+    const rounds = [...new Set(optimisticMatches.map((m) => m.round))].sort(
       (a, b) => a - b,
     );
     return rounds.length > 0 ? rounds : [1];
-  }, [matches]);
+  }, [optimisticMatches]);
 
   // Filter matches by round for planning tab
   const matchesByRound = useMemo(() => {
-    return matches.filter((m) => m.round === selectedRound);
-  }, [matches, selectedRound]);
+    return optimisticMatches.filter((m) => m.round === selectedRound);
+  }, [optimisticMatches, selectedRound]);
 
   // Fetch splits when season changes (for planning tab)
   useEffect(() => {
@@ -328,6 +341,19 @@ export default function MatchesManager({
     }
   };
 
+  // Derive the (splitId, leagueId) pair to pass to Server Actions based on
+  // the active tab. Results tab uses `activeSplitInfo` + `resultsLeagueId`;
+  // planning tab uses the manual selection state.
+  const getActionCtx = (): { splitId: string; leagueId: string } | null => {
+    if (activeTab === 'results') {
+      const splitId = activeSplitInfo?.split.id;
+      if (!splitId || !resultsLeagueId) return null;
+      return { splitId, leagueId: resultsLeagueId };
+    }
+    if (!selectedSplitId || !selectedLeagueId) return null;
+    return { splitId: selectedSplitId, leagueId: selectedLeagueId };
+  };
+
   // Result handlers
   const handleStartEditResult = (match: MatchWithTrainers) => {
     setEditingResultId(match.id);
@@ -355,47 +381,52 @@ export default function MatchesManager({
       setSaving(false);
       return;
     }
-
-    const { error } = await supabase
-      .from('matches')
-      .update({
-        ...parsed.data,
-        played: true,
-      })
-      .eq('id', matchId);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setEditingResultId(null);
-      await refreshMatches();
-      router.refresh();
+    const ctx = getActionCtx();
+    if (!ctx) {
+      setError('Selecciona split y división primero.');
+      setSaving(false);
+      return;
     }
-    setSaving(false);
+
+    startTransition(async () => {
+      applyMatchOptimistic({
+        type: 'result',
+        id: matchId,
+        homeSets: parsed.data.home_sets,
+        awaySets: parsed.data.away_sets,
+      });
+      const result = await saveMatchResultAction(matchId, parsed.data, ctx);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setEditingResultId(null);
+        await refreshMatches();
+      }
+      setSaving(false);
+    });
   };
 
   const requestClearResult = (matchId: string) => {
     setPendingConfirm({ kind: 'clear-result', matchId });
   };
 
-  const runClearResult = async (matchId: string) => {
-    setSaving(true);
-    const { error } = await supabase
-      .from('matches')
-      .update({
-        home_sets: null,
-        away_sets: null,
-        played: false,
-      })
-      .eq('id', matchId);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      await refreshMatches();
-      router.refresh();
+  const runClearResult = (matchId: string) => {
+    const ctx = getActionCtx();
+    if (!ctx) {
+      setError('Selecciona split y división primero.');
+      return;
     }
-    setSaving(false);
+    setSaving(true);
+    startTransition(async () => {
+      applyMatchOptimistic({ type: 'clear', id: matchId });
+      const result = await clearMatchResultAction(matchId, ctx);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refreshMatches();
+      }
+      setSaving(false);
+    });
   };
 
   // Planning handlers
@@ -455,66 +486,100 @@ export default function MatchesManager({
       return;
     }
 
-    if (editingMatch) {
-      const { error } = await supabase
-        .from('matches')
-        .update(parsed.data)
-        .eq('id', editingMatch.id);
+    const homeTrainer =
+      participants.find((p) => p.trainer_id === parsed.data.home_trainer_id)
+        ?.trainer ?? null;
+    const awayTrainer =
+      participants.find((p) => p.trainer_id === parsed.data.away_trainer_id)
+        ?.trainer ?? null;
 
-      if (error) {
-        setError(error.message);
-      } else {
-        handleCloseMatchForm();
-        await refreshMatches();
-        router.refresh();
-      }
+    if (editingMatch) {
+      const optimistic: MatchWithTrainers = {
+        ...editingMatch,
+        ...parsed.data,
+        home_trainer: homeTrainer,
+        away_trainer: awayTrainer,
+      };
+      startTransition(async () => {
+        applyMatchOptimistic({ type: 'update', match: optimistic });
+        const result = await updateMatchAction(editingMatch.id, parsed.data, {
+          splitId: selectedSplitId,
+          leagueId: selectedLeagueId,
+        });
+        if (!result.ok) {
+          setError(result.error);
+        } else {
+          handleCloseMatchForm();
+          await refreshMatches();
+        }
+        setSaving(false);
+      });
     } else {
-      const { error } = await supabase.from('matches').insert({
+      const tempMatch: MatchWithTrainers = {
+        id: `optimistic-${crypto.randomUUID()}`,
         league_id: selectedLeagueId,
         split_id: selectedSplitId,
         ...parsed.data,
+        home_sets: null,
+        away_sets: null,
         played: false,
+        metadata: null,
+        created_at: new Date().toISOString(),
+        home_trainer: homeTrainer,
+        away_trainer: awayTrainer,
+      };
+      startTransition(async () => {
+        applyMatchOptimistic({ type: 'create', match: tempMatch });
+        const result = await createMatchAction({
+          leagueId: selectedLeagueId,
+          splitId: selectedSplitId,
+          input: parsed.data,
+        });
+        if (!result.ok) {
+          setError(result.error);
+        } else {
+          handleCloseMatchForm();
+          await refreshMatches();
+        }
+        setSaving(false);
       });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        handleCloseMatchForm();
-        await refreshMatches();
-        router.refresh();
-      }
     }
-    setSaving(false);
   };
 
   const requestDeleteMatch = (matchId: string) => {
     setPendingConfirm({ kind: 'delete-match', matchId });
   };
 
-  const runDeleteMatch = async (matchId: string) => {
-    setSaving(true);
-    const { error } = await supabase.from('matches').delete().eq('id', matchId);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      await refreshMatches();
-      router.refresh();
+  const runDeleteMatch = (matchId: string) => {
+    const ctx = getActionCtx();
+    if (!ctx) {
+      setError('Selecciona split y división primero.');
+      return;
     }
-    setSaving(false);
+    setSaving(true);
+    startTransition(async () => {
+      applyMatchOptimistic({ type: 'delete', id: matchId });
+      const result = await deleteMatchAction(matchId, ctx);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refreshMatches();
+      }
+      setSaving(false);
+    });
   };
 
   const cancelConfirm = () => setPendingConfirm(null);
 
-  const confirmPending = async () => {
+  const confirmPending = () => {
     if (!pendingConfirm) return;
     const current = pendingConfirm;
     setPendingConfirm(null);
 
     if (current.kind === 'clear-result') {
-      await runClearResult(current.matchId);
+      runClearResult(current.matchId);
     } else {
-      await runDeleteMatch(current.matchId);
+      runDeleteMatch(current.matchId);
     }
   };
 
@@ -531,211 +596,49 @@ export default function MatchesManager({
           }
         : { title: '', message: '' };
 
-  // J15 Generation Handler
-  const handleGenerateJ15Matches = async () => {
+  // J15 Generation Handler — ports the existing button-driven bulk insert
+  // verbatim to a Server Action. F6c (auto-cascade on J14 completion) is
+  // explicitly out of scope per REQ-78.
+  const handleGenerateJ15Matches = () => {
     if (!selectedLeagueId || !selectedSplitId) return;
 
     setGeneratingSpecialMatches(true);
     setError(null);
 
-    try {
-      const rankings = await fetchRankingsByLeague(selectedLeagueId);
+    const leagueId = selectedLeagueId;
+    const splitId = selectedSplitId;
 
-      if (rankings.length < 8) {
-        throw new Error(
-          'Se necesitan al menos 8 participantes con posición en el ranking.',
-        );
+    startTransition(async () => {
+      const result = await generateJ15MatchesAction(leagueId, splitId);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refreshMatches();
       }
-
-      for (let i = 0; i < 8; i++) {
-        if (!rankings[i].trainer_id) {
-          throw new Error(
-            `El participante en posición ${i + 1} no tiene trainer_id válido.`,
-          );
-        }
-      }
-
-      const matchesToCreate = [
-        {
-          league_id: selectedLeagueId,
-          split_id: selectedSplitId,
-          round: 15,
-          match_group: 'top_4',
-          match_tag: 'semi_1',
-          home_trainer_id: rankings[0].trainer_id,
-          away_trainer_id: rankings[3].trainer_id,
-          played: false,
-        },
-        {
-          league_id: selectedLeagueId,
-          split_id: selectedSplitId,
-          round: 15,
-          match_group: 'top_4',
-          match_tag: 'semi_2',
-          home_trainer_id: rankings[1].trainer_id,
-          away_trainer_id: rankings[2].trainer_id,
-          played: false,
-        },
-        {
-          league_id: selectedLeagueId,
-          split_id: selectedSplitId,
-          round: 15,
-          match_group: 'bottom_4',
-          match_tag: 'survival_1',
-          home_trainer_id: rankings[4].trainer_id,
-          away_trainer_id: rankings[7].trainer_id,
-          played: false,
-        },
-        {
-          league_id: selectedLeagueId,
-          split_id: selectedSplitId,
-          round: 15,
-          match_group: 'bottom_4',
-          match_tag: 'survival_2',
-          home_trainer_id: rankings[5].trainer_id,
-          away_trainer_id: rankings[6].trainer_id,
-          played: false,
-        },
-      ];
-
-      const { error } = await supabase.from('matches').insert(matchesToCreate);
-      if (error) throw error;
-
-      await refreshMatches();
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error generando J15');
-    } finally {
       setGeneratingSpecialMatches(false);
-    }
+    });
   };
 
-  // J16 Generation Handler
-  const handleGenerateJ16Matches = async () => {
+  // J16 Generation Handler — server action looks up `tier_priority` and J15
+  // rows itself; the client only passes (leagueId, splitId).
+  const handleGenerateJ16Matches = () => {
     if (!selectedLeagueId || !selectedSplitId) return;
 
     setGeneratingSpecialMatches(true);
     setError(null);
 
-    try {
-      const j15Matches = await fetchJ15Matches(selectedLeagueId);
+    const leagueId = selectedLeagueId;
+    const splitId = selectedSplitId;
 
-      if (j15Matches.length !== 4) {
-        throw new Error(
-          'No se encontraron los 4 partidos de J15 para esta liga.',
-        );
+    startTransition(async () => {
+      const result = await generateJ16MatchesAction(leagueId, splitId);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refreshMatches();
       }
-
-      const semi1 = j15Matches.find((m) => m.match_tag === 'semi_1');
-      const semi2 = j15Matches.find((m) => m.match_tag === 'semi_2');
-      const surv1 = j15Matches.find((m) => m.match_tag === 'survival_1');
-      const surv2 = j15Matches.find((m) => m.match_tag === 'survival_2');
-
-      if (!semi1 || !semi2 || !surv1 || !surv2) {
-        throw new Error(
-          'Faltan partidos de J15 (semi_1, semi_2, survival_1, survival_2)',
-        );
-      }
-
-      const tier = getLeagueTier(selectedLeagueId);
-
-      const matchesToCreate =
-        tier === 'primera'
-          ? [
-              {
-                league_id: selectedLeagueId,
-                split_id: selectedSplitId,
-                round: 16,
-                match_group: 'top_4',
-                match_tag: 'grand_final',
-                home_trainer_id: getMatchOutcome(semi1, 'winner'),
-                away_trainer_id: getMatchOutcome(semi2, 'winner'),
-                played: false,
-              },
-              {
-                league_id: selectedLeagueId,
-                split_id: selectedSplitId,
-                round: 16,
-                match_group: 'top_4',
-                match_tag: '3rd_place',
-                home_trainer_id: getMatchOutcome(semi1, 'loser'),
-                away_trainer_id: getMatchOutcome(semi2, 'loser'),
-                played: false,
-              },
-              {
-                league_id: selectedLeagueId,
-                split_id: selectedSplitId,
-                round: 16,
-                match_group: 'bottom_4',
-                match_tag: 'relegation_battle',
-                home_trainer_id: getMatchOutcome(surv1, 'winner'),
-                away_trainer_id: getMatchOutcome(surv2, 'winner'),
-                played: false,
-              },
-              {
-                league_id: selectedLeagueId,
-                split_id: selectedSplitId,
-                round: 16,
-                match_group: 'bottom_4',
-                match_tag: 'honor_battle',
-                home_trainer_id: getMatchOutcome(surv1, 'loser'),
-                away_trainer_id: getMatchOutcome(surv2, 'loser'),
-                played: false,
-              },
-            ]
-          : [
-              {
-                league_id: selectedLeagueId,
-                split_id: selectedSplitId,
-                round: 16,
-                match_group: 'top_4',
-                match_tag: 'segunda_final',
-                home_trainer_id: getMatchOutcome(semi1, 'winner'),
-                away_trainer_id: getMatchOutcome(semi2, 'winner'),
-                played: false,
-              },
-              {
-                league_id: selectedLeagueId,
-                split_id: selectedSplitId,
-                round: 16,
-                match_group: 'top_4',
-                match_tag: 'opportunity',
-                home_trainer_id: getMatchOutcome(semi1, 'loser'),
-                away_trainer_id: getMatchOutcome(semi2, 'loser'),
-                played: false,
-              },
-              {
-                league_id: selectedLeagueId,
-                split_id: selectedSplitId,
-                round: 16,
-                match_group: 'bottom_4',
-                match_tag: 'last_chance',
-                home_trainer_id: getMatchOutcome(surv1, 'winner'),
-                away_trainer_id: getMatchOutcome(surv2, 'winner'),
-                played: false,
-              },
-              {
-                league_id: selectedLeagueId,
-                split_id: selectedSplitId,
-                round: 16,
-                match_group: 'bottom_4',
-                match_tag: 'honor_segunda',
-                home_trainer_id: getMatchOutcome(surv1, 'loser'),
-                away_trainer_id: getMatchOutcome(surv2, 'loser'),
-                played: false,
-              },
-            ];
-
-      const { error } = await supabase.from('matches').insert(matchesToCreate);
-      if (error) throw error;
-
-      await refreshMatches();
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error generando J16');
-    } finally {
       setGeneratingSpecialMatches(false);
-    }
+    });
   };
 
   // Get available trainers for match form
@@ -814,12 +717,14 @@ export default function MatchesManager({
             <EmptyPanel text="Selecciona una división para ver los partidos." />
           ) : loadingMatches ? (
             <EmptyPanel text="Cargando partidos..." />
-          ) : matches.length === 0 ? (
+          ) : optimisticMatches.length === 0 ? (
             <EmptyPanel text="No hay partidos planificados para esta división." />
           ) : (
             <div className="flex flex-col gap-4">
               {availableRounds.map((round) => {
-                const roundMatches = matches.filter((m) => m.round === round);
+                const roundMatches = optimisticMatches.filter(
+                  (m) => m.round === round,
+                );
                 if (roundMatches.length === 0) return null;
 
                 return (

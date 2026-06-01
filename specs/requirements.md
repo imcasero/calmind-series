@@ -1,404 +1,336 @@
-# Requirements — F6a (Confirmation Modal + Docs + Dead Code Sweep)
+# Requirements — F6b (Server Actions Migration of 5 Admin Managers)
 
-Source: `features.json` F6 (sub-batch F6a per leader audit `progress/history.md`
-2026-05-31 entry "F6 opened, leader audit"). User-confirmed scope 2026-05-31:
-three concerns shipped as one atomic batch. F6b (Server Actions migration of
-5 Managers) and F6c (MatchesManager dual-cascade, AdminShellSkeleton, custom
-cacheLife) are explicitly out of scope.
+Source: `features.json` F6 sub-batch F6b per leader audit `progress/history.md`
+2026-06-01. F6a closed (REQ-45..REQ-59, reviewer APPROVED 2026-06-01). F6c
+(MatchesManager dual-cascade + AdminShellSkeleton + custom `cacheLife`) is
+explicitly OUT OF SCOPE.
 
 ## Numbering
 
-Last requirement used by F4 was **REQ-44** (per `specs/requirements.md` history
-+ `progress/history.md`). F6a starts at **REQ-45**.
+Last requirement used by F6a was **REQ-59**. F6b starts at **REQ-60** and ends
+at **REQ-78** (19 requirements).
 
 ## Binding constraints (from CLAUDE.md + docs/conventions.md)
 
-1. **Spanish for UI copy; English for code identifiers.** All visible strings in
-   the new modal default to Spanish ("Cancelar", "Confirmar").
-2. **`'use client'` only on leaves.** The new `AdminConfirmModal` is a client
-   leaf because it owns visual state. The 7 Managers that adopt it are already
-   `'use client'`; no boundary changes.
-3. **Pixel admin primitive convention.** New primitive lives under
-   `src/components/admin/ui/`, exported from `src/components/admin/ui/index.ts`
-   alongside `AdminModal`, `AdminButton`, etc. (FR12 surface).
-4. **Compose, do not rewrite.** `AdminModal`
-   (`src/components/admin/ui/AdminModal.tsx:10-31`) already renders the dim
-   overlay + pixel-framed card with a close button. `AdminConfirmModal` MUST
-   compose `AdminModal` + `AdminButton`, not duplicate their JSX.
-5. **`./init.sh` green between waves.** Deletion wave first (surfaces orphans),
-   primitive wave second, adoption wave third, doc fix last (or anywhere — it's
-   doc-only). The build must never break between waves.
-6. **Preserve current destructive semantics.** The 7 sites today behave as:
-   "user clicks → blocking `window.confirm` → on `true` proceed, on `false`
-   return early." The replacement must preserve that flow (await user input,
-   only then run the destructive Supabase / Server Action call). No
-   double-confirmation, no eager execution.
+1. **Spanish for UI copy; English for code identifiers.** Server Action error
+   messages bubble up to existing `AdminErrorBanner` (Spanish) — actions return
+   raw Supabase / Zod messages unchanged so the existing UI logging path holds.
+2. **Pilot fidelity.** Every action mirrors the F3 pilot shape in
+   `src/app/admin/dashboard/seasons/_actions.ts:1-127`:
+   - `'use server'` directive at top.
+   - Discriminated-union return: `{ ok: true } | { ok: false; error: string }`
+     (extend with `{ ok: true; id: string }` only where the consumer needs the
+     server-assigned id for optimistic reconciliation — see REQ-65, REQ-71).
+   - Zod parse at the action boundary using existing schemas in
+     `src/lib/types/schemas.ts`.
+   - Cookie-aware Supabase client via `await createClient()` from
+     `@/lib/supabase/server`.
+   - On success: `revalidatePath(<dashboard route>)` THEN one `updateTag(...)`
+     call per affected tag family. On failure: log `[actionName] Error:` and
+     return `{ ok: false, error }` — never throw.
+3. **`'use client'` stays on the Manager components.** Consumers import the
+   actions and call them inside `startTransition(...)` per the pilot
+   (`SeasonsManager.tsx:93-103`). No new client/server boundary moves.
+4. **Preserve `AdminConfirmModal` bindings from F6a.** ParticipantsManager and
+   MatchesManager use `requestX / confirmX` callbacks (see
+   `ParticipantsManager.tsx:235-325` and `MatchesManager.tsx:377-519`). The
+   confirm callback's body is what changes (inline Supabase write → action
+   call), not the wiring.
+5. **`./init.sh` green between waves.** Each Manager migrates in its own wave.
+   Run `./init.sh` after each wave; the build must never break mid-batch.
+6. **Tag taxonomy fidelity (`docs/conventions.md:82-119`).** Every action MUST
+   `updateTag(...)` the exact tag(s) listed for the reader queries that surface
+   the mutated rows. Missing a tag = stale cache in `/hub/*` or `/archivo/*`.
+7. **NO dual-cascade work in MatchesManager.** REQ-26 (auto-generate J16 on
+   J15 completion, auto-update bracket on J15/16 results) is F6c. F6b ports
+   the EIGHT existing writes 1:1 and stops.
 
----
+## REQ-60 — Action file scaffolding (Wave 1 prerequisite, applies all waves)
 
-## Wave A — Dead code sweep (REQ-45 → REQ-49)
-
-Run first so any silent dependency on a "dead" file surfaces in `./init.sh`
-before the primitive lands. Verified leader audit shows zero external callers
-for every candidate below — but the implementer MUST re-grep before each delete.
-
-### REQ-45 — Delete legacy `cruces/loading.tsx` and `final/loading.tsx`
-
-**When** the implementer runs Wave A, **the system shall** delete
-`src/app/[season]/[split]/cruces/loading.tsx` and
-`src/app/[season]/[split]/final/loading.tsx`. These are the only two external
-importers of `Navbar` (verified by
-`grep -rn "Navbar" src/ --include="*.tsx" | grep -v "components/shared/layout/Navbar.tsx"`
-→ exactly 3 hits: these 2 files + the barrel `src/components/shared/index.ts:8`).
-
-**Justification:** the sibling `page.tsx` in each route
-(`src/app/[season]/[split]/cruces/page.tsx:18-33`,
-`src/app/[season]/[split]/final/page.tsx:18-31`) is an async RSC that always
-calls `redirect()` (FR11 retired these routes). Next.js will not stream the
-loading fallback when the page resolves with `redirect()`; the loading.tsx
-files are dead UX surface. The page.tsx redirects themselves stay (FR11
-contract: legacy URLs still resolve to either `/hub/bracket` or
-`/archivo/:season/:split`).
-
-**Verification gate:**
-- `test ! -f src/app/[season]/[split]/cruces/loading.tsx`
-- `test ! -f src/app/[season]/[split]/final/loading.tsx`
-- `./init.sh` exits 0.
-
-### REQ-46 — Delete `src/components/shared/layout/Navbar.tsx`
-
-**When** REQ-45 has removed the only two importers, **the system shall**
-delete `src/components/shared/layout/Navbar.tsx`.
-
-**Verification gate (pre-delete):**
-- `grep -rn "from '@/components/shared/layout/Navbar'\|from '@/components/shared'" src/ --include="*.tsx" --include="*.ts" | grep -v "Navbar.tsx" | grep -E "Navbar"` returns ZERO hits (the barrel re-export at `index.ts:8` doesn't count because REQ-49 removes it in the same wave).
-
-**Verification gate (post-delete):**
-- `test ! -f src/components/shared/layout/Navbar.tsx`
-- `./init.sh` exits 0 (only after REQ-49 strips the barrel entry — see
-  sequencing note below).
-
-### REQ-47 — Delete `src/components/home/` entire subtree
-
-**When** the implementer runs Wave A, **the system shall** delete the entire
-`src/components/home/` directory:
-- `src/components/home/CurrentSeason/CurrentSeason.tsx`
-- `src/components/home/Hero/Hero.tsx`
-- `src/components/home/AboutCalmind/AboutCalmind.tsx`
-- `src/components/home/TournamentFormat/TournamentFormat.tsx`
-
-The user's scope explicitly named `CurrentSeason` and `Hero`. The other two
-sit in the same `components/home/` cluster with ZERO external callers
-(verified: `grep -rn "AboutCalmind\|TournamentFormat" src --include="*.tsx" --include="*.ts" | grep -v "components/home/"` returns nothing). They are
-the same FR11-orphan chain (post-landing-reskin). Deleting the whole subtree
-is a single rm vs four partial rms; if the user wants to keep
-AboutCalmind/TournamentFormat the implementer can scope down to just
-CurrentSeason and Hero — flagged as an implementer judgment call inside the
-locked scope.
-
-**Verification gate:**
-- `test ! -d src/components/home`
-- `grep -rn "components/home" src --include="*.tsx" --include="*.ts"` returns
-  ZERO hits.
-- `./init.sh` exits 0.
-
-### REQ-48 — Delete `src/components/shared/ui/Button/` subtree
-
-**When** REQ-47 has removed `CurrentSeason` + `Hero` (the only two callers of
-`LinkButton` outside `Navbar`) AND REQ-46 has removed `Navbar`,
-**the system shall** delete the `LinkButton` source tree:
-- `src/components/shared/ui/Button/LinkButton.tsx`
-- the parent `src/components/shared/ui/Button/` directory if empty after the
-  delete.
-
-**Verification gate (pre-delete):**
-- `grep -rn "LinkButton" src --include="*.tsx" --include="*.ts" | grep -v "components/shared/ui/Button/LinkButton.tsx" | grep -v "components/shared/index.ts"`
-  returns ZERO hits (the barrel entries are gone in REQ-49).
-
-**Verification gate (post-delete):**
-- `test ! -f src/components/shared/ui/Button/LinkButton.tsx`
-- `./init.sh` exits 0 (only valid after REQ-49 strips the barrel entries).
-
-### REQ-49 — Strip dead barrel entries from `src/components/shared/index.ts`
-
-**When** REQ-46 and REQ-48 are in flight, **the system shall** remove the
-three lines in `src/components/shared/index.ts` that re-export the deleted
-modules:
-- Line 8: `export { default as Navbar } from './layout/Navbar';`
-- Line 11: `export type { LinkButtonProps } from './ui/Button/LinkButton';`
-- Line 13: `export { default as LinkButton } from './ui/Button/LinkButton';`
-
-The remaining exports (`Footer`, `PageHeader`, `BackgroundDecoration`,
-`EmptyState`, `SectionSkeleton`, `ShellSkeleton`) stay — all have live
-importers (verified by `grep -rn "from '@/components/shared'" src --include="*.tsx" --include="*.ts"` → 21 live hits).
-
-**Sequencing note (atomic mini-wave):** REQ-46 / REQ-48 / REQ-49 must land in
-the same working-tree state. If you delete the source file before stripping
-the barrel entry, the barrel re-export breaks the build; if you strip the
-barrel entry first while a consumer (REQ-45's loading.tsx) still imports
-`Navbar` from the barrel, that breaks the build instead. Recommended order:
-REQ-45 (drop legacy loaders) → REQ-49 (strip barrel) → REQ-46 + REQ-47 + REQ-48
-(delete sources). `./init.sh` MUST be re-run at the end of Wave A, not
-between every micro-step.
-
-**Verification gate (Wave A close):**
-- `grep -c "Navbar\|LinkButton" src/components/shared/index.ts` → 0
-- `./init.sh` exits 0.
-
----
-
-## Wave B — `AdminConfirmModal` primitive (REQ-50)
-
-### REQ-50 — Create `AdminConfirmModal` primitive composing `AdminModal` + `AdminButton`
-
-**When** the implementer runs Wave B, **the system shall** create a new file
-`src/components/admin/ui/AdminConfirmModal.tsx` exporting a single React
-component with the following contract (full details in `specs/design.md` §1):
-
-- **Marked `'use client'`** at the top of the file (it manages presentational
-  state and binds onClick handlers — same convention as `AdminModal`
-  although `AdminModal` itself omits the directive because it has no state;
-  `AdminConfirmModal` is safe either way but stays as a presentational leaf,
-  so the `'use client'` directive is **optional**. Implementer should match
-  the existing `AdminModal.tsx` pattern — no directive — unless adding one is
-  required by a runtime error).
-- **Composes `AdminModal`** for the framed card + close affordance. Does not
-  re-render the overlay/border JSX.
-- **Renders a body paragraph** with the supplied `message` prop using
-  `font-retro text-base text-px-ink` (matches the typographic scale of
-  `AdminErrorBanner.tsx:13`).
-- **Renders two `AdminButton`s** in a horizontal action row mirroring
-  `SeasonsManager.tsx:181-197`: ghost-tone "Cancelar" (or `cancelLabel`
-  override) on the left, danger-tone or primary-tone (per `variant` prop)
-  confirm on the right.
-- **Returns `null`** when `open === false` (controlled visibility — parents
-  flip a boolean).
-
-**Props contract (exhaustive):**
+**While** the Implementer is migrating Manager `M` to Server Actions, the
+system **shall** create exactly one new file at
+`src/app/admin/dashboard/<domain>/_actions.ts` per Manager (4 new files —
+seasons already has one) using the pilot's structure:
 
 ```ts
-interface AdminConfirmModalProps {
-  open: boolean;
-  title: string;
-  message: string;
-  confirmLabel?: string;   // default 'Confirmar'
-  cancelLabel?: string;    // default 'Cancelar'
-  variant?: 'danger' | 'neutral';  // default 'danger' (all 7 sites are destructive)
-  onConfirm: () => void;
-  onCancel: () => void;
+'use server';
+
+import { revalidatePath, updateTag } from 'next/cache';
+import { z } from 'zod';
+import { createClient } from '@/lib/supabase/server';
+// import the relevant Input schema(s) from '@/lib/types/schemas'
+
+type ActionResult = { ok: true } | { ok: false; error: string };
+
+const DASHBOARD_PATH = '/admin/dashboard/<domain>';
+const IdSchema = z.string().uuid('ID inválido');
+
+function formatZodIssues(error: z.ZodError): string {
+  return error.issues.map((i) => i.message).join(' · ');
 }
 ```
 
-- `variant: 'danger'` → confirm button uses `tone="danger"` (red pixel CSS
-  `pixel-btn--danger` at `src/app/styles/pixel.css:269-270`).
-- `variant: 'neutral'` → confirm button uses `tone="primary"` (reserved for
-  future non-destructive confirms; not used by any of the 7 sites in F6a).
+**Verification gate:** `./init.sh` is green after each wave; `pnpm lint` reports
+no `noExplicitAny` violations in the new files; `rg "createClient\\(\\)" src/app/admin/dashboard/<domain>/_components` returns zero matches once the wave is complete.
 
-**Verification gate:**
-- `test -f src/components/admin/ui/AdminConfirmModal.tsx`
-- `grep -c "from './AdminModal'\|from './AdminButton'" src/components/admin/ui/AdminConfirmModal.tsx` → at least 2 (proves composition).
-- Exported from `src/components/admin/ui/index.ts` (REQ-51).
-- `./init.sh` exits 0.
+## REQ-61..REQ-62 — DivisionsManager (Wave 1, 2 writes)
 
-### REQ-51 — Wire `AdminConfirmModal` into the admin UI barrel
+`src/app/admin/dashboard/divisions/_components/DivisionsManager.tsx:80-92` and
+`:104-117` are the two `supabase.from('leagues')` writes.
 
-**When** REQ-50 lands, **the system shall** add the export
-`export { AdminConfirmModal } from './AdminConfirmModal';` to
-`src/components/admin/ui/index.ts` so consumers can keep their single-source
-barrel import (current pattern in all 6 Managers, e.g.
-`SeasonsManager.tsx:4-10`).
+- **REQ-61.** **When** the admin submits the "Nueva División" form, the
+  system **shall** call `createLeagueAction(splitId, input)` where `input` is
+  parsed by `LeagueCreateInputSchema` (`schemas.ts:162-171`). On success the
+  action **shall** `revalidatePath('/admin/dashboard/divisions')`,
+  `updateTag('seasons')`, and `updateTag(`splits:${splitId}`)`.
 
-**Verification gate:**
-- `grep -c "AdminConfirmModal" src/components/admin/ui/index.ts` → 1
-- `./init.sh` exits 0.
+  *Rationale (tag set):* `getLeaguesBySplit(splitId)` is tagged
+  `['seasons', `splits:${splitId}`]` (`conventions.md:111`); `getLeagueByTier`
+  is tagged the same (`:114`). Both surface league rows.
 
----
+- **REQ-62.** **When** the admin confirms deletion of a league, the system
+  **shall** call `deleteLeagueAction(id, splitId)` and on success **shall**
+  `revalidatePath(...)`, `updateTag('seasons')`, `updateTag(`splits:${splitId}`)`,
+  and `updateTag(`participants:${splitId}`)`.
 
-## Wave C — Adopt `AdminConfirmModal` at 7 sites (REQ-52 → REQ-58)
+  *Rationale:* deleting a league cascades to `league_participants` via FK in
+  Supabase, and `getParticipantsBySplit` is tagged `participants:${splitId}`
+  (`conventions.md:115`). Also `updateTag('archive')` if the split belongs to
+  a closed season — out of scope for F6b (no closed-season UI yet); document
+  as TODO inline.
 
-Each adoption REQ replaces a single `confirm(...)` call with controlled modal
-state. The pattern is identical at each site; per-REQ specifics call out the
-message string (Spanish, character-for-character preserved) and the handler
-identifier.
+**Verification gate:** Manually create + delete a division; confirm the splits
+selector still shows seasons (tag-invalidation of `seasons`), the public hub's
+division grid reflects the change within one navigation (no `cacheLife` wait),
+and `./init.sh` is green.
 
-**Shared pattern (full code shape in `specs/design.md` §2):**
-1. Add a per-site `useState` holding `{ open: boolean; pendingId: string | null }`
-   (sites that pass extra context like `participantId` use the same shape;
-   sites with no ID payload — none in F6a — would use `boolean` alone).
-2. Convert the existing handler that called `confirm(...)` into TWO functions:
-   a thin `requestX(id)` that flips state open, and the existing destructive
-   body extracted into `confirmX()` that runs on modal confirm.
-3. Render `<AdminConfirmModal ... />` at the same JSX depth as the existing
-   `<AdminModal>` create-form (e.g. SeasonsManager renders both, side by side).
+## REQ-63..REQ-66 — SplitsManager (Wave 2, 4 actions / 2 logical writes + 2 lifecycle)
 
-**No logic change.** The Supabase / Server Action call inside each handler
-stays byte-for-byte identical; only the wrapper changes from
-`if (!confirm(...)) return;` to "if user clicks Confirmar in the modal".
+`src/app/admin/dashboard/splits/_components/SplitsManager.tsx`:
+- `:72-86` insert (create)
+- `:97-109` delete
+- `:112-138` activate (2 SQL writes: deactivate others in season + activate target)
+- `:140-152` deactivate
 
-### REQ-52 — SeasonsManager: replace delete confirm
+- **REQ-63 (create).** **When** the admin submits the "Nuevo Split" form, the
+  system **shall** call `createSplitAction(seasonId, input)` parsed by
+  `SplitCreateInputSchema`. Tags: `updateTag('seasons')`,
+  `updateTag('archive')`.
 
-**When** an admin clicks the delete button on a season row, **the system
-shall** open `<AdminConfirmModal title="Eliminar temporada" message="¿Estás seguro de eliminar esta temporada?" variant="danger" />` instead of calling
-`confirm(...)`. On confirm, invoke the existing `deleteSeasonAction(id)`
-path currently at `src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx:101-111` (the optimistic + `startTransition` flow is preserved verbatim — only the confirm gate moves to the modal).
+- **REQ-64 (delete).** **When** the admin confirms deletion of a split, the
+  system **shall** call `deleteSplitAction(id, seasonId)`. Tags:
+  `updateTag('seasons')`, `updateTag(`splits:${id}`)`, `updateTag('archive')`,
+  `updateTag(`matches:${id}`)`, `updateTag(`bracket:${id}`)`,
+  `updateTag(`participants:${id}`)`.
 
-**Verification gate:**
-- `grep -c "confirm(" src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx` → 0
-- `grep -c "AdminConfirmModal" src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx` → at least 2 (1 import + 1 JSX usage).
-- Manual: open admin dashboard → seasons → click delete → modal appears with
-  the exact Spanish message → "Cancelar" dismisses, "Confirmar" deletes.
+  *Rationale:* a split delete cascades to leagues → participants → matches via
+  FK. All per-split tags read for that split become stale. The reviewer should
+  verify FK behavior in Supabase before sign-off.
 
-### REQ-53 — SplitsManager: replace delete confirm
+- **REQ-65 (activate).** **When** the admin activates a split, the system
+  **shall** call `activateSplitAction(id, seasonId)` which performs the
+  existing two-step (deactivate-all-in-season then activate-target). Tags:
+  `updateTag('seasons')`, `updateTag('archive')`. Atomicity (a single RPC) is
+  explicitly deferred per the pilot's REQ-3 note
+  (`seasons/_actions.ts:74-76`) — document the same NOTE comment.
 
-**When** an admin clicks delete on a split row, **the system shall** open
-`<AdminConfirmModal title="Eliminar split" message="¿Estas seguro de eliminar este split? Se eliminaran tambien sus divisiones." variant="danger" />`
-instead of calling `confirm(...)` at
-`src/app/admin/dashboard/splits/_components/SplitsManager.tsx:84-100`.
-Preserve the existing Supabase delete + `refresh()` + `router.refresh()`
-chain. Preserve the existing string verbatim (no Spanish accent normalisation
-— it ships without the tilde on "Estás" today and that's intentional consistency
-with the rest of the file).
+- **REQ-66 (deactivate).** **When** the admin deactivates a split, the system
+  **shall** call `deactivateSplitAction(id)`. Tags: `updateTag('seasons')`,
+  `updateTag('archive')`.
 
-**Verification gate:**
-- `grep -c "confirm(" src/app/admin/dashboard/splits/_components/SplitsManager.tsx` → 0
-- `grep -c "AdminConfirmModal" src/app/admin/dashboard/splits/_components/SplitsManager.tsx` → at least 2.
-- Manual smoke: delete a split → modal with cascade warning → confirm deletes.
+**Verification gate:** Manually create / activate / deactivate / delete a
+split; confirm `getPublicActiveSeasonWithSplit` (tagged
+`['seasons', 'archive']` per `conventions.md:101`) returns the fresh state on
+next navigation. `./init.sh` green.
 
-### REQ-54 — DivisionsManager: replace delete confirm
+## REQ-67..REQ-68 — RegulationsManager (Wave 3, 1 storage write)
 
-**When** an admin clicks delete on a division (league) row, **the system
-shall** open `<AdminConfirmModal title="Eliminar división" message="¿Estas seguro de eliminar esta division?" variant="danger" />` instead of calling
-`confirm(...)` at
-`src/app/admin/dashboard/divisions/_components/DivisionsManager.tsx:91-102`.
-Preserve the existing Supabase delete + `refresh()` + `router.refresh()`
-chain.
+`src/app/admin/dashboard/normativa/_components/RegulationsManager.tsx:62-83`
+performs a Supabase Storage upload + public URL fetch. There is currently NO
+DB row mutation (the public `/normativa` route just probes the storage URL via
+HEAD — see `src/app/admin/dashboard/normativa/page.tsx:7-20`).
 
-**Verification gate:**
-- `grep -c "confirm(" src/app/admin/dashboard/divisions/_components/DivisionsManager.tsx` → 0
-- `grep -c "AdminConfirmModal" src/app/admin/dashboard/divisions/_components/DivisionsManager.tsx` → at least 2.
+- **REQ-67 (upload).** **When** the admin submits a PDF file, the system
+  **shall** call `uploadRegulationsAction(formData: FormData)` which:
+  1. Reads the `File` from `formData.get('file')`.
+  2. Validates against `RegulationsUploadSchema` (`schemas.ts:216-223`).
+  3. Calls `supabase.storage.from('normativas').upload(...)` server-side via
+     the cookie-aware server client (RLS sees the admin's session, the same
+     identity that already authorizes the browser-side upload today).
+  4. On success: `revalidatePath('/admin/dashboard/normativa')` and
+     `revalidatePath('/normativa')` (no `updateTag` — no `'use cache'` reader
+     touches storage; the public route uses a runtime HEAD fetch).
+  5. Returns `{ ok: true; url: string } | { ok: false; error: string }` so
+     the Manager can update `currentUrl` without a router roundtrip.
 
-### REQ-55 — ParticipantsManager: replace trainer-delete confirm
+  *Design decision (storage in action, not split client+server) — see
+  `design.md` §RegulationsManager for the trade-off justification.*
 
-**When** an admin clicks delete on a trainer row, **the system shall** open
-`<AdminConfirmModal title="Eliminar entrenador" message="¿Estas seguro de eliminar este entrenador? Se eliminara de todas las divisiones." variant="danger" />`
-instead of calling `confirm(...)` at
-`src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx:228-244`.
-Preserve the existing trainer delete + `refreshTrainers()` +
-`router.refresh()` chain.
+- **REQ-68 (form transport).** **While** the admin form is a multipart upload
+  (binary File), the Manager **shall** construct a `FormData` instance and
+  pass it to the action. The action signature **shall** be
+  `(formData: FormData) => Promise<{ ok: true; url: string } | { ok: false; error: string }>`
+  so Next 16 Server Action streaming handles the binary correctly.
 
-**Verification gate:**
-- ParticipantsManager has TWO confirms — verify REQ-55 alone leaves exactly
-  ONE remaining (for REQ-56 to clear): `grep -c "confirm(" src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx` → 1 after REQ-55, → 0 after REQ-56.
-- `grep -c "AdminConfirmModal" src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx` → at least 2.
+**Verification gate:** Manually upload a small PDF; confirm
+`https://<supabase>/storage/v1/object/public/normativas/public/normativa_pokemon_calmind_series.pdf`
+returns 200 with the new contents within one navigation, the
+`/admin/dashboard/normativa` page reflects the new URL, and the manager no
+longer imports `@/lib/supabase/client`. `./init.sh` green.
 
-### REQ-56 — ParticipantsManager: replace remove-from-league confirm
+## REQ-69..REQ-73 — ParticipantsManager (Wave 4, 5 writes)
 
-**When** an admin clicks remove on a league participant, **the system shall**
-open `<AdminConfirmModal title="Quitar de la división" message="¿Quitar este entrenador de la division?" variant="danger" />` instead of calling
-`confirm(...)` at
-`src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx:288-303`.
+`src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx`:
+- `:179-223` save trainer (insert OR update via `editingTrainer` branch — 2 writes in one handler)
+- `:239-248` delete trainer
+- `:266-290` assign trainer to league (insert `league_participants`)
+- `:296-311` remove participant from league (delete `league_participants`)
+- `:355-375` save pending lives changes (N updates batched via `Promise.all`)
 
-**Design note:** Two `AdminConfirmModal` instances in the same Manager require
-two `useState` slots (or one tagged-union state). `specs/design.md` §2.5
-prescribes the tagged-union pattern to keep the JSX clean — single modal
-instance whose props are derived from the current `pendingAction` shape.
+- **REQ-69 (create trainer).** **When** the admin submits the trainer form
+  with no `editingTrainer`, the system **shall** call
+  `createTrainerAction(input)` parsed by `TrainerInputSchema`
+  (`schemas.ts:176-184`). Tags: `updateTag('trainers')`.
 
-**Verification gate:**
-- `grep -c "confirm(" src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx` → 0 (combined with REQ-55).
-- Manual: trainer delete AND remove-from-league each fire a modal with the
-  correct message.
+- **REQ-70 (update trainer).** **When** the admin submits with `editingTrainer`
+  set, the system **shall** call `updateTrainerAction(id, input)`. Tags:
+  `updateTag('trainers')` and, because trainer nickname/avatar are joined into
+  `participants:` and `rankings:` reader rows, also
+  `updateTag('seasons')` (broad bust — see design.md §ParticipantsManager
+  rationale for why we accept the conservative invalidation here rather than
+  enumerate every `splits:*` / `rankings:*` the trainer participates in).
 
-### REQ-57 — MatchesManager: replace clear-result confirm
+- **REQ-71 (delete trainer).** **When** the admin confirms a trainer deletion,
+  the system **shall** call `deleteTrainerAction(id)`. Tags:
+  `updateTag('trainers')`, `updateTag('seasons')` (same broad-bust rationale).
 
-**When** an admin clicks "Limpiar resultado" on a match row, **the system
-shall** open `<AdminConfirmModal title="Limpiar resultado" message="¿Limpiar el resultado de este partido?" variant="danger" />` instead of calling
-`confirm(...)` at
-`src/app/admin/dashboard/matches/_components/MatchesManager.tsx:369-383+`.
-Preserve the existing Supabase update + `refreshMatches()` +
-`router.refresh()` chain.
+- **REQ-72 (assign / remove participant).** **When** the admin assigns a
+  trainer to a league (or removes one), the system **shall** call
+  `assignParticipantAction({ leagueId, trainerId, initialSeed, lives })` or
+  `removeParticipantAction(participantId, splitId)`. Tags:
+  `updateTag(`participants:${splitId}`)`, plus
+  `updateTag(`rankings:${leagueId}`)` because `league_rankings` derives from
+  participant membership.
 
-### REQ-58 — MatchesManager: replace delete-match confirm
+  *Note (splitId source):* the Manager has `selectedSplitId` from
+  `useLeagueSelector`; pass it as the second argument so the action does NOT
+  need a join to resolve it.
 
-**When** an admin clicks delete on a match row, **the system shall** open
-`<AdminConfirmModal title="Eliminar partido" message="¿Eliminar este partido?" variant="danger" />` instead of calling `confirm(...)` at
-`src/app/admin/dashboard/matches/_components/MatchesManager.tsx:480-491+`.
-Preserve the existing Supabase delete + `refreshMatches()` +
-`router.refresh()` chain.
+- **REQ-73 (lives changes).** **When** the admin saves pending lives changes,
+  the system **shall** call `updateParticipantLivesAction(changes: Array<{ id: string; lives: number }>, splitId: string, leagueId: string)` which performs
+  the same `Promise.all` batch server-side. Return shape:
+  `{ ok: true } | { ok: false; error: string; failedCount: number }` to
+  preserve the existing "Error al guardar N cambio(s)" UX
+  (`ParticipantsManager.tsx:368-369`). Tags:
+  `updateTag(`participants:${splitId}`)`,
+  `updateTag(`rankings:${leagueId}`)`.
 
-**Combined verification gate for REQ-57 + REQ-58:**
-- `grep -c "confirm(" src/app/admin/dashboard/matches/_components/MatchesManager.tsx` → 0.
-- `grep -c "AdminConfirmModal" src/app/admin/dashboard/matches/_components/MatchesManager.tsx` → at least 2.
-- Same tagged-union pattern as REQ-55+REQ-56 (one modal instance, multiple
-  pending-action types) — see `specs/design.md` §2.5.
+**Verification gate:** Create, edit, delete a trainer; assign + remove from a
+league; bulk-update lives. Confirm the admin tabs show fresh data after each
+mutation and `./init.sh` is green.
 
----
+## REQ-74..REQ-78 — MatchesManager (Wave 5, 8 writes)
 
-## Wave D — Docs (REQ-59)
+`src/app/admin/dashboard/matches/_components/MatchesManager.tsx`:
+- `:345-375` save result (`matches.update` with `played: true`)
+- `:381-399` clear result (`matches.update` setting nulls + `played: false`)
+- `:437-488` save match — insert OR update branched on `editingMatch`
+- `:494-505` delete match
+- `:535-611` J15 generator (1 bulk insert of 4 rows after rankings read)
+- `:614-739` J16 generator (1 bulk insert of 4 rows after J15 read)
 
-### REQ-59 — Remove stale `fetchData.ts` callout from `docs/conventions.md`
+- **REQ-74 (save result).** **When** the admin saves a result, the system
+  **shall** call `saveMatchResultAction(matchId, input, { splitId, leagueId })`
+  parsed by `MatchResultInputSchema` (`schemas.ts:203-214`). Tags:
+  `updateTag(`matches:${splitId}`)`,
+  `updateTag(`rankings:${leagueId}`)`,
+  `updateTag(`bracket:${splitId}`)` (round 15/16 results flow into the bracket;
+  for rounds 1–14 the bracket tag bust is a no-op but cheap — keep it for
+  simplicity).
 
-**When** the implementer runs Wave D, **the system shall** delete (or rewrite)
-lines 24-27 of `docs/conventions.md`:
+- **REQ-75 (clear result).** **When** the admin confirms clearing a result,
+  the system **shall** call `clearMatchResultAction(matchId, { splitId, leagueId })`.
+  Same tag set as REQ-74.
 
-```
-> ⚠️ The dual-cache layer in `src/lib/data/fetchData.ts` (`unstable_cache` +
-> `react.cache`, tag `['matches']` that is never revalidated) is **legacy** and slated
-> for removal in F4. Do not copy it. New caching should use `'use cache'` + `cacheTag`
-> + `revalidateTag` (see `vercel:next-cache-components`).
-```
+- **REQ-76 (create / update match).** **When** the admin saves the match form,
+  the system **shall** call `createMatchAction({ leagueId, splitId, ...input })`
+  or `updateMatchAction(id, input, { splitId, leagueId })` parsed by
+  `MatchPlanningInputSchema` (`schemas.ts:186-201`). Tags:
+  `updateTag(`matches:${splitId}`)`,
+  `updateTag(`bracket:${splitId}`)` (planning a J15/J16 match changes the
+  bracket; cheap no-op for J1..J14).
 
-**Rationale:** F4 deleted `src/lib/data/fetchData.ts` (2026-05-31, per
-`progress/history.md` "F4 closed" entry + `features.json` F4
-`[DONE 2026-05-31] Delete src/lib/data/fetchData.ts (REQ-30)`). The warning
-points to a file that no longer exists. The replacement guidance ("use
-`'use cache'` + `cacheTag` + `revalidateTag`") is correct but redundant — F4
-added a full "Cache tag taxonomy" section to the same document
-(REQ-41 in F4) that already documents the modern pattern with the 8-tag taxonomy.
+- **REQ-77 (delete match).** **When** the admin confirms deletion, the system
+  **shall** call `deleteMatchAction(matchId, { splitId, leagueId })`. Tags:
+  `updateTag(`matches:${splitId}`)`,
+  `updateTag(`rankings:${leagueId}`)`,
+  `updateTag(`bracket:${splitId}`)` (a played match's deletion changes
+  rankings; cheap to always bust).
 
-**Recommended action:** **delete** lines 24-27 entirely (including the blank
-line preceding them if it leaves a double blank). The "Cache tag taxonomy"
-section added by F4 is the canonical reference now.
+- **REQ-78 (J15 / J16 generators).** **When** the admin clicks "Generar Cruces
+  J15" or "Generar Finales J16", the system **shall** call
+  `generateJ15MatchesAction(leagueId, splitId)` or
+  `generateJ16MatchesAction(leagueId, splitId)`. The action
+  **shall** encapsulate the existing rankings/J15 reads + bulk insert and
+  return `{ ok: true; createdCount: number } | { ok: false; error: string }`.
+  Tags: `updateTag(`matches:${splitId}`)`,
+  `updateTag(`bracket:${splitId}`)`.
 
-**Adjacent stale copy audit (also in scope):**
-- Lines 37-40 of `docs/conventions.md` reference
-  `src/lib/types/queries.types.ts` as "slated for deletion (F2)". F2 already
-  deleted that file (verified: `test ! -f src/lib/types/queries.types.ts`).
-  Update or remove these lines per implementer judgment — the surrounding
-  paragraph still has educational value ("Do not redefine a query's return
-  shape locally") so a partial rewrite that drops the F2-specific sentence
-  while keeping the principle is preferred over full deletion.
-- Lines 57-58 reference `lib/services/` as "a misnomer being corrected in F4".
-  F4 moved `matchService.ts` → `lib/utils/matches.ts` but `lib/services/bracketService.ts` still exists. The misnomer is now half-corrected.
-  Update the parenthetical to reflect current state — e.g. drop the "being
-  corrected in F4" forecast (it's no longer in flight).
+  *Out of scope (F6c):* auto-generating J16 on J15 completion and auto-
+  updating the bracket on result changes — those are REQ-26 / dual-cascade.
+  F6b ports the EXISTING manual-button behavior 1:1.
 
-The audit items are part of REQ-59's scope but the priority is the lines
-24-27 stale warning. Implementer may roll up all three doc edits into one
-diff or split for clarity.
+**Verification gate:** Save a result, clear it, plan a match, delete it,
+generate J15 and J16 for a Primera and Segunda league each. Confirm the public
+`/[season]/[split]/cruces` and `/[season]/[split]` views reflect the changes
+within one navigation. `./init.sh` green.
 
-**Verification gate:**
-- `grep -c "fetchData.ts" docs/conventions.md` → 0 (or only inside a code
-  comment marker the implementer chose to leave; the warning paragraph MUST
-  be gone).
-- `grep -c "queries.types.ts" docs/conventions.md` → 0 (the deleted file
-  name should not appear in current guidance).
-- Manual scan: no doc copy references files that no longer exist.
+## REQ-79 — Documentation refresh (final wave)
 
----
+**When** the F6b implementation is complete, the system **shall** update:
 
-## Out of scope (deferred — pointers, not work)
+1. `docs/conventions.md:50` — the stale `home/` reference flagged as
+   non-blocking by the F6a reviewer (verify the actual current grouping under
+   `src/components/` and replace).
+2. `docs/conventions.md:84-93` ("Mutated by (today)" column) — replace "F6
+   deferred" entries with the actual `<Manager>/_actions.ts` reference for
+   each tag family.
+3. `docs/conventions.md:144-156` (the `REQ-39 staleness window` note) —
+   remove the "20 `router.refresh()` call sites" wording; replace with a note
+   stating F6b closed the gap and all admin Managers now use Server Actions
+   + `updateTag`.
 
-- **5 Managers' Server Actions migration** → F6b (`features.json` F6 item 2).
-  REQ-52 / REQ-53 / REQ-54 / REQ-55 / REQ-56 / REQ-57 / REQ-58 explicitly
-  preserve the existing `supabase.from().delete()` + `router.refresh()` calls.
-  Only the confirm gate moves. Do NOT migrate any Manager to Server Actions
-  in F6a.
-- **MatchesManager dual-cascade hook adoption** → F6c (deferred in F3,
-  re-deferred in F6 audit). Out of F6a.
-- **`AdminShellSkeleton` variant** → F6c.
-- **Custom `cacheLife` profiles** → F6c.
-- **Optional `AboutCalmind` / `TournamentFormat` retention.** REQ-47 deletes
-  them as part of the home/ subtree sweep; the user named only `CurrentSeason`
-  and `Hero` explicitly. Implementer can scope down to only those two and
-  leave the other two if user prefers a narrower delete — see REQ-47
-  rationale.
+**Verification gate:** `rg "router.refresh\\(\\)" src/app/admin/dashboard`
+returns zero matches (or only the matches retained for navigation-side
+effects with an explanatory comment). `rg "createClient\\(\\)" src/app/admin/dashboard/{divisions,splits,normativa,participants,matches}/_components`
+returns zero. `./init.sh` green.
+
+## Out of scope (push to F6c per user 2026-05-31)
+
+- MatchesManager dual-cascade (REQ-26): auto-generate J16 on J15 completion,
+  auto-update bracket on J15/J16 result changes. F6b ports the EIGHT current
+  writes only.
+- AdminShellSkeleton extraction.
+- Custom `cacheLife` profile in `next.config.ts`.
+- Atomic activate-split RPC (mirrors the deferred REQ-3 for seasons).
+
+## Dependency / sequencing
+
+REQ-60 (scaffolding) applies once per wave. Waves run lowest-risk → highest:
+
+1. **Wave 1 — DivisionsManager** (REQ-61, REQ-62): 2 writes, smallest blast
+   radius (one tag family + the broad `seasons`).
+2. **Wave 2 — SplitsManager** (REQ-63..REQ-66): 4 actions, but each is a
+   single-table write or the well-understood 2-step activate.
+3. **Wave 3 — RegulationsManager** (REQ-67, REQ-68): isolated (storage only,
+   no tag taxonomy interaction); the FormData binary transport is the only
+   novel piece — keeps it before the high-volume Managers.
+4. **Wave 4 — ParticipantsManager** (REQ-69..REQ-73): 5 writes plus the
+   bulk-lives batch. Preserves F6a `AdminConfirmModal` wiring.
+5. **Wave 5 — MatchesManager** (REQ-74..REQ-78): 8 writes including the two
+   bulk generators. Highest blast radius (3 tag families per action).
+6. **Wave 6 — Docs** (REQ-79): no code, no risk; runs last so the description
+   matches the shipped reality.
+
+Each wave ends with `./init.sh` green and a manual smoke test of the changed
+Manager.

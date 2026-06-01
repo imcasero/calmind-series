@@ -5,6 +5,180 @@ status transition; agents record any deferral or sequencing decision here too.
 
 ---
 
+## 2026-06-01 — ARCHITECTURE REVIEW INITIATIVE CLOSED (F0..F6 all done)
+
+The `ARCHITECTURE_REVIEW.html` initiative is **COMPLETE**. Every phase F0 through
+F6 has shipped, been independently reviewed, and signed off against a green
+`./init.sh`. `features.json.activeBatch` is now `[]`; no architecture-review work
+is scheduled. The only sibling initiative (`pixel-redesign`, FR0..FR14) closed
+2026-05-28. Both initiatives are now at rest.
+
+**Cumulative phase summary (chronological):**
+- **F0** (2026-05-26) — Bugs reales: client-side redirect() in admin/page.tsx → router.push(). 1 fix shipped; REQ-3 (atomic activate RPC) deferred indefinitely (needs Supabase migration access).
+- **F1** (2026-05-26) — Activar plataforma: merged next.config.optimization.js, React Compiler on, image formats, tsconfig ES2017→ES2022, codemod ran (incl. middleware→proxy rename). cacheComponents + noExplicitAny:error deferred to F4/F2 respectively.
+- **F2** (2026-05-28) — Limpieza de tipos y código muerto: 32 unsafe `as Type[]` casts eliminated across admin/seasons/leagues queries (original brief estimated ~18); orphan render-prop cluster `src/components/divisions/` deleted (6 files + index.ts); dead utilities removed (useOptimizedFetch, PerformanceMonitor); duplicate types module `queries.types.ts` deleted; English code identifiers (TournamentFormat, Regulations*, Playoff*) — Spanish UI/URLs preserved; biome noExplicitAny flipped warn→error.
+- **F3** (2026-05-31) — Abstracciones admin: `useLeagueSelector` hook created + adopted by 3 Managers (-137 LOC net); 7 new `*InputSchema` exports + safeParse boundaries in all 6 admin forms; SeasonsManager pilot fully migrated to Server Actions + useOptimistic. AdminModal/AdminErrorBanner already shipped by FR12 (item dropped as SUPERSEDED).
+- **F4** (2026-05-31) — Cacheo coherente: Next 16 Cache Components mode enabled (cacheComponents:true); 21 hub/archive query readers wrapped with `'use cache'` + cacheTag + cacheLife using 8-tag taxonomy; 17 page-level awaits wrapped in `<Suspense>`; updateTag invalidation × 7 in seasons/_actions.ts; build matrix collapsed to ○/◐ only (zero `ƒ Dynamic`); cache tag taxonomy section added to docs/conventions.md.
+- **F5** (2026-05-30) — Performance / modernización: 11 parallel `<Suspense>` boundaries across /hub/* (per-panel streaming); 3 client shells (ClasificacionView/RosterView/CalendarView), parents pushed to RSC; 4 shared primitives extracted (ErrorCard/PageSkeleton/BackgroundDecoration + formatSplitName); /archivo/[season]/[split] SSG with 3 prerendered URLs; bundle JS reduction ~110-114 KB on /hub/* routes; cookie-free Supabase overload introduced (Option C).
+- **F6** (2026-06-01) — Refactor mayores: F6a shipped AdminConfirmModal primitive + 7 adoption sites replacing window.confirm + dead cluster sweep (8 files + 5 dirs) + docs fixes; F6b shipped 5-Manager Server Actions migration (5 _actions.ts, 27 actions, all with updateTag invalidations per F4 taxonomy, zero browser-side writes remaining); F6c (MatchesManager dual-cascade hook) explicitly OUT per user.
+
+**Cumulative rough net delta across F0..F6:**
+- **Files created (~14):** 7 _actions.ts files (seasons + 5 F6b + sub-structure), AdminConfirmModal.tsx, AdminModal/AdminErrorBanner family (via FR12 supersession), useLeagueSelector.ts, FooterYear.tsx, ShellSkeleton.tsx, lib/utils/matches.ts (relocated), components/shared/ui/* primitives (4).
+- **Files deleted (~25):** queries.types.ts, useOptimizedFetch.ts, PerformanceMonitor.tsx, entire src/components/divisions/ render-prop cluster (7), entire src/components/home/ subtree (4), Navbar.tsx, LinkButton.tsx, 2 cruces/final loading.tsx, fetchData.ts, matchService.ts (moved), 6 dead bracket/matchup/division files from F5.
+- **Files edited (~80+):** 6 admin Managers (all migrated to Server Actions + Zod + useOptimistic + AdminConfirmModal), 5+ query files cookie-flipped + use-cache annotated, next.config.ts, tsconfig.json, biome.json, docs/conventions.md (cache taxonomy + Server Actions guidance + Q1 staleness callout), ~25 hub/archive page files restructured for Suspense/SSG.
+- **Type safety:** 32 unsafe casts eliminated, noExplicitAny: error active, Zod boundaries on all admin write paths, discriminated-union returns on all 27+ Server Actions.
+- **Build:** 30 static pages (was 23 baseline), zero `ƒ Dynamic` routes under Cache Components mode, zero lint errors, zero lint warnings.
+
+**Architecture review goals achieved (against ARCHITECTURE_REVIEW.html targets):** ~100% of in-scope items shipped. Out-of-scope by user decision: REQ-3 (atomic activate RPC — needs DB migration access), REQ-26 (MatchesManager dual-cascade hook — F6c, no plans to revisit), Spec-Q3 ON DELETE CASCADE audit (non-blocking, defensive tag set covers worst case).
+
+**Open follow-ups (all non-blocking, can sit indefinitely):**
+- Spec-Q3 — verify ON DELETE CASCADE on splits → leagues/participants/matches/bracket via DB schema audit
+- REQ-3 — atomic activate-season RPC (still needs Supabase migration access)
+- AdminShellSkeleton variant (generic ShellSkeleton is fine)
+- Custom cacheLife profiles (built-ins cover all observed sites)
+- F6c MatchesManager dual-cascade hook (explicitly OUT, listed for posterity)
+
+**Backlog status snapshot (post-initiative-close):**
+- **done:** F0, F1, F2, F3, F4, F5, F6, FR0–FR14 (ALL FEATURES).
+- **pending:** none.
+
+NEXT: no further architecture-review batches scheduled. The codebase is at the
+modern Next 16.1.1 + React 19.2.3 baseline the review targeted. Future work is
+product-driven — a new feature/initiative when the user prioritizes one.
+
+---
+
+## 2026-06-01 — F6b CLOSED (reviewer APPROVED → leader)
+
+Reviewer verdict: **F6b APPROVED**. Full `./init.sh` GREEN end-to-end:
+typecheck/lint/build all pass, 30/30 static pages generated, route map unchanged
+from F6a baseline (no page-class regressions). All 20 REQs in the F6b batch
+(REQ-60..REQ-79) verified file:line by the reviewer. F6b is the final sub-batch
+of F6 — feature-level F6 now flips `pending` → `done` (F6a + F6b shipped; F6c
+explicitly OUT per user 2026-05-31, no plans to revisit). The architecture
+review initiative is complete; see the initiative-CLOSED marker entry above.
+
+**Wave structure shipped (F6b, 6 waves):**
+- **Wave A — Divisions migration.** Created
+  `src/app/admin/dashboard/divisions/_actions.ts` (top-of-file `'use server'`),
+  ported DivisionsManager writes (create/delete league) to actions with
+  discriminated-union returns, wired `updateTag` invalidations per F4 taxonomy.
+- **Wave B — Splits migration.** Created `splits/_actions.ts`, ported
+  SplitsManager writes (create/delete split). Defensively broad tag set on
+  delete (covers leagues/participants/matches/bracket cascade — worst case is
+  over-invalidation, not stale data).
+- **Wave C — Regulations migration.** Created `normativa/_actions.ts`, ported
+  RegulationsManager upload (Supabase storage PDF) + delete. RegulationsUploadSchema
+  validation preserved.
+- **Wave D — Participants migration.** Created `participants/_actions.ts` with
+  5 actions (trainer create/delete, league_participants insert/update lives /
+  delete). 1 spec-allowed read-only `createClient()` survivor at
+  ParticipantsManager.tsx:173 (initial read for cascade seed, no write).
+- **Wave E — Matches migration.** Created `matches/_actions.ts` with 8 actions
+  (match insert/update/delete/result + 2 batch generators J15/J16 + 2 helpers).
+  J16 tier lookup MOVED server-side (single `leagues.select` instead of trusting
+  client-cached array — smaller client payload, zero behavior change). Dual-cascade
+  selection state in MatchesManager UNTOUCHED (F6c respected). 1 spec-allowed
+  read-only `createClient()` survivor at MatchesManager.tsx:179.
+- **Wave F — Docs.** Updated `docs/conventions.md` with Server Actions guidance
+  (cookie-aware createClient pattern, discriminated-union return shape, updateTag
+  recipe, ≤60s staleness window callout per Q1 ratification).
+
+**REQ summary (full text in `specs/requirements.md`):**
+- REQ-60..REQ-64 — Per-Manager Server Actions creation (5 _actions.ts files, all
+  with `'use server'` at top of file)
+- REQ-65..REQ-69 — Per-Manager browser-side write elimination verification
+- REQ-70..REQ-74 — Per-Manager `useOptimistic` adoption (hook-derived base)
+- REQ-75..REQ-77 — `updateTag` invalidation wiring per F4 tag taxonomy
+- REQ-78 — Discriminated-union return contract across all 27 actions
+- REQ-79 — Cross-cutting `./init.sh` green gate at close
+
+**Net result (what F6b actually shipped):**
+- **Created (5):**
+  - `src/app/admin/dashboard/divisions/_actions.ts`
+  - `src/app/admin/dashboard/splits/_actions.ts`
+  - `src/app/admin/dashboard/normativa/_actions.ts`
+  - `src/app/admin/dashboard/participants/_actions.ts`
+  - `src/app/admin/dashboard/matches/_actions.ts`
+- **Edited (6):** 5 Managers (Divisions, Splits, Regulations, Participants,
+  Matches) + `docs/conventions.md`
+- **Deleted:** none
+
+**Verification highlights (reviewer):**
+- 5x `'use server'` directives confirmed (one per `_actions.ts`)
+- Manager-side write grep: 0 hits in `_components/`; only spec-allowed read-only
+  `createClient()` survivors at `ParticipantsManager.tsx:173` +
+  `MatchesManager.tsx:179`
+- All 27 action returns use discriminated-union `{ ok: true, ... } | { ok: false, error }`,
+  zero throws to UI
+- All actions use cookie-aware `@/lib/supabase/server` `createClient()` (NOT
+  the F5 cookie-free overload)
+- F6a `AdminConfirmModal` bindings preserved in ParticipantsManager +
+  MatchesManager (confirm callbacks now invoke Server Actions, plumbing intact)
+- MatchesManager dual-cascade selection state UNTOUCHED (F6c respected)
+- Build matrix: identical to F6a baseline (30/30 static pages, no page-class
+  regressions)
+
+**Live decisions:**
+1. **`useOptimistic` base = hook-derived arrays** (auto re-syncs after refresh)
+   — no manual sync action wired. Cleaner than the SeasonsManager pilot pattern
+   which manually re-pushed `initialSeasons`; F6b managers let the hook re-derive
+   from the server-fresh prop on revalidatePath bust.
+2. **J16 generator tier lookup moved server-side** — instead of trusting a
+   client-cached `leagues[]` array, the action runs a single `leagues.select`
+   to resolve tier_priority. Smaller client payload, zero behavior change.
+3. **Optimistic-URL for RegulationsManager skipped** — spec marked W3.2 as
+   optional; the upload flow already shows in-progress UI via the form state,
+   so the extra optimistic URL plumbing would have been redundant.
+4. **Q1 staleness trade-off ACCEPTED** — kept the conservative `seasons` broad
+   bust on trainer mutations (vs scoping to `rankings:*` cache) per spec Q2
+   ratification. Documented ≤60s staleness window inline in actions + in
+   `docs/conventions.md`. Reviewer accepted per spec Q2.
+
+**Q1 resolution (recap from spec):** Trainer mutations bust `seasons` tag
+broadly rather than scoping to `rankings:${leagueId}`. Worst case: ≤60s cache
+miss on rankings views after a trainer create/edit. Net trade: simpler
+invalidation contract, no schema-coupling. Spec Q2 ratified this; reviewer
+upheld.
+
+**Q3 follow-up flagged (non-blocking):** Reviewer could not verify ON DELETE
+CASCADE on `splits → leagues / participants / matches / bracket` from
+`database.types.ts` alone. The defensively broad tag set on `deleteSplitAction`
+means worst case is **over-invalidation** (cache hit miss, fresh fetch), not
+stale data. Documented as a DB schema audit follow-up in features.json F6
+`deferred[]`; pick up if/when DB migration access is available.
+
+**Verification gate (held):**
+```
+✓ typecheck clean
+✓ lint clean (0 errors / 0 warnings)
+▲ Next.js 16.1.1 (Turbopack)
+✓ Generating static pages (30/30)
+✓ Harness ready — baseline is green.
+```
+
+**Leader transition:** `features.json` F6 items annotated (item 2 `[DONE
+2026-06-01]` via F6b — completing the 5-Manager migration). F6 status flipped
+`pending` → `done`. F6 `deferred[]` rewritten: F6b removed (shipped); F6c kept
+as `OUT per user 2026-05-31, no plans to revisit`; Spec-Q3 ON DELETE CASCADE
+audit added as non-blocking follow-up; F4 inheritance items (AdminShellSkeleton,
+custom cacheLife) marked deferred indefinitely. F6 `note` extended with the
+F6b close-out (REQ range, 6 waves, net delta, Q1 resolution, tag matrix
+highlights — mirrored F4/F5/F6a style). `activeBatch` cleared to `[]`.
+`_note_activeBatch` rewritten to reflect entire architecture-review initiative
+is CLOSED (F0..F6 all done). `updated` bumped to `2026-06-01`.
+
+**Backlog status snapshot (post-F6b, post-initiative-close):**
+- **done:** F0, F1, F2, F3, F4, F5, **F6**, FR0–FR14 (ALL FEATURES across both
+  initiatives).
+- **pending:** none.
+
+**NEXT:** no further architecture-review batches scheduled. See the
+initiative-CLOSED marker entry above for cumulative impact + open follow-ups
+(all non-blocking).
+
+---
+
 ## 2026-06-01 — F6a CLOSED (reviewer APPROVED → leader)
 
 Reviewer verdict: **F6a APPROVED**. Full `./init.sh` GREEN end-to-end:

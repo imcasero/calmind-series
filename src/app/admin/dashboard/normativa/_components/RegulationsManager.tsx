@@ -1,14 +1,13 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 import {
   AdminButton,
   AdminCard,
   AdminErrorBanner,
 } from '@/components/admin/ui';
-import { createClient } from '@/lib/supabase/client';
 import { RegulationsUploadSchema } from '@/lib/types/schemas';
+import { uploadRegulationsAction } from '../_actions';
 
 interface RegulationsManagerProps {
   currentPdfUrl: string | null;
@@ -17,14 +16,11 @@ interface RegulationsManagerProps {
 export default function RegulationsManager({
   currentPdfUrl,
 }: RegulationsManagerProps) {
-  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [currentUrl, setCurrentUrl] = useState(currentPdfUrl);
-
-  const supabase = createClient();
 
   useEffect(() => {
     setCurrentUrl(currentPdfUrl);
@@ -56,46 +52,24 @@ export default function RegulationsManager({
     setError(null);
     setSuccess(false);
 
-    try {
-      const fileName = 'normativa_pokemon_calmind_series.pdf';
+    const formData = new FormData();
+    formData.append('file', file);
 
-      const { data, error: uploadError } = await supabase.storage
-        .from('normativas')
-        .upload(`public/${fileName}`, file, {
-          cacheControl: '0',
-          upsert: true,
-        });
-
-      if (uploadError) {
-        throw new Error(uploadError.message);
+    startTransition(async () => {
+      const result = await uploadRegulationsAction(formData);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setCurrentUrl(result.url);
+        setFile(null);
+        setSuccess(true);
+        const fileInput = document.getElementById(
+          'pdf-upload',
+        ) as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
       }
-
-      if (!data) {
-        throw new Error('No se pudo subir el archivo');
-      }
-
-      const { data: publicData } = supabase.storage
-        .from('normativas')
-        .getPublicUrl(`public/${fileName}`);
-
-      const newUrl = publicData.publicUrl;
-
-      setCurrentUrl(newUrl);
-      setFile(null);
-      setSuccess(true);
-      const fileInput = document.getElementById(
-        'pdf-upload',
-      ) as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-
-      router.refresh();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Error al subir el archivo',
-      );
-    } finally {
       setUploading(false);
-    }
+    });
   };
 
   return (

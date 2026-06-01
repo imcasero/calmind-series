@@ -1,7 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  startTransition,
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useState,
+} from 'react';
 import {
   AdminBadge,
   AdminButton,
@@ -22,6 +27,14 @@ import type {
 } from '@/lib/types/database.types';
 import { TrainerInputSchema } from '@/lib/types/schemas';
 import { cn } from '@/lib/utils';
+import {
+  assignParticipantAction,
+  createTrainerAction,
+  deleteTrainerAction,
+  removeParticipantAction,
+  updateParticipantLivesAction,
+  updateTrainerAction,
+} from '../_actions';
 
 type ParticipantWithTrainer = LeagueParticipant & { trainer: Trainer };
 
@@ -30,6 +43,16 @@ type PendingConfirm =
   | { kind: 'remove-from-league'; participantId: string }
   | null;
 
+type TrainerOptimistic =
+  | { type: 'create'; trainer: Trainer }
+  | { type: 'update'; trainer: Trainer }
+  | { type: 'delete'; id: string };
+
+type ParticipantOptimistic =
+  | { type: 'assign'; participant: ParticipantWithTrainer }
+  | { type: 'remove'; id: string }
+  | { type: 'lives'; changes: Array<{ id: string; lives: number }> };
+
 interface ParticipantsManagerProps {
   initialSeasons: Season[];
   initialTrainers: Trainer[];
@@ -37,19 +60,66 @@ interface ParticipantsManagerProps {
 
 const ITEMS_PER_PAGE = 10;
 
+function trainersReducer(
+  state: Trainer[],
+  action: TrainerOptimistic,
+): Trainer[] {
+  switch (action.type) {
+    case 'create':
+      return [...state, action.trainer].sort((a, b) =>
+        a.nickname.localeCompare(b.nickname),
+      );
+    case 'update':
+      return state.map((t) =>
+        t.id === action.trainer.id ? action.trainer : t,
+      );
+    case 'delete':
+      return state.filter((t) => t.id !== action.id);
+    default:
+      return state;
+  }
+}
+
+function participantsReducer(
+  state: ParticipantWithTrainer[],
+  action: ParticipantOptimistic,
+): ParticipantWithTrainer[] {
+  switch (action.type) {
+    case 'assign':
+      return [...state, action.participant].sort(
+        (a, b) => (a.initial_seed ?? 0) - (b.initial_seed ?? 0),
+      );
+    case 'remove':
+      return state.filter((p) => p.id !== action.id);
+    case 'lives': {
+      const map = new Map(action.changes.map((c) => [c.id, c.lives]));
+      return state.map((p) =>
+        map.has(p.id) ? { ...p, lives: map.get(p.id) ?? p.lives } : p,
+      );
+    }
+    default:
+      return state;
+  }
+}
+
 export default function ParticipantsManager({
   initialSeasons,
   initialTrainers,
 }: ParticipantsManagerProps) {
-  const router = useRouter();
-
   // Tab state
   const [activeTab, setActiveTab] = useState<'trainers' | 'assignments'>(
     'trainers',
   );
 
-  // Trainers state
+  // Trainers state — base state is the server-provided list, mutated through
+  // useOptimistic. After actions resolve we re-fetch via the browser client
+  // (READ only — see DivisionsManager / SeasonsManager pilot for the same
+  // pattern).
   const [trainers, setTrainers] = useState<Trainer[]>(initialTrainers);
+  const [optimisticTrainers, applyTrainerOptimistic] = useOptimistic(
+    trainers,
+    trainersReducer,
+  );
   const [showTrainerForm, setShowTrainerForm] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
   const [trainerForm, setTrainerForm] = useState({
@@ -80,6 +150,10 @@ export default function ParticipantsManager({
   const [participants, setParticipants] = useState<ParticipantWithTrainer[]>(
     [],
   );
+  const [optimisticParticipants, applyParticipantOptimistic] = useOptimistic(
+    participants,
+    participantsReducer,
+  );
   const [pendingLivesChanges, setPendingLivesChanges] = useState<
     Record<string, number>
   >({});
@@ -92,6 +166,10 @@ export default function ParticipantsManager({
   const [saving, setSaving] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
 
+  // Browser-side READ client (no writes — all mutations go through Server
+  // Actions in `../_actions.ts`). Kept so the trainer list and the
+  // per-league participants can hot-refresh after a mutation without
+  // forcing a full router round-trip.
   const supabase = createClient();
 
   const error = localError ?? selectorError;
@@ -109,14 +187,14 @@ export default function ParticipantsManager({
 
   // Filtered and paginated trainers
   const filteredTrainers = useMemo(() => {
-    if (!searchQuery.trim()) return trainers;
+    if (!searchQuery.trim()) return optimisticTrainers;
     const query = searchQuery.toLowerCase();
-    return trainers.filter(
+    return optimisticTrainers.filter(
       (t) =>
         t.nickname.toLowerCase().includes(query) ||
         (t.bio?.toLowerCase().includes(query) ?? false),
     );
-  }, [trainers, searchQuery]);
+  }, [optimisticTrainers, searchQuery]);
 
   const totalPages = Math.ceil(filteredTrainers.length / ITEMS_PER_PAGE);
   const paginatedTrainers = useMemo(() => {
@@ -135,7 +213,7 @@ export default function ParticipantsManager({
     return participant.lives ?? 0;
   };
 
-  // Refresh trainers
+  // Browser-side READ: refresh trainers list after a mutation.
   const refreshTrainers = async () => {
     const { data } = await supabase
       .from('trainers')
@@ -173,7 +251,23 @@ export default function ParticipantsManager({
     };
 
     fetchParticipants();
-  }, [selectedLeagueId, supabase.from]);
+  }, [selectedLeagueId, supabase]);
+
+  // Browser-side READ: refresh participants after a mutation.
+  const refreshParticipants = async () => {
+    if (!selectedLeagueId) return;
+
+    const { data } = await supabase
+      .from('league_participants')
+      .select('*, trainer:trainers(*)')
+      .eq('league_id', selectedLeagueId)
+      .order('initial_seed', { ascending: true });
+
+    if (data) {
+      setParticipants(data as ParticipantWithTrainer[]);
+      setPendingLivesChanges({});
+    }
+  };
 
   // Trainer handlers
   const handleSaveTrainer = async (e: React.FormEvent) => {
@@ -193,33 +287,44 @@ export default function ParticipantsManager({
     }
 
     if (editingTrainer) {
-      const { error } = await supabase
-        .from('trainers')
-        .update(parsed.data)
-        .eq('id', editingTrainer.id);
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setEditingTrainer(null);
-        setShowTrainerForm(false);
-        setTrainerForm({ nickname: '', avatar_url: '', bio: '' });
-        await refreshTrainers();
-        router.refresh();
-      }
+      const optimistic: Trainer = { ...editingTrainer, ...parsed.data };
+      startTransition(async () => {
+        applyTrainerOptimistic({ type: 'update', trainer: optimistic });
+        const result = await updateTrainerAction(
+          editingTrainer.id,
+          parsed.data,
+        );
+        if (!result.ok) {
+          setError(result.error);
+        } else {
+          setEditingTrainer(null);
+          setShowTrainerForm(false);
+          setTrainerForm({ nickname: '', avatar_url: '', bio: '' });
+          await refreshTrainers();
+        }
+        setSaving(false);
+      });
     } else {
-      const { error } = await supabase.from('trainers').insert(parsed.data);
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setShowTrainerForm(false);
-        setTrainerForm({ nickname: '', avatar_url: '', bio: '' });
-        await refreshTrainers();
-        router.refresh();
-      }
+      const tempTrainer: Trainer = {
+        id: `optimistic-${crypto.randomUUID()}`,
+        nickname: parsed.data.nickname,
+        avatar_url: parsed.data.avatar_url,
+        bio: parsed.data.bio,
+        created_at: new Date().toISOString(),
+      };
+      startTransition(async () => {
+        applyTrainerOptimistic({ type: 'create', trainer: tempTrainer });
+        const result = await createTrainerAction(parsed.data);
+        if (!result.ok) {
+          setError(result.error);
+        } else {
+          setShowTrainerForm(false);
+          setTrainerForm({ nickname: '', avatar_url: '', bio: '' });
+          await refreshTrainers();
+        }
+        setSaving(false);
+      });
     }
-    setSaving(false);
   };
 
   const handleEditTrainer = (trainer: Trainer) => {
@@ -236,91 +341,104 @@ export default function ParticipantsManager({
     setPendingConfirm({ kind: 'delete-trainer', trainerId });
   };
 
-  const runDeleteTrainer = async (id: string) => {
-    const { error } = await supabase.from('trainers').delete().eq('id', id);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      await refreshTrainers();
-      router.refresh();
-    }
+  const runDeleteTrainer = (id: string) => {
+    startTransition(async () => {
+      applyTrainerOptimistic({ type: 'delete', id });
+      const result = await deleteTrainerAction(id);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refreshTrainers();
+      }
+    });
   };
 
   // Assignment handlers
-  const refreshParticipants = async () => {
-    if (!selectedLeagueId) return;
-
-    const { data } = await supabase
-      .from('league_participants')
-      .select('*, trainer:trainers(*)')
-      .eq('league_id', selectedLeagueId)
-      .order('initial_seed', { ascending: true });
-
-    if (data) {
-      setParticipants(data as ParticipantWithTrainer[]);
-      setPendingLivesChanges({});
-    }
-  };
-
   const handleAssignTrainer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLeagueId || !selectedTrainerId) return;
+    if (!selectedLeagueId || !selectedTrainerId || !selectedSplitId) return;
 
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from('league_participants').insert({
+    const trainer = trainers.find((t) => t.id === selectedTrainerId);
+    if (!trainer) {
+      setError('Entrenador no encontrado');
+      setSaving(false);
+      return;
+    }
+
+    const initialSeed = participants.length + 1;
+    const lives = 20;
+    const tempParticipant: ParticipantWithTrainer = {
+      id: `optimistic-${crypto.randomUUID()}`,
       league_id: selectedLeagueId,
       trainer_id: selectedTrainerId,
-      initial_seed: participants.length + 1,
+      initial_seed: initialSeed,
       status: 'active',
-      lives: 20,
-    });
+      lives,
+      trainer,
+    };
 
-    if (error) {
-      setError(error.message);
-    } else {
-      setSelectedTrainerId('');
-      setShowAssignForm(false);
-      await refreshParticipants();
-      router.refresh();
-    }
-    setSaving(false);
+    startTransition(async () => {
+      applyParticipantOptimistic({
+        type: 'assign',
+        participant: tempParticipant,
+      });
+      const result = await assignParticipantAction({
+        leagueId: selectedLeagueId,
+        trainerId: selectedTrainerId,
+        splitId: selectedSplitId,
+        initialSeed,
+        lives,
+      });
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setSelectedTrainerId('');
+        setShowAssignForm(false);
+        await refreshParticipants();
+      }
+      setSaving(false);
+    });
   };
 
   const requestRemoveFromLeague = (participantId: string) => {
     setPendingConfirm({ kind: 'remove-from-league', participantId });
   };
 
-  const runRemoveFromLeague = async (participantId: string) => {
-    const { error } = await supabase
-      .from('league_participants')
-      .delete()
-      .eq('id', participantId);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      const newPending = { ...pendingLivesChanges };
-      delete newPending[participantId];
-      setPendingLivesChanges(newPending);
-      await refreshParticipants();
-      router.refresh();
-    }
+  const runRemoveFromLeague = (participantId: string) => {
+    if (!selectedSplitId || !selectedLeagueId) return;
+    const splitId = selectedSplitId;
+    const leagueId = selectedLeagueId;
+    startTransition(async () => {
+      applyParticipantOptimistic({ type: 'remove', id: participantId });
+      const result = await removeParticipantAction(participantId, {
+        splitId,
+        leagueId,
+      });
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        const newPending = { ...pendingLivesChanges };
+        delete newPending[participantId];
+        setPendingLivesChanges(newPending);
+        await refreshParticipants();
+      }
+    });
   };
 
   const cancelConfirm = () => setPendingConfirm(null);
 
-  const confirmPending = async () => {
+  const confirmPending = () => {
     if (!pendingConfirm) return;
     const current = pendingConfirm;
     setPendingConfirm(null);
 
     if (current.kind === 'delete-trainer') {
-      await runDeleteTrainer(current.trainerId);
+      runDeleteTrainer(current.trainerId);
     } else {
-      await runRemoveFromLeague(current.participantId);
+      runRemoveFromLeague(current.participantId);
     }
   };
 
@@ -353,25 +471,31 @@ export default function ParticipantsManager({
 
   // Save all pending lives changes
   const handleSaveLivesChanges = async () => {
-    if (!hasLivesChanges) return;
+    if (!hasLivesChanges || !selectedSplitId || !selectedLeagueId) return;
 
     setSaving(true);
     setError(null);
 
-    const updates = Object.entries(pendingLivesChanges).map(([id, lives]) =>
-      supabase.from('league_participants').update({ lives }).eq('id', id),
-    );
+    const changes = Object.entries(pendingLivesChanges).map(([id, lives]) => ({
+      id,
+      lives,
+    }));
+    const splitId = selectedSplitId;
+    const leagueId = selectedLeagueId;
 
-    const results = await Promise.all(updates);
-    const errors = results.filter((r) => r.error);
-
-    if (errors.length > 0) {
-      setError(`Error al guardar ${errors.length} cambio(s)`);
-    } else {
-      await refreshParticipants();
-      router.refresh();
-    }
-    setSaving(false);
+    startTransition(async () => {
+      applyParticipantOptimistic({ type: 'lives', changes });
+      const result = await updateParticipantLivesAction(changes, {
+        splitId,
+        leagueId,
+      });
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refreshParticipants();
+      }
+      setSaving(false);
+    });
   };
 
   // Discard pending changes
@@ -380,8 +504,8 @@ export default function ParticipantsManager({
   };
 
   // Get trainers not already in selected league
-  const availableTrainers = trainers.filter(
-    (t) => !participants.some((p) => p.trainer_id === t.id),
+  const availableTrainers = optimisticTrainers.filter(
+    (t) => !optimisticParticipants.some((p) => p.trainer_id === t.id),
   );
 
   return (
@@ -759,7 +883,7 @@ export default function ParticipantsManager({
             <EmptyPanel text="Cargando participantes..." />
           ) : (
             <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
-              {participants.length === 0 ? (
+              {optimisticParticipants.length === 0 ? (
                 <p className="p-8 text-center font-retro text-lg text-px-ink-dim">
                   No hay participantes asignados a esta división.
                 </p>
@@ -775,7 +899,7 @@ export default function ParticipantsManager({
                     </tr>
                   </thead>
                   <tbody>
-                    {participants.map((participant) => {
+                    {optimisticParticipants.map((participant) => {
                       const currentLives = getCurrentLives(participant);
                       const hasChange =
                         pendingLivesChanges[participant.id] !== undefined;

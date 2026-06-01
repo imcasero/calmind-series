@@ -46,8 +46,8 @@ the project instead of generic React/Next defaults. Companion to `CLAUDE.md`.
 - **Server Components by default.** Add `'use client'` only where interactivity/animation
   truly needs it, and push it to the **leaves** (a thin `motion` wrapper), not parents.
 - Components are grouped by domain under `src/components/`:
-  `divisions/`, `cross/`, `home/`, `shared/`, `admin/` (admin managers live next to their
-  route under `app/admin/dashboard/*/_components/`).
+  `admin/`, `hub/`, `landing/`, `providers/`, `shared/` (admin managers live next
+  to their route under `app/admin/dashboard/*/_components/`).
 - Pure transformation helpers belong in `src/lib/utils/`. `lib/services/`
   retains `bracketService.ts` (pure functions historically grouped under the
   service label — kept for migration cost, not because the name is right).
@@ -81,16 +81,16 @@ and migrated every public reader in `src/lib/queries/` to the `'use cache'` tria
 
 ### The 8 tag families
 
-| Tag | Owner table(s) | Mutated by (today) | Mutated by (F6 deferred) | Read by |
-|---|---|---|---|---|
-| `seasons` | `seasons`, `splits`, `leagues` | `seasons/_actions.ts` (REQ-38) | F6 SplitsManager + DivisionsManager Server Actions | All season/split/league readers |
-| `splits:${id}` | per-split slice of multiple tables | — | F6 SplitsManager Server Actions | `getLeaguesBySplit`, `getDivisionPreview`, `getLeagueByTier`, `getArchiveDivisionPreview` |
-| `matches:${splitId}` | `matches` | — | F6 MatchesManager Server Actions | `getMatchesByRound`, `getDivisionPreview`, `getBracketData`, `getCurrentRound`, `getPublicCurrentRound` |
-| `rankings:${leagueId}` | `league_rankings` view | — | F6 MatchesManager Server Actions (rankings derive from match writes) | `getRankingsByLeague` |
-| `participants:${splitId}` | `league_participants`, `trainers` (via join) | — | F6 ParticipantsManager Server Actions | `getParticipantsBySplit` |
-| `bracket:${splitId}` | `matches` rounds 15/16 | — | F6 MatchesManager Server Actions | `getBracketData` |
-| `trainers` | `trainers` | — | F6 ParticipantsManager Server Actions | `getTrainerById` |
-| `archive` | union of seasons/splits/matches for closed splits | `seasons/_actions.ts` delete/activate/deactivate (REQ-38) | F6 retroactive admin edits | `getArchiveChampions`, `getArchiveDivisionPreview`, `getPublicActiveSeasonWithSplit`, `getPublicAllSeasonsWithSplits`, `getPublicCurrentRound` |
+| Tag | Owner table(s) | Mutated by | Read by |
+|---|---|---|---|
+| `seasons` | `seasons`, `splits`, `leagues` | `seasons/_actions.ts`, `splits/_actions.ts`, `divisions/_actions.ts`, `participants/_actions.ts` | All season/split/league readers |
+| `splits:${id}` | per-split slice of multiple tables | `splits/_actions.ts`, `divisions/_actions.ts` | `getLeaguesBySplit`, `getDivisionPreview`, `getLeagueByTier`, `getArchiveDivisionPreview` |
+| `matches:${splitId}` | `matches` | `matches/_actions.ts`, `splits/_actions.ts` (delete cascade) | `getMatchesByRound`, `getDivisionPreview`, `getBracketData`, `getCurrentRound`, `getPublicCurrentRound` |
+| `rankings:${leagueId}` | `league_rankings` view | `matches/_actions.ts`, `participants/_actions.ts` | `getRankingsByLeague` |
+| `participants:${splitId}` | `league_participants`, `trainers` (via join) | `participants/_actions.ts`, `divisions/_actions.ts` (delete cascade), `splits/_actions.ts` (delete cascade) | `getParticipantsBySplit` |
+| `bracket:${splitId}` | `matches` rounds 15/16 | `matches/_actions.ts`, `splits/_actions.ts` (delete cascade) | `getBracketData` |
+| `trainers` | `trainers` | `participants/_actions.ts` | `getTrainerById` |
+| `archive` | union of seasons/splits/matches for closed splits | `seasons/_actions.ts`, `splits/_actions.ts` | `getArchiveChampions`, `getArchiveDivisionPreview`, `getPublicActiveSeasonWithSplit`, `getPublicAllSeasonsWithSplits`, `getPublicCurrentRound` |
 
 ### Per-query profile + tag assignment
 
@@ -141,19 +141,22 @@ custom profiles in `next.config.ts`. Bands:
    above fits), extend the taxonomy in this section in the same PR — keep the
    doc and the code in sync.
 
-> **REQ-39 staleness window (Option A — locked).** Today only the 4 Server
-> Actions in `seasons/_actions.ts` call `updateTag`. The 20 `router.refresh()`
-> call sites in the 5 non-pilot Managers (SplitsManager, DivisionsManager,
-> RegulationsManager, ParticipantsManager, MatchesManager) still mutate Supabase
-> directly from the browser. `router.refresh()` busts the React tree but does
-> NOT bust `'use cache'` entries, so public `/hub/*` and `/archivo/*` views
-> reflect those writes only after their `cacheLife` revalidate window:
-> ≤60s for match / ranking / bracket / division-preview data,
-> ≤1h for season / participant / trainer metadata,
-> ≤24h for archive readers.
-> Acceptable today because admin and viewer are the same person. Closing the
-> gap (migrating the 5 Managers to Server Actions + `updateTag`) is owned by
-> **`features.json` F6**.
+> **REQ-39 staleness window — closed by F6b (2026-06-01).** Every admin
+> Manager (SplitsManager, DivisionsManager, RegulationsManager,
+> ParticipantsManager, MatchesManager) now routes writes through Server
+> Actions in `app/admin/dashboard/<domain>/_actions.ts` that call
+> `updateTag(...)` per the matrix above. Browser-side `router.refresh()`
+> calls were removed from all five Managers; reconciliation of admin-only
+> state happens through targeted re-reads (the hook's `refresh()` or the
+> Manager's `refreshX` helpers), and public `/hub/*` / `/archivo/*` readers
+> revalidate on the next navigation thanks to the granular tag busts.
+>
+> Known intentional staleness: `updateTrainerAction` / `deleteTrainerAction`
+> bust `seasons` (broad) and `trainers` but do NOT enumerate every
+> `rankings:${leagueId}` the trainer participates in. Snapshotted
+> nickname/avatar inside `getRankingsByLeague` cache entries refresh on
+> their `cacheLife('minutes')` revalidate window (≤60s). Tolerated trade-off
+> per `specs/design.md` §"Why `seasons` on trainer update/delete".
 
 ### Admin queries never cache
 

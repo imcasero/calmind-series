@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
-import { CalendarView, HubPageHeader } from '@/components/hub';
-import {
-  getActiveSeasonWithSplit,
-  getCurrentRound,
-  getMatchesByRound,
-} from '@/lib/queries';
+import { Suspense } from 'react';
+import { HubPageHeader } from '@/components/hub';
+import { CalendarSection } from '@/components/hub/sections/CalendarSection';
+import { EmptyState, SectionSkeleton } from '@/components/shared';
+import { getActiveSeasonWithSplit, getCurrentRound } from '@/lib/queries';
 import { getPhase, TOTAL_ROUNDS } from '@/lib/utils/phase';
 
 export const metadata: Metadata = {
@@ -14,29 +13,25 @@ export const metadata: Metadata = {
 };
 
 /**
- * Calendar page (FR5): round timeline + per-round match listings. Per-round dates
- * are not stored, so the known weekly cadence is shown instead of real dates.
+ * Calendar page (FR5 / REQ-22). Wave A REQ-44: the cheap top-level awaits
+ * (`getActiveSeasonWithSplit`, `getCurrentRound`) live inside
+ * `CalendarioPageInner` under an OUTER Suspense; the heavy
+ * `getMatchesByRound` lives inside the streamed `CalendarSection`.
  */
-export default async function CalendarioPage() {
+async function CalendarioPageInner() {
   const seasonInfo = await getActiveSeasonWithSplit();
   const split = seasonInfo?.activeSplit;
 
   if (!split) {
     return (
-      <div className="py-20 text-center">
-        <h1 className="font-pixel text-2xl text-px-ink">Sin calendario</h1>
-        <p className="mt-4 font-retro text-lg text-px-ink-soft">
-          No hay un split activo todavía.
-        </p>
-      </div>
+      <EmptyState
+        title="Sin calendario"
+        body="No hay un split activo todavía."
+      />
     );
   }
 
-  const [currentRound, matchesByRound] = await Promise.all([
-    getCurrentRound(split.id),
-    getMatchesByRound(split.id),
-  ]);
-
+  const currentRound = await getCurrentRound(split.id);
   const phase = getPhase(currentRound);
   const eyebrow =
     currentRound > 0
@@ -46,10 +41,17 @@ export default async function CalendarioPage() {
   return (
     <div className="flex flex-col gap-8">
       <HubPageHeader eyebrow={eyebrow} title="Calendario" />
-      <CalendarView
-        matchesByRound={matchesByRound}
-        currentRound={currentRound}
-      />
+      <Suspense fallback={<SectionSkeleton variant="calendar" />}>
+        <CalendarSection splitId={split.id} />
+      </Suspense>
     </div>
+  );
+}
+
+export default function CalendarioPage() {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="calendar" />}>
+      <CalendarioPageInner />
+    </Suspense>
   );
 }

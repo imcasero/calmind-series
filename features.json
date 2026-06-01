@@ -1,9 +1,10 @@
 {
   "project": "calmind-series",
   "source": "ARCHITECTURE_REVIEW.html",
-  "updated": "2026-05-27",
+  "updated": "2026-06-01",
   "statusLegend": ["pending", "spec_ready", "in_progress", "done"],
   "activeBatch": [],
+  "_note_activeBatch": "Architecture-review initiative CLOSED 2026-06-01. F0..F6 all done. F6 closed via F6a (UX primitive + dead-code sweep + docs, 2026-06-01) + F6b (5-Manager Server Actions migration, 2026-06-01). F6c (MatchesManager dual-cascade hook REQ-26) explicitly OUT per user 2026-05-31 — no plans to revisit. activeBatch cleared; no further architecture-review work scheduled. Only remaining initiative is pixel-redesign (FR0..FR14 all done as of 2026-05-28). If user wants to keep iterating, both initiatives are at rest — next move is product-driven (new feature or new initiative).",
   "initiatives": {
     "architecture-review": "ARCHITECTURE_REVIEW.html — phases F0–F6 (F2 still pending)",
     "pixel-redesign": "docs/design_handoff_calmind_pixel/ — phases FR0–FR10 (active)"
@@ -47,77 +48,117 @@
       "id": "F2",
       "phase": "Fase 2 — Limpieza de tipos y código muerto",
       "effort": "medio día",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F1"],
       "items": [
-        "Delete src/lib/types/queries.types.ts; migrate imports to @/lib/types/schemas",
-        "Delete src/hooks/useOptimizedFetch.ts and src/components/performance/PerformanceMonitor.tsx",
-        "Remove ~18 unsafe `as Type[]` casts in admin.queries.ts and seasons.queries.ts",
+        "[DONE 2026-05-28] Delete src/lib/types/queries.types.ts; migrate imports to @/lib/types/schemas",
+        "[DONE 2026-05-28] Delete src/hooks/useOptimizedFetch.ts and src/components/performance/PerformanceMonitor.tsx",
+        "[DONE 2026-05-28] Remove 32 unsafe `as Type[]` casts across admin.queries.ts (9) + seasons.queries.ts (18) + leagues.queries.ts (5) — original brief said ~18, actual sweep was 32 incl. REQ-14b leagues",
+        "[DONE 2026-05-28] Delete orphan render-prop cluster src/components/divisions/ (SplitDataProvider/SplitContent/ClassificationSection/MatchesSection/ParticipantsList/ClassificationTable + index.ts + dir) — any[] in SplitDataProvider disappeared with the file",
         "[DONE 2026-05-26] Rename components/home/TorunamentFormat -> TournamentFormat",
         "[DONE 2026-05-26] Normattiva->Normativa (user) then Normativa*->Regulations* identifiers (English standard)",
         "[DONE 2026-05-26] Cruces*->Playoff* identifiers (CrucesBracket/DataProvider/Page/Error); routes /cruces stay Spanish",
-        "Fix resulting any[] in SplitDataProvider",
-        "Flip biome.json noExplicitAny warn -> error after all any removed (inherited from F1 / REQ-9)"
+        "[DONE 2026-05-28] Flip biome.json noExplicitAny warn -> error (REQ-17, gated on green init.sh post-flip)"
       ],
-      "note": "Naming sub-items pulled forward & completed 2026-05-26 (English code identifiers, Spanish UI/URLs kept). Remaining F2 work (dead code, type dedup, casts, any[], noExplicitAny flip) still pending; depends on F1."
+      "deferred": [
+        "2 pre-existing noUnusedImports warnings surfaced post-cleanup — fetchData.ts:5 (J15Match, J16Match) + matchService.ts:5 (Matchup) — explicitly punted to F4 (which owns fetchData deletion + matchService move). Predate F2 per baseline lint comparison; not patched here to avoid scope creep. init.sh remains green (warnings don't fail pnpm lint exit 0).",
+        "src/components/shared/DivisionSection/ — different path than the orphan cluster; flagged for a future micro-batch sweep (NOT part of F2 scope per spec-author)."
+      ],
+      "note": "F2 closed 2026-05-28 (reviewer signed off). Net result: 32 casts eliminated, orphan cluster + dead utilities + duplicate types module deleted, noExplicitAny: error active. Zero new Zod schemas added — Supabase v2 inference covered every cast site (per implementer decision log in progress/history.md). 6 folders + index.ts + entire divisions/ dir removed. ParticipantWithTrainer.trainer loosened to Trainer | null (correctness fix, not a workaround — admin consumers declare local types). Naming sub-items completed 2026-05-26 (English code identifiers, Spanish UI/URLs kept)."
     },
     {
       "id": "F3",
       "phase": "Fase 3 — Abstracciones admin",
       "effort": "1-2 días",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F2"],
       "items": [
-        "Extract <AdminModal> and <AdminErrorBanner>",
-        "Extract useLeagueSelector() hook (Temporada -> Split -> Division cascade)",
-        "Wire Zod validation into admin forms (schemas already exist)",
-        "Migrate SeasonsManager to Server Actions + useOptimistic (pilot)"
-      ]
+        "[DROPPED 2026-05-30] Extract <AdminModal> and <AdminErrorBanner> — SUPERSEDED by FR12. Spec-author confirmed 100% adoption across the 6 Managers post-FR12/FR13/FR14.",
+        "[DONE 2026-05-31] Extract useLeagueSelector() hook (Temporada -> Split -> Division cascade)",
+        "[DONE 2026-05-31] Wire Zod validation into admin forms (schemas already exist)",
+        "[DONE 2026-05-31] Migrate SeasonsManager to Server Actions + useOptimistic (pilot)"
+      ],
+      "pre_spec_findings": [
+        "2026-05-30 leader audit: AdminModal.tsx + AdminErrorBanner.tsx exist (FR12 shipped them). No src/hooks/ directory yet. Admin Managers do NOT import schemas from @/lib/types/schemas (zero matches). SeasonsManager still uses useState + manual fetch + try/catch (no Server Actions, no useOptimistic). 6 Managers present: Seasons, Splits, Divisions, Regulations, Participants, Matches."
+      ],
+      "deferred": [
+        "MatchesManager hook adoption (REQ-26) → F6. Reason: dual-cascade architecture (Results tab seeds leagues from activeSplitInfo server-side; Planning tab runs full Season→Split→League cascade with separate selection state) cannot be modeled by a single useLeagueSelector instance without tangling the Results tab's server-seeded auto-select. Zod (REQ-27) still landed on MatchesManager.",
+        "window.confirm() replacement → F6 (out of F3 scope; spec preserved current behavior).",
+        "5 non-pilot Managers' Server Actions migration → F6 (F3 pilot proves the pattern on SeasonsManager only).",
+        "cacheTag / revalidateTag in _actions.ts → F4 (F3 uses revalidatePath; cacheTag belongs to F4).",
+        "Atomic activate-season RPC → REQ-3 (still deferred; needs Supabase migration access)."
+      ],
+      "note": "F3 closed 2026-05-31 (reviewer signed off — ./init.sh green, 23 pages, 0 lint errors, the 2 pre-existing F4-owned warnings preserved untouched). Net result: (a) useLeagueSelector hook created at src/lib/hooks/ and adopted by 3 Managers (SplitsManager depth:'season-split'; DivisionsManager + ParticipantsManager depth:'season-split-league'), -137 LOC net across the 3 sites; (b) 7 new *InputSchema exports added to src/lib/types/schemas.ts (Season/Split/League/Trainer/MatchPlanning/MatchResult/RegulationsUpload) with z.infer aliases, safeParse boundaries wired in all 6 admin Managers; (c) SeasonsManager pilot fully migrated to Server Actions + useOptimistic — new src/app/admin/dashboard/seasons/_actions.ts (4 actions, discriminated-union returns, no throws, revalidatePath on success), SeasonsManager.tsx has zero browser-side supabase writes and uses the tagged-union reducer pattern from design D4. Live decisions: MatchesManager hook deferral validated as legit dual-cascade (Zod still landed); RegulationsUploadSchema ADOPTED replacing inline file guards (functionally equivalent, Spanish error messages preserved); cookie-aware Supabase client in _actions.ts (RLS/identity propagation — NOT the F5 cookie-free overload which stays narrowly scoped to archive reads); removed one redundant useEffect in ParticipantsManager flagged by Biome (selectedLeagueId-keyed fetch already covers the cleared case). Files net delta: 2 created, 7 edited. All FR12 primitives adoption preserved (no regressions). NEXT: F4 unblocked (dependsOn ['F1','F3'] both done) — also clears the 2 F4-owned warnings as a side-effect of fetchData.ts deletion."
     },
     {
       "id": "F4",
       "phase": "Fase 4 — Cacheo coherente",
       "effort": "1-2 días",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F1", "F3"],
       "items": [
-        "Migrate queries to 'use cache' + cacheTag",
-        "Call revalidateTag('matches') from the Server Action that updates results",
-        "Delete src/lib/data/fetchData.ts (dual-cache layer)",
-        "Move src/lib/services/matchService.ts (pure fns) to src/lib/utils/matches.ts",
-        "Enable cacheComponents in next.config.ts alongside 'use cache' (inherited from F1 / REQ-5)"
-      ]
+        "[DONE 2026-05-31] Delete src/lib/data/fetchData.ts (REQ-30)",
+        "[DONE 2026-05-31] Move src/lib/services/matchService.ts → src/lib/utils/matches.ts (REQ-31)",
+        "[DONE 2026-05-31] Remove dynamicParams=true from /archivo/[season]/[split] (REQ-32)",
+        "[DONE 2026-05-31] Flip 9 hub/archive query call-sites to createClient({session:false}) (REQ-33)",
+        "[DONE 2026-05-31] 'use cache' + cacheTag + cacheLife on 21 readers across archive/seasons/leagues/tournament/trainers/bracket (REQ-34/35/36)",
+        "[DONE 2026-05-31] Wrap 17 page-level awaits in <Suspense> (REQ-44) + extract Footer year to client leaf (REQ-43)",
+        "[DONE 2026-05-31] Enable cacheComponents:true in next.config.ts (REQ-40)",
+        "[DONE 2026-05-31] updateTag invalidation × 7 in seasons/_actions.ts (REQ-38)",
+        "[DONE 2026-05-31] Cache tag taxonomy section added to docs/conventions.md (REQ-41)",
+        "[DONE 2026-05-31] Build matrix regression guard: zero ƒ Dynamic, hub/archive ○, admin ◐ (REQ-37/39)"
+      ],
+      "deferred": [
+        "REQ-44 admin extension: 4 admin RSC awaits also wrapped (out of original spec, approved live by user before Wave B flip).",
+        "docs/conventions.md lines 24-27 still warn against the deleted src/lib/data/fetchData.ts — flagged by reviewer as stale, deferred to a F6 doc micro-batch.",
+        "ShellSkeleton fallback used for admin pages too — a tighter AdminShellSkeleton variant deferred to F6 polish.",
+        "Custom cacheLife profiles (beyond the 'minutes'/'hours' defaults) deferred to F6 if observed cache invalidation patterns demand it."
+      ],
+      "note": "F4 closed 2026-05-31 (reviewer APPROVED — ./init.sh green, 30 generated pages, zero ƒ Dynamic in build output). Net result: (a) dead code removed (fetchData.ts deleted, matchService.ts relocated to utils); (b) Next.js 16 Cache Components mode enabled (cacheComponents:true); (c) 21 hub/archive query readers wrapped with 'use cache' + cacheTag + cacheLife using the 8-tag taxonomy (seasons, splits:${id}, matches:${splitId}, rankings:${leagueId}, participants:${splitId}, bracket:${splitId}, trainers, archive); (d) seasons Server Actions wired with 7 updateTag invalidations on the success branch (graceful contract preserved); (e) build matrix: /hub/*, /archivo, / now ○ Static; /hub/entrenador/[id], /archivo/[season]/[split], /admin/* now ◐ Partial Prerender; legend collapsed to ○/◐ only under cacheComponents mode (no more ƒ); (f) Suspense boundaries added to 17 page-level awaits (13 hub/archive + 4 admin live decision); Footer.year extracted to client leaf to satisfy cacheComponents constraint; (g) cache tag taxonomy section appended to docs/conventions.md with per-query assignment, mutation recipe, staleness callout. Live decisions: Wave A pre-flights surfaced 4 admin awaits not in spec — wrapped them with user approval before Wave B flag flip; Wave B implemented as a single atomic operation (REQ-40 + REQ-34/35/36) since cacheComponents:true and 'use cache' are inseparable in Next 16.1.1 (red intermediate states acceptable, green at wave end); admin queries intentionally NOT cached (REQ-39 verified). Files net delta: 2 created (FooterYear.tsx, ShellSkeleton.tsx), 2 deleted (fetchData.ts, matchService.ts), 1 moved (matches.ts), ~25 edited. Two spec rewrites required (first drift: REQ-40 ordering; second drift: cacheComponents requires Suspense+'use cache' atomic ship + Footer Date leak)."
     },
     {
       "id": "F5",
       "phase": "Fase 5 — Performance / modernización",
       "effort": "1 día",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F1"],
       "items": [
-        "generateStaticParams in [season] and [season]/[split]",
-        "Granular <Suspense> per section in [split]/page.tsx",
-        "Push 'use client' to minimal wrappers in CrucesBracket / MatchupCard / TableRow",
-        "Extract <ErrorCard>, <PageSkeleton>, <BackgroundDecoration>, formatSplitName()",
-        "Image sizes, capped animation delays, CSS spin for Pokéballs"
-      ]
+        "[DONE 2026-05-30] generateStaticParams in [season] and [season]/[split] — RETARGETED to /archivo/[season]/[split] only (active routes live under /hub/* post-FR11); 3 prerendered URLs in build manifest",
+        "[DONE 2026-05-30] Granular <Suspense> per section in [split]/page.tsx — RETARGETED to /hub/* parallel boundaries (11 Suspense boundaries across hub panels)",
+        "[DONE 2026-05-30] Push 'use client' to minimal wrappers — SCOPED to ClasificacionView, RosterView, CalendarView (3 client shells); dead PlayoffBracket/MatchupCard/DivisionSection deleted (6 files removed)",
+        "[DONE 2026-05-30] Extract <ErrorCard>, <PageSkeleton>, <BackgroundDecoration>, formatSplitName() (4 shared primitives in components/shared/ui/ + lib/utils/formatters.ts)",
+        "[DONE 2026-05-30] Image sizes, capped animation delays, CSS spin for Pokéballs"
+      ],
+      "deferred": [
+        "2 pre-existing warnings (fetchData.ts:5 J15Match/J16Match, matchService.ts:5 Matchup) — owned by F4 (which deletes fetchData + moves matchService). F5 preserved them untouched.",
+        "Dead cluster sweep (home/Hero.tsx, CurrentSeason.tsx, Navbar.tsx, LinkButton.tsx) — out of scope for F5; flagged for a future micro-batch.",
+        "Option C (cookie-free Supabase client) NOT escalated to /hub/* — narrowly scoped to archive queries only (hub stays cookie-aware/dynamic). Documented as live implementer decision below."
+      ],
+      "note": "F5 closed 2026-05-30 (reviewer signed off — './init.sh' green, 23 pages built). Net result: SSG on /archivo/[season]/[split] (3 prerendered URLs), 11 parallel <Suspense> boundaries across /hub/* (per-panel streaming), 3 client shells (ClasificacionView/RosterView/CalendarView) — parents pushed to RSC, 4 shared primitives extracted (ErrorCard/PageSkeleton/BackgroundDecoration + formatSplitName), bundle JS reduction ~110-114 KB on /hub/* routes, /hub/* remains ƒ Dynamic by design. Live decision: cookie-free Supabase overload (Option C from design.md) applied NARROWLY to archive queries only (NOT escalated to /hub/* — hub queries stay cookie-aware to preserve realtime/auth semantics). F4-owned warnings preserved untouched. Files net delta: 19 created (3 client shells, 11 sections, 4 primitives, formatters utility), ~25 edited (hub pages + archive route + layouts + queries), 6 deleted (dead bracket/matchup/division code)."
     },
     {
       "id": "F6",
       "phase": "Fase 6 — Refactor mayores",
       "effort": "cuando haya tiempo",
-      "status": "pending",
-      "spec": null,
+      "status": "done",
+      "spec": "specs/",
       "dependsOn": ["F3", "F4"],
       "items": [
-        "Replace SplitDataProvider render-prop with direct composition in pages",
-        "Migrate remaining managers to Server Actions",
-        "Reusable confirmation modal to replace window.confirm()"
-      ]
+        "[DROPPED 2026-06-01] Replace SplitDataProvider render-prop with direct composition in pages — ALREADY SATISFIED by F2 (2026-05-28): the entire src/components/divisions/ tree (SplitDataProvider + SplitContent + ClassificationSection + MatchesSection + ParticipantsList + ClassificationTable + index.ts) was deleted as part of REQ-15/15b. grep returns zero hits for SplitDataProvider in src/. No work remains here.",
+        "[DONE 2026-06-01] Migrate remaining managers to Server Actions — shipped in F6b sub-batch (5 Managers: Splits/Divisions/Regulations/Participants/Matches). 5 new _actions.ts files created, 27 actions total wired with discriminated-union returns + cookie-aware createClient + updateTag invalidations per F4 tag taxonomy. Zero browser-side writes remain in the 5 Managers' write paths (only 2 spec-allowed read-only createClient() survivors at ParticipantsManager.tsx:173 + MatchesManager.tsx:179).",
+        "[DONE 2026-06-01] Reusable confirmation modal to replace window.confirm() — shipped in F6a (AdminConfirmModal.tsx primitive + 7 adoption sites across 5 Managers); F6b confirm callbacks now invoke Server Actions, plumbing intact."
+      ],
+      "deferred": [
+        "F6c — MatchesManager dual-cascade hook (REQ-26). OUT per user 2026-05-31, NO PLANS TO REVISIT — the dual-cascade architecture (Results tab seeds leagues server-side from activeSplitInfo; Planning tab runs full Season→Split→League cascade with separate selection state) cannot be modeled by a single useLeagueSelector instance without tangling the Results tab's server-seeded auto-select. Two hook instances would duplicate the Supabase client per render. F6b explicitly preserved this dual-cascade selection state untouched.",
+        "Spec-Q3 follow-up (non-blocking): DB schema audit to verify ON DELETE CASCADE on splits → leagues / participants / matches / bracket. Reviewer could not verify cascade from database.types.ts alone — defensively broad tag set in deleteSplitAction means worst case is over-invalidation (cache hit miss), not stale data. Pick up if/when DB migration access is available.",
+        "F4 inheritance — tighter AdminShellSkeleton variant. Deferred indefinitely (admin pages use generic ShellSkeleton fine, no observed pain).",
+        "F4 inheritance — custom cacheLife profiles beyond minutes/hours defaults. Deferred indefinitely (built-ins cover all sites)."
+      ],
+      "note": "F6 CLOSED 2026-06-01 via two sub-batches: F6a (UX primitive + dead-code sweep + docs) + F6b (5-Manager Server Actions migration). F6c (MatchesManager dual-cascade REQ-26) was explicitly OUT per user 2026-05-31. F6b verdict: reviewer APPROVED — ./init.sh GREEN end-to-end, 30/30 static pages (route map unchanged from F6a baseline), typecheck/lint/build all pass, REQ-60..REQ-79 all verified file:line. Wave structure (F6b, 6 waves): A (Divisions _actions + Manager migration), B (Splits _actions + Manager migration), C (Regulations _actions + Manager migration incl. storage upload), D (Participants _actions + Manager migration — 5 actions), E (Matches _actions + Manager migration — 8 actions incl. J15/J16 batch generators), F (docs/conventions.md update with Server Actions guidance + Q1 staleness window callout). Net F6b delta: 5 created (divisions/_actions.ts, splits/_actions.ts, normativa/_actions.ts, participants/_actions.ts, matches/_actions.ts), 6 edited (5 Managers + docs/conventions.md), 0 deleted. All 27 action returns use discriminated-union { ok: true, ... } | { ok: false, error } pattern, zero throws to UI. All use cookie-aware @/lib/supabase/server createClient() (NOT the F5 cookie-free overload). 5x 'use server' directives confirmed (one per _actions.ts). Build matrix identical to F6a baseline (no page-class regressions). Live decisions: (1) useOptimistic base = hook-derived arrays (auto re-syncs after refresh) — no manual sync action wired; (2) J16 generator tier lookup moved server-side (single leagues.select) instead of trusting client-cached array — smaller client payload, zero behavior change; (3) Optimistic-URL for RegulationsManager skipped (spec marked W3.2 optional); (4) Q1 staleness: kept broad 'seasons' bust on trainer mutations per spec Q2 ratification, documented ≤60s window inline + in conventions.md. F6a (closed earlier same day): created AdminConfirmModal.tsx + 7 adoption sites across 5 Managers, deleted dead cluster (8 files + 5 dirs incl. entire home/ subtree, Navbar.tsx, LinkButton.tsx, cruces/final loading.tsx), fixed docs/conventions.md:24-27 stale fetchData callout. F6 closes the Architecture Review initiative (F0..F6 all done)."
     },
     {
       "id": "FR0",

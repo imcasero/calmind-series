@@ -1,126 +1,87 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useOptimistic, useState } from 'react';
 import {
   AdminButton,
+  AdminConfirmModal,
   AdminErrorBanner,
   AdminInput,
   AdminModal,
 } from '@/components/admin/ui';
-import { createClient } from '@/lib/supabase/client';
-import type { League, Season, Split } from '@/lib/types/database.types';
+import { useLeagueSelector } from '@/lib/hooks/useLeagueSelector';
+import type { League, Season } from '@/lib/types/database.types';
+import { LeagueCreateInputSchema } from '@/lib/types/schemas';
+import { createLeagueAction, deleteLeagueAction } from '../_actions';
 
 interface DivisionsManagerProps {
   initialSeasons: Season[];
 }
 
+type LeagueOptimistic =
+  | { type: 'sync'; leagues: League[] }
+  | { type: 'create'; league: League }
+  | { type: 'delete'; id: string };
+
+function optimisticReducer(
+  state: League[],
+  action: LeagueOptimistic,
+): League[] {
+  switch (action.type) {
+    case 'sync':
+      return action.leagues;
+    case 'create':
+      return [...state, action.league].sort(
+        (a, b) => a.tier_priority - b.tier_priority,
+      );
+    case 'delete':
+      return state.filter((l) => l.id !== action.id);
+    default:
+      return state;
+  }
+}
+
 export default function DivisionsManager({
   initialSeasons,
 }: DivisionsManagerProps) {
-  const router = useRouter();
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(
-    () => {
-      const active = initialSeasons.find((s) => s.is_active);
-      return active?.id ?? initialSeasons[0]?.id ?? null;
-    },
+  const {
+    splits,
+    leagues,
+    selectedSeasonId,
+    selectedSplitId,
+    setSeasonId,
+    setSplitId,
+    loadingSplits,
+    loadingLeagues,
+    error: selectorError,
+    clearError: clearSelectorError,
+    refresh,
+  } = useLeagueSelector({ initialSeasons, depth: 'season-split-league' });
+  const [optimisticLeagues, applyOptimistic] = useOptimistic(
+    leagues,
+    optimisticReducer,
   );
-  const [splits, setSplits] = useState<Split[]>([]);
-  const [selectedSplitId, setSelectedSplitId] = useState<string | null>(null);
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [loadingSplits, setLoadingSplits] = useState(false);
-  const [loadingLeagues, setLoadingLeagues] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newLeague, setNewLeague] = useState({
     tier_name: '',
     tier_priority: 1,
   });
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    id: string | null;
+  }>({ open: false, id: null });
 
-  const supabase = createClient();
-
-  // Fetch splits when season changes
-  useEffect(() => {
-    if (!selectedSeasonId) {
-      setSplits([]);
-      setSelectedSplitId(null);
-      return;
-    }
-
-    const fetchSplits = async () => {
-      setLoadingSplits(true);
-      setSelectedSplitId(null);
-      setLeagues([]);
-
-      const { data, error } = await supabase
-        .from('splits')
-        .select('*')
-        .eq('season_id', selectedSeasonId)
-        .order('split_order', { ascending: true });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        const splitsData = (data ?? []) as Split[];
-        setSplits(splitsData);
-        const activeSplit =
-          splitsData.find((s) => s.is_active) ?? splitsData[0];
-        if (activeSplit) {
-          setSelectedSplitId(activeSplit.id);
-        }
-      }
-      setLoadingSplits(false);
-    };
-
-    fetchSplits();
-  }, [selectedSeasonId, supabase.from]);
-
-  // Fetch leagues when split changes
-  useEffect(() => {
-    if (!selectedSplitId) {
-      setLeagues([]);
-      return;
-    }
-
-    const fetchLeagues = async () => {
-      setLoadingLeagues(true);
-
-      const { data, error } = await supabase
-        .from('leagues')
-        .select('*')
-        .eq('split_id', selectedSplitId)
-        .order('tier_priority', { ascending: true });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setLeagues(data ?? []);
-        setNewLeague((prev) => ({
-          ...prev,
-          tier_priority: (data?.length ?? 0) + 1,
-        }));
-      }
-      setLoadingLeagues(false);
-    };
-
-    fetchLeagues();
-  }, [selectedSplitId, supabase.from]);
-
-  const refreshLeagues = async () => {
-    if (!selectedSplitId) return;
-
-    const { data } = await supabase
-      .from('leagues')
-      .select('*')
-      .eq('split_id', selectedSplitId)
-      .order('tier_priority', { ascending: true });
-
-    if (data) {
-      setLeagues(data);
-      setNewLeague((prev) => ({ ...prev, tier_priority: data.length + 1 }));
-    }
+  const error = localError ?? selectorError;
+  const setError = (value: string | null) => {
+    setLocalError(value);
+    if (value === null) clearSelectorError();
   };
+
+  // Keep create-form `tier_priority` in sync with the loaded leagues length.
+  useEffect(() => {
+    setNewLeague((prev) => ({ ...prev, tier_priority: leagues.length + 1 }));
+  }, [leagues.length]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,34 +90,61 @@ export default function DivisionsManager({
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from('leagues').insert({
-      split_id: selectedSplitId,
+    const parsed = LeagueCreateInputSchema.safeParse({
       tier_name: newLeague.tier_name,
       tier_priority: newLeague.tier_priority,
     });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setNewLeague({ tier_name: '', tier_priority: leagues.length + 2 });
-      setShowCreateForm(false);
-      await refreshLeagues();
-      router.refresh();
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((i) => i.message).join(' · '));
+      setSaving(false);
+      return;
     }
-    setSaving(false);
+
+    const tempLeague: League = {
+      id: `optimistic-${crypto.randomUUID()}`,
+      split_id: selectedSplitId,
+      tier_name: parsed.data.tier_name,
+      tier_priority: parsed.data.tier_priority,
+      created_at: new Date().toISOString(),
+    };
+
+    startTransition(async () => {
+      applyOptimistic({ type: 'create', league: tempLeague });
+      const result = await createLeagueAction(selectedSplitId, parsed.data);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setNewLeague({ tier_name: '', tier_priority: leagues.length + 2 });
+        setShowCreateForm(false);
+        // Reconcile temp id → real id via the hook's authoritative re-fetch.
+        await refresh();
+      }
+      setSaving(false);
+    });
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estas seguro de eliminar esta division?')) return;
+  const requestDelete = (id: string) => {
+    setConfirmDelete({ open: true, id });
+  };
 
-    const { error } = await supabase.from('leagues').delete().eq('id', id);
+  const cancelDelete = () => {
+    setConfirmDelete({ open: false, id: null });
+  };
 
-    if (error) {
-      setError(error.message);
-    } else {
-      await refreshLeagues();
-      router.refresh();
-    }
+  const confirmDeleteAction = () => {
+    const id = confirmDelete.id;
+    if (!id || !selectedSplitId) return;
+    setConfirmDelete({ open: false, id: null });
+
+    startTransition(async () => {
+      applyOptimistic({ type: 'delete', id });
+      const result = await deleteLeagueAction(id, selectedSplitId);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refresh();
+      }
+    });
   };
 
   return (
@@ -173,7 +161,7 @@ export default function DivisionsManager({
           </span>
           <select
             value={selectedSeasonId ?? ''}
-            onChange={(e) => setSelectedSeasonId(e.target.value || null)}
+            onChange={(e) => setSeasonId(e.target.value || null)}
             className="pixel-input w-auto cursor-pointer"
           >
             <option value="">Seleccionar</option>
@@ -189,7 +177,7 @@ export default function DivisionsManager({
           </span>
           <select
             value={selectedSplitId ?? ''}
-            onChange={(e) => setSelectedSplitId(e.target.value || null)}
+            onChange={(e) => setSplitId(e.target.value || null)}
             disabled={!selectedSeasonId || loadingSplits}
             className="pixel-input w-auto cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -268,6 +256,15 @@ export default function DivisionsManager({
         </AdminModal>
       )}
 
+      <AdminConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar división"
+        message="¿Estas seguro de eliminar esta division?"
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={cancelDelete}
+      />
+
       {/* Content */}
       {!selectedSeasonId ? (
         <EmptyPanel text="Selecciona una temporada para ver sus divisiones." />
@@ -283,7 +280,7 @@ export default function DivisionsManager({
         <EmptyPanel text="Cargando divisiones..." />
       ) : (
         <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
-          {leagues.length === 0 ? (
+          {optimisticLeagues.length === 0 ? (
             <p className="p-8 text-center font-retro text-lg text-px-ink-dim">
               No hay divisiones creadas para este split.
             </p>
@@ -297,7 +294,7 @@ export default function DivisionsManager({
                 </tr>
               </thead>
               <tbody>
-                {leagues.map((league) => (
+                {optimisticLeagues.map((league) => (
                   <tr key={league.id}>
                     <td>
                       <span className="grid size-8 place-items-center border-2 border-px-border bg-px-deep font-num text-sm text-px-ink">
@@ -310,7 +307,7 @@ export default function DivisionsManager({
                         <AdminButton
                           tone="danger"
                           size="sm"
-                          onClick={() => handleDelete(league.id)}
+                          onClick={() => requestDelete(league.id)}
                         >
                           Eliminar
                         </AdminButton>

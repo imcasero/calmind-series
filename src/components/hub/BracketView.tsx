@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BackgroundDecoration } from '@/components/shared';
 import { PixelArrow, PixelCrown } from '@/components/shared/ui/pixel';
 import { ROUTES } from '@/lib/constants/routes';
 import type {
@@ -217,7 +218,7 @@ function TeamRow({ team, winner }: { team: BracketTeamVM; winner: boolean }) {
 function OlympusJunction() {
   return (
     <section className="relative overflow-hidden border-[3px] border-px-gold bg-px-deep p-6 text-center">
-      <div className="starfield" />
+      <BackgroundDecoration variant="starfield" />
       <div className="relative flex flex-col items-center gap-3">
         <PixelCrown size={40} />
         <h3 className="font-pixel text-lg uppercase text-px-gold">El Olimpo</h3>

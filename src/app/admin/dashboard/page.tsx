@@ -1,8 +1,18 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { AdminBadge, AdminCard } from '@/components/admin/ui';
+import { ShellSkeleton } from '@/components/shared';
 import { getDashboardStats } from '@/lib/queries';
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<ShellSkeleton />}>
+      <DashboardPageInner />
+    </Suspense>
+  );
+}
+
+async function DashboardPageInner() {
   const stats = await getDashboardStats();
 
   const statCards = [

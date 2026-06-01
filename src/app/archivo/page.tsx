@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import {
   type ArchiveSeasonVM,
   ArchiveView,
   HubPageHeader,
 } from '@/components/hub';
+import { SectionSkeleton } from '@/components/shared';
 import {
   getActiveSeasonWithSplit,
   getAllSeasonsWithSplits,
@@ -16,8 +18,13 @@ export const metadata: Metadata = {
     'Máquina del tiempo: todas las temporadas y splits de Pokemon Calmind Series.',
 };
 
-/** Archive index (FR9): seasons + splits, newest first. */
-export default async function ArchivoPage() {
+/**
+ * Archive index (FR9): seasons + splits, newest first.
+ *
+ * Wave A REQ-44: the `Promise.all` + VM build lives inside
+ * `ArchivoPageInner` so the Suspense boundary owns the await.
+ */
+async function ArchivoPageInner() {
   const [seasons, seasonInfo, champions] = await Promise.all([
     getAllSeasonsWithSplits(),
     getActiveSeasonWithSplit(),
@@ -48,5 +55,13 @@ export default async function ArchivoPage() {
       <HubPageHeader eyebrow="Máquina del tiempo" title="Archivo" />
       <ArchiveView seasons={seasonVMs} />
     </div>
+  );
+}
+
+export default function ArchivoPage() {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="standings" />}>
+      <ArchivoPageInner />
+    </Suspense>
   );
 }

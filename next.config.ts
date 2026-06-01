@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  cacheComponents: true,
   poweredByHeader: false,
   images: {
     formats: ['image/webp', 'image/avif'],

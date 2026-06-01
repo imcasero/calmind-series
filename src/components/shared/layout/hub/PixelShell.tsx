@@ -3,19 +3,25 @@ import { PhaseProvider } from '@/components/providers/PhaseProvider';
 import { MarqueeStrip } from '@/components/shared/layout/hub/MarqueeStrip';
 import { ShellClientEffects } from '@/components/shared/layout/hub/ShellClientEffects';
 import { TopBar } from '@/components/shared/layout/hub/TopBar';
-import {
-  type DivisionPreview,
-  getActiveSeasonWithSplit,
-  getAllSeasonsWithSplits,
-  getCurrentRound,
-  getDivisionPreview,
-} from '@/lib/queries';
+import type { DivisionPreview, SeasonWithSplits } from '@/lib/queries';
 import {
   getPhase,
   isFinalsUnlocked,
   type Phase,
   TOTAL_ROUNDS,
 } from '@/lib/utils/phase';
+
+interface PixelShellData {
+  activeSeasonName: string | null;
+  activeSplitName: string | null;
+  seasons: SeasonWithSplits[];
+  currentRound: number;
+  preview: DivisionPreview;
+}
+
+interface PixelShellProps extends PixelShellData {
+  children: ReactNode;
+}
 
 /** Auto-generated status strip content (README §"marquee status strip"). */
 function buildMarqueeItems(
@@ -51,20 +57,20 @@ function buildMarqueeItems(
 /**
  * Shared redesign shell (FR2/FR9): `.pixel-root` + scanlines, `PhaseProvider`
  * seeded from the active split, sticky TopBar, marquee, and a centered main.
- * Used by both the `/hub` and `/archivo` layouts so the TopBar nav is consistent.
+ *
+ * Pure renderer — data is fetched by each layout (`HubLayout` cookie-aware for
+ * live `/hub`, `ArchivoLayout` cookie-free so `/archivo/[season]/[split]` stays
+ * eligible for `generateStaticParams` SSG per REQ-21). The shell itself never
+ * touches `cookies()`.
  */
-export async function PixelShell({ children }: { children: ReactNode }) {
-  const seasonInfo = await getActiveSeasonWithSplit();
-  const activeSplitId = seasonInfo?.activeSplit?.id ?? null;
-
-  const [currentRound, seasons, preview] = await Promise.all([
-    activeSplitId ? getCurrentRound(activeSplitId) : Promise.resolve(0),
-    getAllSeasonsWithSplits(),
-    activeSplitId
-      ? getDivisionPreview(activeSplitId)
-      : Promise.resolve<DivisionPreview>({ primera: [], segunda: [] }),
-  ]);
-
+export function PixelShell({
+  activeSeasonName,
+  activeSplitName,
+  seasons,
+  currentRound,
+  preview,
+  children,
+}: PixelShellProps) {
   const phase = getPhase(currentRound);
   const marqueeItems = buildMarqueeItems(phase, currentRound, preview);
 
@@ -73,8 +79,8 @@ export async function PixelShell({ children }: { children: ReactNode }) {
       <ShellClientEffects />
       <div className="pixel-root scanlines">
         <TopBar
-          activeSeasonName={seasonInfo?.name ?? null}
-          activeSplitName={seasonInfo?.activeSplit?.name ?? null}
+          activeSeasonName={activeSeasonName}
+          activeSplitName={activeSplitName}
           seasons={seasons}
         />
         <MarqueeStrip items={marqueeItems} />

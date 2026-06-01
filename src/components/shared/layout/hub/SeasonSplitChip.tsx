@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ROUTES } from '@/lib/constants/routes';
 import type { SeasonWithSplits } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { formatSeasonSplit } from '@/lib/utils/formatters';
 
 interface SeasonSplitChipProps {
   activeSeasonName: string | null;
@@ -25,7 +26,7 @@ export function SeasonSplitChip({
 
   const label =
     activeSeasonName && activeSplitName
-      ? `${activeSeasonName.toUpperCase()} · ${activeSplitName.toUpperCase()}`
+      ? formatSeasonSplit(activeSeasonName, activeSplitName)
       : 'SIN TEMPORADA';
 
   return (

@@ -1,4 +1,4 @@
-import { cache } from 'react';
+import { cacheLife, cacheTag } from 'next/cache';
 import { getLeaguesBySplit } from '@/lib/queries/leagues.queries';
 import { createClient } from '@/lib/supabase/server';
 import type { J15Match, J16Match } from '@/lib/types/matches';
@@ -31,17 +31,20 @@ type BracketRow = {
  * relegation_battle, honor_battle, segunda_final, opportunity, last_chance,
  * honor_segunda) — confirmed via the existing matchService/finals page.
  */
-export const getBracketData = cache(
-  async (splitId: string): Promise<BracketData> => {
-    const supabase = await createClient();
-    const leagues = await getLeaguesBySplit(splitId);
-    const primeraLeagueId = leagues.find((l) => l.tier_priority === 1)?.id;
-    const segundaLeagueId = leagues.find((l) => l.tier_priority === 2)?.id;
+export async function getBracketData(splitId: string): Promise<BracketData> {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag(`bracket:${splitId}`, `matches:${splitId}`);
 
-    const { data, error } = await supabase
-      .from('matches')
-      .select(
-        `
+  const supabase = await createClient({ session: false });
+  const leagues = await getLeaguesBySplit(splitId);
+  const primeraLeagueId = leagues.find((l) => l.tier_priority === 1)?.id;
+  const segundaLeagueId = leagues.find((l) => l.tier_priority === 2)?.id;
+
+  const { data, error } = await supabase
+    .from('matches')
+    .select(
+      `
         id,
         league_id,
         match_tag,
@@ -54,24 +57,23 @@ export const getBracketData = cache(
         home:trainers!matches_home_trainer_id_fkey(nickname, avatar_url),
         away:trainers!matches_away_trainer_id_fkey(nickname, avatar_url)
       `,
-      )
-      .eq('split_id', splitId)
-      .in('round', [15, 16]);
+    )
+    .eq('split_id', splitId)
+    .in('round', [15, 16]);
 
-    if (error) {
-      console.error('[getBracketData] Error:', error.message);
-      return {
-        primeraLeagueId,
-        segundaLeagueId,
-        j15Matches: [],
-        j16Matches: [],
-      };
-    }
+  if (error) {
+    console.error('[getBracketData] Error:', error.message);
+    return {
+      primeraLeagueId,
+      segundaLeagueId,
+      j15Matches: [],
+      j16Matches: [],
+    };
+  }
 
-    const rows = (data ?? []) as unknown as BracketRow[];
-    const j15Matches = rows.filter((r) => r.round === 15) as J15Match[];
-    const j16Matches = rows.filter((r) => r.round === 16) as J16Match[];
+  const rows = (data ?? []) as unknown as BracketRow[];
+  const j15Matches = rows.filter((r) => r.round === 15) as J15Match[];
+  const j16Matches = rows.filter((r) => r.round === 16) as J16Match[];
 
-    return { primeraLeagueId, segundaLeagueId, j15Matches, j16Matches };
-  },
-);
+  return { primeraLeagueId, segundaLeagueId, j15Matches, j16Matches };
+}

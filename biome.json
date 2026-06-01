@@ -47,7 +47,7 @@
         "noImgElement": "off"
       },
       "suspicious": {
-        "noExplicitAny": "warn",
+        "noExplicitAny": "error",
         "useIterableCallbackReturn": "off"
       }
     }

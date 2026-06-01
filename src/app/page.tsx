@@ -1,8 +1,10 @@
+import { Suspense } from 'react';
 import {
   type LandingSnapVM,
   type LandingVM,
   PixelLanding,
 } from '@/components/landing/PixelLanding';
+import { BackgroundDecoration } from '@/components/shared';
 import {
   getActiveSeasonWithSplit,
   getAllSeasonsWithSplits,
@@ -38,7 +40,12 @@ function toSnap(
   };
 }
 
-export default async function HomePage() {
+/**
+ * Landing (FR1). Wave A REQ-44: the data fetch + VM build live inside
+ * `HomePageInner` under a Suspense boundary so `cacheComponents: true`
+ * (Wave B) can land without aborting prerender.
+ */
+async function HomePageInner() {
   const [seasonInfo, seasons] = await Promise.all([
     getActiveSeasonWithSplit(),
     getAllSeasonsWithSplits(),
@@ -79,5 +86,13 @@ export default async function HomePage() {
     <div className="pixel-root scanlines">
       <PixelLanding vm={vm} />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<BackgroundDecoration />}>
+      <HomePageInner />
+    </Suspense>
   );
 }

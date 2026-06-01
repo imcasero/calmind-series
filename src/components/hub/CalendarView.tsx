@@ -1,112 +1,54 @@
-'use client';
-
 import Link from 'next/link';
-import { useState } from 'react';
 import { PixelCrown } from '@/components/shared/ui/pixel';
 import { ROUTES } from '@/lib/constants/routes';
 import type { MatchEntry, MatchesByRound } from '@/lib/types/schemas';
-import { cn } from '@/lib/utils';
 import { getPhase, isFinalsUnlocked, TOTAL_ROUNDS } from '@/lib/utils/phase';
 import { trainerColor } from '@/lib/utils/trainerColor';
+import { RoundSelectorShell } from './clients/RoundSelectorShell';
+
+const ROUNDS = Array.from({ length: TOTAL_ROUNDS }, (_, i) => i + 1);
 
 interface CalendarViewProps {
   matchesByRound: MatchesByRound;
   currentRound: number;
 }
 
-const ROUNDS = Array.from({ length: TOTAL_ROUNDS }, (_, i) => i + 1);
-
 function roundMatches(byRound: MatchesByRound, round: number): MatchEntry[] {
   return byRound.find((r) => r.round === round)?.matches ?? [];
 }
 
 /**
- * Calendar (FR5): a horizontal round timeline + the focused round's matches.
- * Real per-round dates are not in the DB, so we show the known weekly cadence
- * ("Domingo · 18:00 CEST") instead of fabricating dates.
+ * Calendar (FR5 / REQ-23.3): pre-renders all 16 round detail blocks Server-side
+ * and hands them to the tiny `<RoundSelectorShell>` client as named slots. The
+ * shell owns the selected-round state and toggles slot visibility via CSS
+ * `hidden`, so the per-round match listings (and their pixel icons) never enter
+ * the client bundle.
+ *
+ * Real per-round dates are not in the DB, so the known weekly cadence
+ * ("Domingo · 18:00 CEST") is shown instead of fabricating dates.
  */
 export function CalendarView({
   matchesByRound,
   currentRound,
 }: CalendarViewProps) {
   const initial = currentRound > 0 ? Math.min(currentRound, TOTAL_ROUNDS) : 1;
-  const [selected, setSelected] = useState(initial);
-
-  const phase = getPhase(selected);
-  const matches = roundMatches(matchesByRound, selected);
-  const primera = matches.filter((m) => m.leagueTierName === 'Primera');
-  const segunda = matches.filter((m) => m.leagueTierName === 'Segunda');
+  const roundSlots = ROUNDS.map((round) => ({
+    round,
+    node: (
+      <RoundDetail
+        round={round}
+        matches={roundMatches(matchesByRound, round)}
+      />
+    ),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Timeline */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {ROUNDS.map((round) => {
-          const rPhase = getPhase(round);
-          const state =
-            round < currentRound
-              ? 'past'
-              : round === currentRound
-                ? 'current'
-                : 'future';
-          const active = round === selected;
-          return (
-            <button
-              key={round}
-              type="button"
-              onClick={() => setSelected(round)}
-              className={cn(
-                'flex shrink-0 items-center gap-1.5 border-2 px-3 py-2 font-pixel text-[9px] uppercase transition-colors',
-                active ? 'bg-px-base' : 'bg-px-deep',
-              )}
-              style={{
-                borderColor: active ? 'var(--color-px-magenta)' : rPhase.color,
-                color: rPhase.color,
-                opacity: state === 'future' ? 0.7 : 1,
-              }}
-            >
-              {state === 'current' && (
-                <span className="blink text-px-success">●</span>
-              )}
-              J{String(round).padStart(2, '0')}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Detail */}
-      <section className="border-[3px] border-px-border bg-px-elev p-5">
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b-[3px] border-px-border pb-3">
-          <div className="flex items-center gap-3">
-            <h3 className="font-pixel text-lg" style={{ color: phase.color }}>
-              Jornada {selected}
-            </h3>
-            <span
-              className="border-2 px-2 py-1 font-pixel text-[8px] uppercase"
-              style={{ borderColor: phase.color, color: phase.color }}
-            >
-              {phase.label}
-            </span>
-          </div>
-          <span className="font-pixel text-[9px] uppercase tracking-wider text-px-ink-dim">
-            Domingo · 18:00 CEST
-          </span>
-        </header>
-
-        {matches.length === 0 ? (
-          <FinalsOrEmpty round={selected} />
-        ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <MatchColumn
-              title="División 1"
-              accent="magenta"
-              matches={primera}
-            />
-            <MatchColumn title="División 2" accent="cyan" matches={segunda} />
-          </div>
-        )}
-      </section>
-
+      <RoundSelectorShell
+        currentRound={currentRound}
+        initialRound={initial}
+        roundSlots={roundSlots}
+      />
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4">
         <LegendItem color="var(--color-px-cyan)" label="Fase Regular" />
@@ -114,6 +56,48 @@ export function CalendarView({
         <LegendItem color="var(--color-px-gold)" label="Finales · J16" />
       </div>
     </div>
+  );
+}
+
+function RoundDetail({
+  round,
+  matches,
+}: {
+  round: number;
+  matches: MatchEntry[];
+}) {
+  const phase = getPhase(round);
+  const primera = matches.filter((m) => m.leagueTierName === 'Primera');
+  const segunda = matches.filter((m) => m.leagueTierName === 'Segunda');
+
+  return (
+    <section className="border-[3px] border-px-border bg-px-elev p-5">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b-[3px] border-px-border pb-3">
+        <div className="flex items-center gap-3">
+          <h3 className="font-pixel text-lg" style={{ color: phase.color }}>
+            Jornada {round}
+          </h3>
+          <span
+            className="border-2 px-2 py-1 font-pixel text-[8px] uppercase"
+            style={{ borderColor: phase.color, color: phase.color }}
+          >
+            {phase.label}
+          </span>
+        </div>
+        <span className="font-pixel text-[9px] uppercase tracking-wider text-px-ink-dim">
+          Domingo · 18:00 CEST
+        </span>
+      </header>
+
+      {matches.length === 0 ? (
+        <FinalsOrEmpty round={round} />
+      ) : (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <MatchColumn title="División 1" accent="magenta" matches={primera} />
+          <MatchColumn title="División 2" accent="cyan" matches={segunda} />
+        </div>
+      )}
+    </section>
   );
 }
 

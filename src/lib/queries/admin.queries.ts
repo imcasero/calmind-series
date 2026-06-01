@@ -81,7 +81,7 @@ export const getAdminSeasons = cache(async (): Promise<Season[]> => {
     throw new Error(error.message);
   }
 
-  return (data ?? []) as Season[];
+  return data ?? [];
 });
 
 // ============================================================================
@@ -103,7 +103,7 @@ export const getAdminSplitsBySeason = cache(
       throw new Error(error.message);
     }
 
-    return (data ?? []) as Split[];
+    return data ?? [];
   },
 );
 
@@ -126,7 +126,7 @@ export const getAdminLeaguesBySplit = cache(
       throw new Error(error.message);
     }
 
-    return (data ?? []) as League[];
+    return data ?? [];
   },
 );
 
@@ -147,7 +147,7 @@ export const getAdminTrainers = cache(async (): Promise<Trainer[]> => {
     throw new Error(error.message);
   }
 
-  return (data ?? []) as Trainer[];
+  return data ?? [];
 });
 
 // ============================================================================
@@ -155,7 +155,7 @@ export const getAdminTrainers = cache(async (): Promise<Trainer[]> => {
 // ============================================================================
 
 export type ParticipantWithTrainer = LeagueParticipant & {
-  trainer: Trainer;
+  trainer: Trainer | null;
 };
 
 export const getAdminParticipantsByLeague = cache(
@@ -173,7 +173,7 @@ export const getAdminParticipantsByLeague = cache(
       throw new Error(error.message);
     }
 
-    return (data ?? []) as ParticipantWithTrainer[];
+    return data ?? [];
   },
 );
 
@@ -208,7 +208,7 @@ export const getAdminMatchesByLeague = cache(
       throw new Error(error.message);
     }
 
-    return (data ?? []) as MatchWithTrainers[];
+    return data ?? [];
   },
 );
 
@@ -237,7 +237,7 @@ export const getActiveSplitInfo = cache(
       return null;
     }
 
-    const season = seasonData as Season;
+    const season = seasonData;
 
     // Get active split
     const { data: splitData, error: splitError } = await supabase
@@ -251,7 +251,7 @@ export const getActiveSplitInfo = cache(
       return null;
     }
 
-    const split = splitData as Split;
+    const split = splitData;
 
     // Get leagues for this split
     const { data: leaguesData } = await supabase
@@ -263,7 +263,7 @@ export const getActiveSplitInfo = cache(
     return {
       season,
       split,
-      leagues: (leaguesData ?? []) as League[],
+      leagues: leaguesData ?? [],
     };
   },
 );

@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { EXTERNAL_ROUTES, ROUTES } from '@/lib/constants/routes';
+import { FooterYear } from './FooterYear';
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
   return (
     <footer className="mt-auto w-full relative bg-jacksons-purple-950/60 backdrop-blur-sm border-t-[3px] border-retro-cyan-500/30">
       {/* Top accent line */}
@@ -42,7 +41,7 @@ export default function Footer() {
           {/* Copyright */}
           <div className="text-center md:text-right space-y-1.5">
             <p className="text-xs xs:text-sm text-white/50 font-mono">
-              &copy; {currentYear} Pokemon Calmind Series
+              &copy; <FooterYear /> Pokemon Calmind Series
             </p>
             <p className="text-xs text-white/30 font-mono">
               Desarrollado por{' '}

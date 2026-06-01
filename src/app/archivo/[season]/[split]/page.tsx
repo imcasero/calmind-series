@@ -1,17 +1,33 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { HubPageHeader } from '@/components/hub';
+import { SectionSkeleton } from '@/components/shared';
 import { PixelCrown } from '@/components/shared/ui/pixel';
 import {
   getArchiveChampions,
-  getDivisionPreview,
+  getArchiveDivisionPreview,
+  getArchiveSplitParams,
   getSplitByNames,
 } from '@/lib/queries';
 import type { RankingEntry } from '@/lib/types/schemas';
+import { formatSeasonSplit } from '@/lib/utils/formatters';
 import { trainerColor } from '@/lib/utils/trainerColor';
 
 interface ArchiveDetailProps {
   params: Promise<{ season: string; split: string }>;
+}
+
+/**
+ * Static prerender of every persisted `(season, split)` pair (REQ-21). All four
+ * archive queries (`getArchiveSplitParams`, `getSplitByNames`,
+ * `getArchiveChampions`, `getDivisionPreview` + its leaf calls) use the
+ * `createClient({ session: false })` Supabase client, so the route stays
+ * eligible for build-time prerender despite Next 16's `cookies()` → dynamic
+ * bailout in `prerender-legacy` mode.
+ */
+export async function generateStaticParams() {
+  return getArchiveSplitParams();
 }
 
 export async function generateMetadata({
@@ -19,15 +35,19 @@ export async function generateMetadata({
 }: ArchiveDetailProps): Promise<Metadata> {
   const { season, split } = await params;
   return {
-    title: `${season.toUpperCase()} · ${split.toUpperCase()} · Archivo`,
+    title: `${formatSeasonSplit(season, split)} · Archivo`,
     description: `Resultado histórico del ${split} de ${season} en Pokemon Calmind Series.`,
   };
 }
 
-/** Archive split detail (FR9): champions + final podium for a past split. */
-export default async function ArchiveDetailPage({
-  params,
-}: ArchiveDetailProps) {
+/**
+ * Archive split detail (FR9): champions + final podium for a past split.
+ *
+ * Wave A REQ-44: the data joins live inside `ArchiveDetailPageInner` under a
+ * Suspense boundary so `cacheComponents: true` (Wave B) keeps the SSG
+ * prerender valid.
+ */
+async function ArchiveDetailPageInner({ params }: ArchiveDetailProps) {
   const { season, split } = await params;
   const info = await getSplitByNames(season, split);
 
@@ -37,14 +57,14 @@ export default async function ArchiveDetailPage({
 
   const [champions, preview] = await Promise.all([
     getArchiveChampions(),
-    getDivisionPreview(info.split.id),
+    getArchiveDivisionPreview(info.split.id),
   ]);
   const champ = champions.get(info.split.id);
 
   return (
     <div className="flex flex-col gap-8">
       <HubPageHeader
-        eyebrow={`${info.season.name.toUpperCase()} · ${info.split.name.toUpperCase()}`}
+        eyebrow={formatSeasonSplit(info.season.name, info.split.name)}
         title="Archivo del split"
       />
 
@@ -74,6 +94,14 @@ export default async function ArchiveDetailPage({
         />
       </section>
     </div>
+  );
+}
+
+export default function ArchiveDetailPage(props: ArchiveDetailProps) {
+  return (
+    <Suspense fallback={<SectionSkeleton variant="standings" />}>
+      <ArchiveDetailPageInner {...props} />
+    </Suspense>
   );
 }
 

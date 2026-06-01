@@ -1,14 +1,9 @@
-'use client';
-
 import Link from 'next/link';
-import { useState } from 'react';
 import { TrainerAvatar } from '@/components/shared/ui/pixel';
 import { ROUTES } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 import type { StandingRowVM, StreakResult } from '@/lib/utils/standings';
-
-type Division = 'primera' | 'segunda';
-type Accent = 'magenta' | 'cyan';
+import { DivisionTabsShell } from './clients/DivisionTabsShell';
 
 const ROW_GRID =
   'grid grid-cols-[36px_minmax(140px,1fr)_44px_44px_52px_128px_96px] items-center gap-2';
@@ -18,65 +13,20 @@ interface ClasificacionViewProps {
   segunda: StandingRowVM[];
 }
 
-/** Standings page body: division tabs + the full table for the active division. */
+/**
+ * Standings page body (FR4 / REQ-23.1): the division-tab switch is the only
+ * piece that needs client JS; the table markup is pure Server JSX rendered for
+ * both divisions and handed to the client shell as named slots.
+ */
 export function ClasificacionView({
   primera,
   segunda,
 }: ClasificacionViewProps) {
-  const [active, setActive] = useState<Division>('primera');
-  const rows = active === 'primera' ? primera : segunda;
-
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3">
-        <TabButton
-          label="División 1 · Élite"
-          accent="magenta"
-          active={active === 'primera'}
-          onClick={() => setActive('primera')}
-        />
-        <TabButton
-          label="División 2 · Aspirantes"
-          accent="cyan"
-          active={active === 'segunda'}
-          onClick={() => setActive('segunda')}
-        />
-      </div>
-      <StandingsTable rows={rows} />
-    </div>
-  );
-}
-
-function TabButton({
-  label,
-  accent,
-  active,
-  onClick,
-}: {
-  label: string;
-  accent: Accent;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const color =
-    accent === 'magenta' ? 'var(--color-px-magenta)' : 'var(--color-px-cyan)';
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="border-[3px] px-4 py-3 font-pixel text-[10px] uppercase tracking-wider transition-colors sm:text-xs"
-      style={
-        active
-          ? {
-              borderColor: color,
-              background: color,
-              color: 'var(--color-px-deep)',
-            }
-          : { borderColor: color, color }
-      }
-    >
-      {label}
-    </button>
+    <DivisionTabsShell
+      primeraSlot={<StandingsTable rows={primera} />}
+      segundaSlot={<StandingsTable rows={segunda} />}
+    />
   );
 }
 

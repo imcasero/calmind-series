@@ -1,84 +1,91 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useOptimistic, useState } from 'react';
 import {
   AdminBadge,
   AdminButton,
+  AdminConfirmModal,
   AdminErrorBanner,
   AdminInput,
   AdminModal,
 } from '@/components/admin/ui';
-import { createClient } from '@/lib/supabase/client';
+import { useLeagueSelector } from '@/lib/hooks/useLeagueSelector';
 import type { Season, Split } from '@/lib/types/database.types';
+import { SplitCreateInputSchema } from '@/lib/types/schemas';
+import {
+  activateSplitAction,
+  createSplitAction,
+  deactivateSplitAction,
+  deleteSplitAction,
+} from '../_actions';
 
 interface SplitsManagerProps {
   initialSeasons: Season[];
 }
 
+type SplitOptimistic =
+  | { type: 'create'; split: Split }
+  | { type: 'delete'; id: string }
+  | { type: 'activate'; id: string; seasonId: string }
+  | { type: 'deactivate'; id: string };
+
+function optimisticReducer(state: Split[], action: SplitOptimistic): Split[] {
+  switch (action.type) {
+    case 'create':
+      return [...state, action.split].sort(
+        (a, b) => a.split_order - b.split_order,
+      );
+    case 'delete':
+      return state.filter((s) => s.id !== action.id);
+    case 'activate':
+      // Mirror seasons pilot: target active, every other split in season inactive.
+      return state.map((s) => {
+        if (s.id === action.id) return { ...s, is_active: true };
+        if (s.season_id === action.seasonId) return { ...s, is_active: false };
+        return s;
+      });
+    case 'deactivate':
+      return state.map((s) =>
+        s.id === action.id ? { ...s, is_active: false } : s,
+      );
+    default:
+      return state;
+  }
+}
+
 export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
-  const router = useRouter();
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(
-    () => {
-      const active = initialSeasons.find((s) => s.is_active);
-      return active?.id ?? initialSeasons[0]?.id ?? null;
-    },
+  const {
+    splits,
+    selectedSeasonId,
+    setSeasonId,
+    loadingSplits,
+    error: selectorError,
+    clearError: clearSelectorError,
+    refresh,
+  } = useLeagueSelector({ initialSeasons, depth: 'season-split' });
+  const [optimisticSplits, applyOptimistic] = useOptimistic(
+    splits,
+    optimisticReducer,
   );
-  const [splits, setSplits] = useState<Split[]>([]);
-  const [loadingSplits, setLoadingSplits] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSplit, setNewSplit] = useState({ name: '', split_order: 1 });
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    id: string | null;
+  }>({ open: false, id: null });
 
-  const supabase = createClient();
-
-  // Fetch splits when season changes
-  useEffect(() => {
-    if (!selectedSeasonId) {
-      setSplits([]);
-      return;
-    }
-
-    const fetchSplits = async () => {
-      setLoadingSplits(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from('splits')
-        .select('*')
-        .eq('season_id', selectedSeasonId)
-        .order('split_order', { ascending: true });
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setSplits(data ?? []);
-        setNewSplit((prev) => ({
-          ...prev,
-          split_order: (data?.length ?? 0) + 1,
-        }));
-      }
-      setLoadingSplits(false);
-    };
-
-    fetchSplits();
-  }, [selectedSeasonId, supabase.from]);
-
-  const refreshSplits = async () => {
-    if (!selectedSeasonId) return;
-
-    const { data } = await supabase
-      .from('splits')
-      .select('*')
-      .eq('season_id', selectedSeasonId)
-      .order('split_order', { ascending: true });
-
-    if (data) {
-      setSplits(data);
-      setNewSplit((prev) => ({ ...prev, split_order: data.length + 1 }));
-    }
+  const error = localError ?? selectorError;
+  const setError = (value: string | null) => {
+    setLocalError(value);
+    if (value === null) clearSelectorError();
   };
+
+  // Keep create-form `split_order` in sync with the loaded splits length.
+  useEffect(() => {
+    setNewSplit((prev) => ({ ...prev, split_order: splits.length + 1 }));
+  }, [splits.length]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,82 +94,88 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase.from('splits').insert({
-      season_id: selectedSeasonId,
+    const parsed = SplitCreateInputSchema.safeParse({
       name: newSplit.name,
       split_order: newSplit.split_order,
-      is_active: false,
     });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setNewSplit({ name: '', split_order: splits.length + 2 });
-      setShowCreateForm(false);
-      await refreshSplits();
-      router.refresh();
-    }
-    setSaving(false);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        '¿Estas seguro de eliminar este split? Se eliminaran tambien sus divisiones.',
-      )
-    )
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((i) => i.message).join(' · '));
+      setSaving(false);
       return;
-
-    const { error } = await supabase.from('splits').delete().eq('id', id);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      await refreshSplits();
-      router.refresh();
     }
+
+    const tempSplit: Split = {
+      id: `optimistic-${crypto.randomUUID()}`,
+      season_id: selectedSeasonId,
+      name: parsed.data.name,
+      split_order: parsed.data.split_order,
+      is_active: false,
+      created_at: new Date().toISOString(),
+    };
+
+    startTransition(async () => {
+      applyOptimistic({ type: 'create', split: tempSplit });
+      const result = await createSplitAction(selectedSeasonId, parsed.data);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setNewSplit({ name: '', split_order: splits.length + 2 });
+        setShowCreateForm(false);
+        await refresh();
+      }
+      setSaving(false);
+    });
   };
 
-  const handleActivate = async (id: string) => {
+  const requestDelete = (id: string) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const cancelDelete = () => {
+    setConfirmDelete({ open: false, id: null });
+  };
+
+  const confirmDeleteAction = () => {
+    const id = confirmDelete.id;
+    if (!id || !selectedSeasonId) return;
+    setConfirmDelete({ open: false, id: null });
+
+    startTransition(async () => {
+      applyOptimistic({ type: 'delete', id });
+      const result = await deleteSplitAction(id, selectedSeasonId);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refresh();
+      }
+    });
+  };
+
+  const handleActivate = (id: string) => {
+    if (!selectedSeasonId) return;
     setError(null);
-
-    // First, deactivate all splits in this season
-    const { error: deactivateError } = await supabase
-      .from('splits')
-      .update({ is_active: false })
-      .eq('season_id', selectedSeasonId as string);
-
-    if (deactivateError) {
-      setError(deactivateError.message);
-      return;
-    }
-
-    // Then activate the selected one
-    const { error: activateError } = await supabase
-      .from('splits')
-      .update({ is_active: true })
-      .eq('id', id);
-
-    if (activateError) {
-      setError(activateError.message);
-    } else {
-      await refreshSplits();
-      router.refresh();
-    }
+    const seasonId = selectedSeasonId;
+    startTransition(async () => {
+      applyOptimistic({ type: 'activate', id, seasonId });
+      const result = await activateSplitAction(id, seasonId);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refresh();
+      }
+    });
   };
 
-  const handleDeactivate = async (id: string) => {
-    const { error } = await supabase
-      .from('splits')
-      .update({ is_active: false })
-      .eq('id', id);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      await refreshSplits();
-      router.refresh();
-    }
+  const handleDeactivate = (id: string) => {
+    startTransition(async () => {
+      applyOptimistic({ type: 'deactivate', id });
+      const result = await deactivateSplitAction(id);
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refresh();
+      }
+    });
   };
 
   return (
@@ -179,7 +192,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
           </span>
           <select
             value={selectedSeasonId ?? ''}
-            onChange={(e) => setSelectedSeasonId(e.target.value || null)}
+            onChange={(e) => setSeasonId(e.target.value || null)}
             className="pixel-input w-auto cursor-pointer"
           >
             <option value="">Seleccionar</option>
@@ -254,6 +267,15 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
         </AdminModal>
       )}
 
+      <AdminConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar split"
+        message="¿Estas seguro de eliminar este split? Se eliminaran tambien sus divisiones."
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={cancelDelete}
+      />
+
       {/* Content */}
       {!selectedSeasonId ? (
         <EmptyPanel text="Selecciona una temporada para gestionar sus splits." />
@@ -261,7 +283,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
         <EmptyPanel text="Cargando splits..." />
       ) : (
         <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
-          {splits.length === 0 ? (
+          {optimisticSplits.length === 0 ? (
             <p className="p-8 text-center font-retro text-lg text-px-ink-dim">
               No hay splits creados para esta temporada.
             </p>
@@ -276,7 +298,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
                 </tr>
               </thead>
               <tbody>
-                {splits.map((split) => (
+                {optimisticSplits.map((split) => (
                   <tr key={split.id}>
                     <td>
                       {split.is_active ? (
@@ -315,7 +337,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
                         <AdminButton
                           tone="danger"
                           size="sm"
-                          onClick={() => handleDelete(split.id)}
+                          onClick={() => requestDelete(split.id)}
                         >
                           Eliminar
                         </AdminButton>

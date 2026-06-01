@@ -1,4 +1,4 @@
-import { cache } from 'react';
+import { cacheLife, cacheTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
 /**
@@ -8,24 +8,26 @@ import { createClient } from '@/lib/supabase/server';
  * Single source the phase machine reads (locked decision 2026-05-27: current_round
  * is derived from matches — there is no dedicated tournament_state table).
  */
-export const getCurrentRound = cache(
-  async (splitId: string): Promise<number> => {
-    const supabase = await createClient();
+export async function getCurrentRound(splitId: string): Promise<number> {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag(`matches:${splitId}`);
 
-    const { data, error } = await supabase
-      .from('matches')
-      .select('round')
-      .eq('split_id', splitId)
-      .eq('played', true)
-      .order('round', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  const supabase = await createClient({ session: false });
 
-    if (error) {
-      console.error('[getCurrentRound] Error:', error.message);
-      return 0;
-    }
+  const { data, error } = await supabase
+    .from('matches')
+    .select('round')
+    .eq('split_id', splitId)
+    .eq('played', true)
+    .order('round', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-    return data?.round ?? 0;
-  },
-);
+  if (error) {
+    console.error('[getCurrentRound] Error:', error.message);
+    return 0;
+  }
+
+  return data?.round ?? 0;
+}

@@ -43,6 +43,8 @@ export function TopBar({
     >
       <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-3 px-6 py-3">
         <Link href={ROUTES.HOME} className="flex items-center gap-2">
+          {/* REQ-25: explicit width/height keeps the image opted-out of layout
+              shift. Future contributors who switch to `fill` must add `sizes=`. */}
           <Image
             src="/CalmindSeriesLogo.png"
             alt="Calmind Series"

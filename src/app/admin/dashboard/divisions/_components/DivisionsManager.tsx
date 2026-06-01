@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   AdminButton,
+  AdminConfirmModal,
   AdminErrorBanner,
   AdminInput,
   AdminModal,
@@ -41,6 +42,10 @@ export default function DivisionsManager({
     tier_priority: 1,
   });
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    id: string | null;
+  }>({ open: false, id: null });
 
   const supabase = createClient();
 
@@ -88,8 +93,18 @@ export default function DivisionsManager({
     setSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estas seguro de eliminar esta division?')) return;
+  const requestDelete = (id: string) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const cancelDelete = () => {
+    setConfirmDelete({ open: false, id: null });
+  };
+
+  const confirmDeleteAction = async () => {
+    const id = confirmDelete.id;
+    if (!id) return;
+    setConfirmDelete({ open: false, id: null });
 
     const { error } = await supabase.from('leagues').delete().eq('id', id);
 
@@ -210,6 +225,15 @@ export default function DivisionsManager({
         </AdminModal>
       )}
 
+      <AdminConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar división"
+        message="¿Estas seguro de eliminar esta division?"
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={cancelDelete}
+      />
+
       {/* Content */}
       {!selectedSeasonId ? (
         <EmptyPanel text="Selecciona una temporada para ver sus divisiones." />
@@ -252,7 +276,7 @@ export default function DivisionsManager({
                         <AdminButton
                           tone="danger"
                           size="sm"
-                          onClick={() => handleDelete(league.id)}
+                          onClick={() => requestDelete(league.id)}
                         >
                           Eliminar
                         </AdminButton>

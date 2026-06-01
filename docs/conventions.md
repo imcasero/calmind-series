@@ -21,11 +21,6 @@ the project instead of generic React/Next defaults. Companion to `CLAUDE.md`.
 - Two Supabase clients: `@/lib/supabase/server` (RSC, Server Actions, `proxy.ts`) and
   `@/lib/supabase/client` (browser components only).
 
-> ⚠️ The dual-cache layer in `src/lib/data/fetchData.ts` (`unstable_cache` +
-> `react.cache`, tag `['matches']` that is never revalidated) is **legacy** and slated
-> for removal in F4. Do not copy it. New caching should use `'use cache'` + `cacheTag`
-> + `revalidateTag` (see `vercel:next-cache-components`).
-
 ## Types — single source of truth
 
 - **`src/lib/types/schemas.ts` is canonical.** Define a Zod schema, derive the type with
@@ -34,10 +29,9 @@ the project instead of generic React/Next defaults. Companion to `CLAUDE.md`.
   export const LeagueInfoSchema = LeagueSchema.pick({ id: true, tier_name: true, tier_priority: true });
   export type LeagueInfo = z.infer<typeof LeagueInfoSchema>;
   ```
-- **Do not redefine a query's return shape locally.** `src/lib/types/queries.types.ts`
-  is a divergent duplicate (`tierName` vs `tier_name`) and is slated for deletion (F2).
-  Import shared types from `@/lib/types/schemas`; for query-specific rows, import the
-  query's own exported return type.
+- **Do not redefine a query's return shape locally.** Import shared types from
+  `@/lib/types/schemas`; for query-specific rows, import the query's own
+  exported return type.
 
 ## Naming / casing
 
@@ -54,8 +48,9 @@ the project instead of generic React/Next defaults. Companion to `CLAUDE.md`.
 - Components are grouped by domain under `src/components/`:
   `divisions/`, `cross/`, `home/`, `shared/`, `admin/` (admin managers live next to their
   route under `app/admin/dashboard/*/_components/`).
-- Pure transformation helpers belong in `src/lib/utils/` (note: `lib/services/` currently
-  holds pure functions — that is a misnomer being corrected in F4).
+- Pure transformation helpers belong in `src/lib/utils/`. `lib/services/`
+  retains `bracketService.ts` (pure functions historically grouped under the
+  service label — kept for migration cost, not because the name is right).
 
 ## Routing / auth
 

@@ -5,6 +5,239 @@ status transition; agents record any deferral or sequencing decision here too.
 
 ---
 
+## 2026-06-01 — F6a CLOSED (reviewer APPROVED → leader)
+
+Reviewer verdict: **F6a APPROVED**. Full `./init.sh` GREEN end-to-end:
+30 static pages generated, typecheck clean, lint 0 errors / 0 warnings. All 15
+REQs in the F6a batch (REQ-45..REQ-59) verified file:line by the reviewer. F6a
+is a SUB-BATCH of F6 — feature-level F6 stays `pending` because F6b (5 Managers
+Server Actions migration) and F6c (MatchesManager dual-cascade hook) remain
+open under the same feature umbrella.
+
+**Wave structure shipped (F6a):**
+- **Wave A — Primitive creation.** New `src/components/admin/ui/AdminConfirmModal.tsx`
+  built on the existing `AdminModal` shell (FR12 primitive). Three-button surface
+  (confirm/cancel/dismiss), tagged-union `intent` prop (`'danger' | 'warning'`),
+  Spanish copy defaults, focus-trap inherited from `AdminModal`. Exported via
+  `components/admin/ui/index.ts` barrel.
+- **Wave B — Adoption.** 7 `window.confirm()` call sites swapped across 5
+  Managers (Seasons/Splits/Divisions/Participants/Matches). Per-site state
+  added for `confirmOpen` + pending payload; existing delete/destructive
+  handlers refactored to fire the modal first, then run the original mutation
+  on confirm. No mutation logic changed (still `router.refresh()` paths —
+  Server Actions migration stays in F6b scope).
+- **Wave C — Docs.** Fixed `docs/conventions.md:24-27` stale callout about
+  the deleted `src/lib/data/fetchData.ts` (F4 inheritance — flagged by F4
+  reviewer at close-out).
+- **Wave D — Dead cluster sweep.** Deleted the orphan chain holding
+  cruces/final loading skeletons + the home/ subtree post-FR11:
+  `src/app/[season]/[split]/cruces/loading.tsx`,
+  `src/app/[season]/[split]/final/loading.tsx`, entire `src/components/home/`
+  (CurrentSeason, Hero, AboutCalmind, TournamentFormat — 4 dirs),
+  `src/components/shared/layout/Navbar.tsx`,
+  `src/components/shared/ui/Button/LinkButton.tsx` + parent empty dir.
+  `src/components/shared/index.ts` barrel cleaned of dead exports.
+
+**REQ summary (full text in `specs/requirements.md`):**
+- REQ-45 — AdminConfirmModal primitive created
+- REQ-46 — 7 `window.confirm()` call sites replaced (Participants ×2, Matches ×2,
+  Divisions, Seasons, Splits)
+- REQ-47 — Dead `src/components/home/` subtree removed (post-FR11 orphans)
+- REQ-48 — Dead `Navbar.tsx` + `LinkButton.tsx` chain removed
+- REQ-49 — 2 cruces/final `loading.tsx` removed (they were the only remaining
+  importers of Navbar)
+- REQ-50/51/52/53/54 — Per-Manager adoption verification
+- REQ-55 — `docs/conventions.md:24-27` stale fetchData warning fixed
+- REQ-56/57/58 — Barrel + import-graph cleanup
+- REQ-59 — Cross-cutting `./init.sh` gate (green at close)
+
+**Net result (what F6a actually shipped):**
+- **Created (1):** `src/components/admin/ui/AdminConfirmModal.tsx`
+- **Edited (8):** 5 Managers (Seasons/Splits/Divisions/Participants/Matches),
+  2 barrels (`components/admin/ui/index.ts`, `components/shared/index.ts`),
+  `docs/conventions.md`
+- **Deleted (8 files + 5 dirs):**
+  `src/app/[season]/[split]/cruces/loading.tsx`,
+  `src/app/[season]/[split]/final/loading.tsx`,
+  entire `src/components/home/` subtree (CurrentSeason, Hero, AboutCalmind,
+  TournamentFormat — 4 dirs),
+  `src/components/shared/layout/Navbar.tsx`,
+  `src/components/shared/ui/Button/LinkButton.tsx` + parent empty dir
+
+**Live decisions:**
+1. **Implementer deleted `src/lib/types/queries.types.ts`** — the spec's §4.2
+   advisory text suggested keeping it as an alias re-export barrel, but §4.4
+   verification gate (binding per spec hierarchy) required zero importers
+   post-F2. F2 already eliminated all importers, so the file had no consumers
+   left. Reviewer ratified the deletion as the correct read of binding gate
+   over advisory text. No code impact (zero importers, zero behavior change).
+2. **Implementer left `features.json` and `progress/history.md` untouched.**
+   Clean hand-off — leader owns those files per harness convention. Validated
+   by reviewer.
+3. **Scope discipline held.** No Server Actions migration of the 4 non-pilot
+   Managers (still F6b). No MatchesManager dual-cascade hook (still F6c per
+   user decision 2026-05-31). No Server Actions wiring on AdminConfirmModal
+   adoption sites — modal is a pure UX primitive, mutations stay on their
+   existing browser-side paths until F6b lands.
+
+**Reviewer-flagged follow-up (non-blocking, outside F6a REQ-59 scope):**
+- `docs/conventions.md:50` still lists `home/` among the `components/` domain
+  subdirs, but the entire `src/components/home/` subtree was deleted in REQ-47.
+  Worth a one-line edit. Bundled into F6b deferreds (F6b will touch conventions
+  anyway to add Server Actions guidance) or a future micro-batch.
+
+**Verification gate (held):**
+```
+✓ typecheck clean
+✓ lint clean (0 errors / 0 warnings)
+▲ Next.js 16.1.1 (Turbopack)
+✓ Generating static pages (30/30)
+✓ Harness ready — baseline is green.
+```
+
+**Leader transition:** `features.json` F6 items annotated (item 1 `[DROPPED
+2026-06-01]`, item 3 `[DONE 2026-06-01]`, item 2 still pending → F6b). F6 status
+STAYS `pending` (sub-batch model — F6b/F6c outstanding). F6 `deferred[]` rewritten
+to track F6b (next sub-batch, ~1-2 days, dependsOn F4 for cache tag taxonomy),
+F6c (MatchesManager dual-cascade hook — OUT per user 2026-05-31), the
+`conventions.md:50` doc follow-up, and the F4 inheritance items (AdminShellSkeleton,
+custom cacheLife). Comprehensive `note` added mirroring F4/F5 style.
+`activeBatch` stays `["F6"]` since F6b/F6c are still open under F6.
+`_note_activeBatch` rewritten to reflect F6a closed / F6b next.
+
+**Backlog status snapshot (post-F6a):**
+- **done:** F0, F1, F2, F3, F4, F5, FR0–FR14.
+- **pending:** F6 (Refactor mayores) — F6a sub-batch CLOSED, F6b (5 Managers
+  Server Actions) + F6c (MatchesManager dual-cascade, deprioritized) remain.
+
+**NEXT:** F6b needs a fresh `spec-author` dispatch in the next session.
+Recommend `/clear` first (context is large from the F6a implementation +
+review cycle). F6b inputs: 5 Manager file paths and their browser-side write
+counts (per the 2026-05-31 leader audit entry below — Splits ×2 writes,
+Divisions ×2, Regulations ×2 incl. storage, Participants ×5, Matches ×8 incl.
+J15/J16 batch generators); `seasons/_actions.ts` as the canonical Server Action
+pattern; F4 cache tag taxonomy in `docs/conventions.md` for `updateTag`
+invalidations; `useOptimistic` reducer pattern from `SeasonsManager.tsx`.
+F6b dependsOn: F4 (for cache tag taxonomy) — F3 (pilot pattern) and F4 (tags)
+are both done, so F6b is ready to spec.
+
+---
+
+## 2026-05-31 — F6 opened, leader audit (leader → user)
+
+User cleared F4 + F5. F6 is the only remaining `pending` feature in the
+architecture-review initiative; `dependsOn: ["F3","F4"]` both done. `activeBatch`
+flipped to `["F6"]`; status stays `pending` until spec-author writes `specs/`.
+
+**Audit of F6 items + inherited deferreds (file paths + evidence):**
+
+1. **Item 1 — "Replace SplitDataProvider render-prop with direct composition."**
+   ALREADY DONE by F2 (2026-05-28). `grep -rn "SplitDataProvider" src/` returns
+   ZERO hits; `find src -name "SplitDataProvider*"` returns nothing. The orphan
+   render-prop cluster (incl. `SplitContent`, `ClassificationSection`,
+   `MatchesSection`, `ParticipantsList`, `ClassificationTable`) was deleted
+   along with `src/components/divisions/` in F2. Drop from F6 scope.
+
+2. **Item 2 — "Migrate remaining managers to Server Actions."** REAL WORK.
+   `find src/app/admin -name "_actions.ts"` shows only `seasons/_actions.ts`
+   (the F3 pilot). 5 Managers still import `@/lib/supabase/client` + `useRouter`
+   and write directly from the browser: `DivisionsManager.tsx:12` (2 writes),
+   `SplitsManager.tsx:13` (2 writes), `RegulationsManager.tsx:10` (2 writes incl.
+   storage upload), `ParticipantsManager.tsx:16` (5 writes), `MatchesManager.tsx:15`
+   (8 writes — heaviest, incl. J15/J16 batch generators). This is the staleness
+   gap F4 documented and explicitly punted here.
+
+3. **Item 3 — "Reusable confirmation modal to replace window.confirm()."** REAL
+   WORK. 7 call sites: `ParticipantsManager.tsx:230` + `:289`,
+   `MatchesManager.tsx:370` + `:481`, `DivisionsManager.tsx:92`,
+   `SeasonsManager.tsx:102`, `SplitsManager.tsx:86`. No `AdminConfirmModal`
+   primitive exists today (only `AdminModal` from FR12). Needs a thin
+   primitive in `src/components/admin/ui/` + 7 adoption sites.
+
+**Inherited deferreds (from F2/F3/F4/F5 close-outs):**
+
+4. **F2 — `src/components/shared/DivisionSection/` micro-batch sweep.** NOT
+   PRESENT in current repo. `ls src/components/shared/` shows
+   `{ui, layout, PageHeader, index.ts}` — no `DivisionSection/` dir.
+   `find src -name "DivisionSection*"` returns zero. Already swept (F5 deleted
+   the legacy `DivisionSection.tsx` along with `PlayoffBracket`/`MatchupCard`).
+   Drop.
+
+5. **F3 — MatchesManager hook adoption (REQ-26 dual-cascade).** Still pending.
+   `MatchesManager.tsx:66-74` runs three local `useState` selectors
+   (`selectedSeasonId/Split/League`) plus `activeSplitInfo`-seeded Results-tab
+   cascade. F3 deferred this as legitimate (dual-cascade can't be one hook
+   instance). Two paths: (a) two hook instances + sentinel coordination, or
+   (b) accept the duplication and skip. Defer decision to spec-author.
+
+6. **F3 — `window.confirm()` replacement.** = Item 3 above. Same scope.
+
+7. **F3 — 5 non-pilot Managers' Server Actions migration.** = Item 2 above.
+
+8. **F4 — `docs/conventions.md:24-27` stale `fetchData.ts` warning.** CONFIRMED
+   STALE. The file warns "the dual-cache layer in `src/lib/data/fetchData.ts`"
+   but F4 deleted that file. One-line doc fix.
+
+9. **F4 — tighter `AdminShellSkeleton` variant.** Optional polish. Today admin
+   pages reuse the generic `ShellSkeleton` (`src/app/admin/dashboard/page.tsx:9`
+   + 3 siblings). Low priority.
+
+10. **F4 — custom `cacheLife` profiles.** "Only if needed" per F4 note.
+    Current built-ins (`minutes`/`hours`) cover 8 readers (verified via
+    `grep cacheLife src/lib/queries/`). No observed pain. Drop unless surfaces.
+
+11. **F5 — dead cluster sweep (`Hero.tsx`, `CurrentSeason.tsx`, `Navbar.tsx`,
+    `LinkButton.tsx`).** PARTIALLY DEAD. `CurrentSeason` has zero external
+    callers. `Hero` is only imported by `CurrentSeason` itself + `home/Hero`
+    sibling — likely fully dead post-FR11. `Navbar` still imported by 2 loading
+    files (`/[season]/[split]/cruces/loading.tsx`, `/[season]/[split]/final/loading.tsx`)
+    + `src/components/shared/index.ts:8` barrel. `LinkButton` is transitively
+    held by the same Navbar + Hero chain. Cluster is mostly orphan but tied
+    to the legacy cruces/final loading skeletons. Worth a sweep.
+
+**Batching decision — split F6 into 3 sub-batches.** Single-batch ship is
+too large: Server Actions migration alone touches 5 Managers × ~3 actions
+each = ~15 new server actions + `useOptimistic` reducers, plus a confirmation
+modal primitive + 7 adoption sites + doc/dead-code micro-batches. Proposed:
+
+- **F6a — Confirmation Modal + Doc + Sweep micro-batch** (smallest, no
+  dependencies on Server Actions): create `AdminConfirmModal` primitive,
+  replace 7 `window.confirm()` call sites, fix
+  `docs/conventions.md:24-27` stale callout, delete dead cluster
+  (`Hero.tsx`, `CurrentSeason.tsx`, the cruces/final `loading.tsx` files
+  that import `Navbar`, and the chain it holds). ~half day.
+
+- **F6b — Server Actions migration (5 Managers)**: largest batch. One
+  `_actions.ts` per Manager (Splits, Divisions, Regulations, Participants,
+  Matches) + `useOptimistic` reducers + `updateTag` invalidations per F4's
+  tag taxonomy (`matches:${splitId}`, `participants:${splitId}`, `splits:${id}`,
+  `seasons`, etc.) wired on the success branch. Closes the F4-documented
+  staleness gap. 1–2 days. Spec-author should decide whether MatchesManager's
+  J15/J16 batch generators get one action each or one combined action.
+
+- **F6c — Polish (optional)**: MatchesManager dual-cascade hook adoption
+  (REQ-26), `AdminShellSkeleton` variant, custom `cacheLife` profiles only
+  if observed need. Can defer indefinitely.
+
+**Recommended path:** ship F6a first (low-risk, closes UX papercut +
+inherited docs), then F6b (real cache-coherence win), then evaluate F6c.
+
+**Punch list for spec-author** (when user approves scope):
+- F6a inputs: 7 `window.confirm` sites listed above; `AdminModal` existing
+  primitive as template; conventions.md line range; dead cluster file paths;
+  cruces/final loading.tsx coupling.
+- F6b inputs: 5 Manager file paths + write counts (above); `seasons/_actions.ts`
+  as the canonical pattern; F4 tag taxonomy in `docs/conventions.md` (added
+  by F4); `updateTag` recipe from `seasons/_actions.ts`.
+- F6c inputs: optional, scope only if user prioritizes.
+
+`features.json` `activeBatch` → `["F6"]`; status stays `pending`. NOT flipping
+to `spec_ready` until spec-author writes specs. NEXT: user confirms whether
+to ship as 3 sub-batches (recommended) or single F6 batch, and which sub-batch
+spec-author starts on.
+
+---
+
 ## 2026-05-31 — F4 CLOSED (reviewer APPROVED → leader)
 
 Cache Components mode (Next 16.1.1) is now live across the public surface. F4

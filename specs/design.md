@@ -1,714 +1,477 @@
-# Design — F4 (Fase 4 — Cacheo coherente) — RESPEC #3
+# Design — F6a (Confirmation Modal + Docs + Dead Code Sweep)
 
-Companion to `specs/requirements.md` (REQ-30..REQ-44). F4 is a cache-layer
-migration: REQ-30/31/33 (already in `main`) cleared the legacy
-`fetchData.ts`/`matchService.ts` modules and switched 9 hub-query call sites
-to the cookie-free Supabase client. The remaining work layers Next 16's
-Cache Components API (`'use cache'` + `cacheTag` + `cacheLife` +
-`updateTag`) onto every public reader, in **three waves** that respect the
-hard ordering exposed by the second implementer drift report.
+Companion to `specs/requirements.md`. Implementation-level shape for every REQ
+in the batch. Names, props, and file paths are concrete; pasteable code shown
+where the existing pattern leaves ambiguity.
 
-```
-WAVE A (pre-flights, ./init.sh green per REQ, ONE commit at wave end):
-  REQ-32 (verify dynamicParams gone, already in WT)
-  REQ-43 (extract Footer year → client component)
-  REQ-44 (wrap every page-level await get*() in <Suspense>)
+## 0. Files touched (summary)
 
-WAVE B (cache migration, ATOMIC — ONE commit at wave end):
-  REQ-40 (cacheComponents: true)
-   → REQ-34 (archive queries 'use cache')
-   → REQ-35 (seasons queries 'use cache')
-   → REQ-36 (leagues leaves → leagues composers, then tournament/trainers/bracket)
+**Created (1):**
+- `src/components/admin/ui/AdminConfirmModal.tsx`
 
-WAVE C (hardening, one commit per REQ):
-  REQ-38 (updateTag in seasons/_actions.ts)
-  REQ-37 (build-matrix regression — inspection)
-  REQ-39 (admin-untouched regression — inspection)
-  REQ-41 (cache tag taxonomy doc)
-  REQ-42 (final ./init.sh + history.md entry)
-```
+**Edited (10):**
+- `src/components/admin/ui/index.ts` (1 line added — REQ-51)
+- `src/app/admin/dashboard/seasons/_components/SeasonsManager.tsx` (REQ-52)
+- `src/app/admin/dashboard/splits/_components/SplitsManager.tsx` (REQ-53)
+- `src/app/admin/dashboard/divisions/_components/DivisionsManager.tsx` (REQ-54)
+- `src/app/admin/dashboard/participants/_components/ParticipantsManager.tsx` (REQ-55 + REQ-56)
+- `src/app/admin/dashboard/matches/_components/MatchesManager.tsx` (REQ-57 + REQ-58)
+- `src/components/shared/index.ts` (REQ-49 — strip 3 lines)
+- `docs/conventions.md` (REQ-59 — strip lines 24-27, plus optional adjacent
+  cleanups)
 
-This design assumes Next.js **16.1.1** (verified against
-`node_modules/next/cache.d.ts:1-154`,
-`node_modules/next/dist/server/use-cache/cache-life.js:70-75`,
-`node_modules/next/dist/server/web/spec-extension/revalidate.js:39-62`).
-Verify against `vercel:nextjs` / `vercel:next-cache-components` if framework
-surprises surface during Wave B.
-
----
-
-## 0. Why three waves (drift recap, second round)
-
-The previous respec already moved REQ-40 ahead of REQ-34/35/36 (resolving
-drift #1 — SWC rejects `'use cache'` without `cacheComponents`). Attempting
-to ship REQ-40 alone produced a NEW class of failure:
-
-1. **Root-layout `new Date()` poisons every page.** `Footer.tsx:5` runs
-   `new Date().getFullYear()` synchronously in the root `<body>`. Once
-   `cacheComponents: true` lands, Next 16 treats this as non-deterministic
-   and refuses to prerender any page. Fix: REQ-43.
-2. **Every page-level `await` not behind Suspense aborts the build.**
-   `hub/layout.tsx`, `archivo/layout.tsx`, `archivo/page.tsx`,
-   `archivo/[season]/[split]/page.tsx`, `page.tsx`, and the 3 legacy
-   `[season]/[split]/**` redirect leaves all `await get*()` at the top
-   level. F5 added Suspense INSIDE the hub pages but did NOT wrap the
-   layouts/landing/archive/legacy. Fix: REQ-44.
-
-Both fixes are PRE-FLIGHTS (Wave A) — they ship and `./init.sh` stays green
-under the BASELINE flag (`cacheComponents` still false). Then Wave B can
-flip the flag and the build keeps passing.
+**Deleted (8 files + 4 dirs):**
+- `src/app/[season]/[split]/cruces/loading.tsx` (REQ-45)
+- `src/app/[season]/[split]/final/loading.tsx` (REQ-45)
+- `src/components/shared/layout/Navbar.tsx` (REQ-46)
+- `src/components/shared/ui/Button/LinkButton.tsx` (REQ-48)
+- `src/components/shared/ui/Button/` directory (REQ-48 — empty after delete)
+- `src/components/home/CurrentSeason/CurrentSeason.tsx` (REQ-47)
+- `src/components/home/CurrentSeason/` directory (REQ-47 — empty after delete)
+- `src/components/home/Hero/Hero.tsx` (REQ-47)
+- `src/components/home/Hero/` directory (REQ-47 — empty after delete)
+- `src/components/home/AboutCalmind/AboutCalmind.tsx` (REQ-47 — same dead chain)
+- `src/components/home/AboutCalmind/` directory (REQ-47)
+- `src/components/home/TournamentFormat/TournamentFormat.tsx` (REQ-47 — same dead chain)
+- `src/components/home/TournamentFormat/` directory (REQ-47)
+- `src/components/home/` directory (REQ-47 — empty after delete)
 
 ---
 
-## 1. Files touched (concrete list — IMPLEMENTER WORK ONLY)
+## 1. `AdminConfirmModal` — primitive design (REQ-50)
 
-### Already in main (DO NOT re-edit)
+**File:** `src/components/admin/ui/AdminConfirmModal.tsx`
 
-- `src/lib/data/fetchData.ts` — DELETED (REQ-30).
-- `src/lib/data/` — DIR REMOVED (REQ-30).
-- `src/lib/services/matchService.ts` — DELETED (REQ-31, content moved).
-- `src/lib/utils/matches.ts` — CREATED (REQ-31).
-- `src/lib/services/bracketService.ts:5` — import updated (REQ-31).
-- `src/lib/queries/{leagues,seasons,tournament,trainers,bracket}.queries.ts`
-  — 9 `createClient` sites flipped to `{ session: false }` (REQ-33).
+### Source code shape
 
-### Applied in working tree (verify only, commit in Wave-A commit)
-
-- `src/app/archivo/[season]/[split]/page.tsx` — `dynamicParams = true`
-  line already deleted (REQ-32). Verified at respec time.
-
-### Wave A — to edit (one commit at wave end)
-
-| REQ | File | Action |
-|---|---|---|
-| REQ-32 | `src/app/archivo/[season]/[split]/page.tsx` | (already done — verify only) |
-| REQ-43 | `src/components/shared/layout/FooterYear.tsx` | CREATE (client component) |
-| REQ-43 | `src/components/shared/layout/Footer.tsx` | EDIT — remove `new Date()`, mount `<FooterYear />` |
-| REQ-44 | `src/app/hub/layout.tsx` | EDIT — extract async block into Suspense-wrapped child |
-| REQ-44 | `src/app/archivo/layout.tsx` | EDIT — same shape as hub layout |
-| REQ-44 | `src/app/archivo/page.tsx` | EDIT — extract `Promise.all` into Suspense-wrapped child |
-| REQ-44 | `src/app/archivo/[season]/[split]/page.tsx` | EDIT — extract `await getSplitByNames` + `Promise.all` into Suspense-wrapped child |
-| REQ-44 | `src/app/page.tsx` | EDIT — extract landing fetch block into Suspense-wrapped child |
-| REQ-44 | `src/app/[season]/[split]/page.tsx` | EDIT — wrap redirect leaf in `<Suspense fallback={null}>` |
-| REQ-44 | `src/app/[season]/[split]/cruces/page.tsx` | EDIT — same |
-| REQ-44 | `src/app/[season]/[split]/final/page.tsx` | EDIT — same |
-| REQ-44 | `src/app/hub/page.tsx` | EDIT — move top-level `await getActiveSeasonWithSplit()` into a streamed child (existing F5 Suspense boundaries stay) |
-| REQ-44 | `src/app/hub/bracket/page.tsx` | EDIT — same shape |
-| REQ-44 | `src/app/hub/calendario/page.tsx` | EDIT — same shape |
-| REQ-44 | `src/app/hub/clasificacion/page.tsx` | EDIT — same shape |
-| REQ-44 | `src/app/hub/olimpo/page.tsx` | EDIT — same shape |
-| REQ-44 | `src/app/hub/entrenadores/page.tsx` | EDIT — same shape |
-| REQ-44 | `src/app/hub/entrenador/[id]/page.tsx` | EDIT — wrap `getTrainerById` await in Suspense child |
-| REQ-44 (optional) | `src/components/shared/ui/ShellSkeleton.tsx` | CREATE — new variant for shell-level boundaries (hub/archivo layout) |
-| REQ-44 | `src/components/shared/index.ts` | EDIT — export new skeleton if created |
-
-### Wave B — to edit (ATOMIC commit at wave end)
-
-| Order | REQ | File | Action |
-|---|---|---|---|
-| 1 | REQ-40 | `next.config.ts` | ADD `cacheComponents: true,` |
-| 2 | REQ-34 | `src/lib/queries/archive.queries.ts` | 5 readers → triad; swap React `cache()` import for `cacheLife`+`cacheTag` from `next/cache` |
-| 3 | REQ-35 | `src/lib/queries/seasons.queries.ts` | 7 readers → triad |
-| 4 | REQ-36 | `src/lib/queries/leagues.queries.ts` | 5 leaf readers → triad; THEN `getDivisionPreview` |
-| 5 | REQ-36 | `src/lib/queries/tournament.queries.ts` | 1 reader → triad |
-| 6 | REQ-36 | `src/lib/queries/trainers.queries.ts` | 1 reader → triad |
-| 7 | REQ-36 | `src/lib/queries/bracket.queries.ts` | 1 reader → triad |
-
-### Wave C — to edit (one commit per REQ)
-
-| REQ | File | Action |
-|---|---|---|
-| REQ-38 | `src/app/admin/dashboard/seasons/_actions.ts` | ADD `updateTag` import + 7 calls |
-| REQ-37 | (inspection only — paste build matrix into history) | NO EDIT |
-| REQ-39 | (inspection only — confirm admin untouched) | NO EDIT |
-| REQ-41 | `docs/conventions.md` OR `docs/ARCHITECTURE.md` | APPEND cache tag taxonomy section |
-| REQ-42 | `progress/history.md` | APPEND F4 close-out entry |
-
-### Explicitly NOT touched (regression guards)
-
-- `src/lib/queries/admin.queries.ts` (REQ-39).
-- `src/app/admin/dashboard/{splits,divisions,normativa,participants,matches}/_components/*Manager.tsx`
-  (REQ-39 — 20 `router.refresh()` sites stay; F6 owns the migration).
-- F5's existing 11 `<Suspense>` boundaries under `src/app/hub/**`.
-- `proxy.ts` (auth middleware untouched).
-- `src/components/shared/layout/hub/PixelShell.tsx` (pure renderer).
-
----
-
-## §A — Wave A patterns
-
-### A.1 — REQ-43: Footer year extraction (client leaf)
-
-`src/components/shared/layout/FooterYear.tsx` (NEW):
+The primitive composes `AdminModal` (which already renders the dim overlay +
+pixel-framed card + close button) and adds a message body + two action
+buttons. Match the existing layout idiom from `SeasonsManager.tsx:181-197`
+("ghost + primary/danger" button row with `flex gap-3 pt-2`).
 
 ```tsx
-'use client';
+import { AdminButton } from './AdminButton';
+import { AdminModal } from './AdminModal';
 
-import { useEffect, useState } from 'react';
+interface AdminConfirmModalProps {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: 'danger' | 'neutral';
+  onConfirm: () => void;
+  onCancel: () => void;
+}
 
 /**
- * Renders the current year on the client. Extracted out of `Footer.tsx`
- * because `cacheComponents: true` (F4 REQ-40) cannot tolerate a
- * non-deterministic `new Date()` call inside the root-layout server tree.
- * The initial server HTML renders nothing; the year hydrates immediately.
+ * Pixel admin confirmation modal. Replaces `window.confirm()` at destructive
+ * action sites (delete a season, clear a match result, remove a trainer, etc.).
+ * Composes AdminModal (overlay + frame) + AdminButton (ghost cancel + danger
+ * confirm). Controlled visibility: parent owns `open`, `onConfirm`, `onCancel`.
  */
-export function FooterYear() {
-  const [year, setYear] = useState<number | null>(null);
-  useEffect(() => {
-    setYear(new Date().getFullYear());
-  }, []);
-  return <>{year ?? ''}</>;
-}
-```
-
-`src/components/shared/layout/Footer.tsx` (EDIT):
-- DROP `const currentYear = new Date().getFullYear();`.
-- ADD `import { FooterYear } from './FooterYear';`.
-- REPLACE `{currentYear}` (currently on line 45 inside the © string) with
-  `<FooterYear />`.
-
-The visual output is unchanged once hydrated. The Spanish copy and
-Tailwind classes stay byte-identical.
-
-### A.2 — REQ-44: Suspense extraction pattern for layouts/pages
-
-**Hub layout shape (representative — applies to `archivo/layout.tsx` mirror
-and to all the page-level extractions).**
-
-`src/app/hub/layout.tsx` (BEFORE — current, post-REQ-33):
-
-```tsx
-export default async function HubLayout({ children }: { children: ReactNode }) {
-  const seasonInfo = await getActiveSeasonWithSplit();
-  const activeSplitId = seasonInfo?.activeSplit?.id ?? null;
-
-  const [currentRound, seasons, preview] = await Promise.all([...]);
+export function AdminConfirmModal({
+  open,
+  title,
+  message,
+  confirmLabel = 'Confirmar',
+  cancelLabel = 'Cancelar',
+  variant = 'danger',
+  onConfirm,
+  onCancel,
+}: AdminConfirmModalProps) {
+  if (!open) return null;
 
   return (
-    <PixelShell activeSeasonName={...} ...>
-      {children}
-    </PixelShell>
+    <AdminModal title={title} onClose={onCancel}>
+      <div className="flex flex-col gap-4">
+        <p className="font-retro text-base text-px-ink">{message}</p>
+        <div className="flex gap-3 pt-2">
+          <AdminButton
+            tone="ghost"
+            onClick={onCancel}
+            className="flex-1 justify-center"
+          >
+            {cancelLabel}
+          </AdminButton>
+          <AdminButton
+            tone={variant === 'danger' ? 'danger' : 'primary'}
+            onClick={onConfirm}
+            className="flex-1 justify-center"
+          >
+            {confirmLabel}
+          </AdminButton>
+        </div>
+      </div>
+    </AdminModal>
   );
 }
 ```
 
-`src/app/hub/layout.tsx` (AFTER — Wave A REQ-44):
+### Why no `'use client'` directive
 
-```tsx
-import { Suspense } from 'react';
+`AdminModal.tsx` itself has no `'use client'` directive — it's a pure
+presentational component, and the `'use client'` boundary is supplied by the
+parent Manager (which is already `'use client'` for `useState`/`useOptimistic`).
+`AdminConfirmModal` is the same shape: pure JSX + handler pass-through.
+Adding the directive is harmless but unnecessary; matching `AdminModal`'s
+convention keeps the primitive consistent. If a runtime error surfaces during
+build, add the directive — but the expectation is none will.
 
-async function HubShell({ children }: { children: ReactNode }) {
-  const seasonInfo = await getActiveSeasonWithSplit();
-  const activeSplitId = seasonInfo?.activeSplit?.id ?? null;
+### Why compose, not inline
 
-  const [currentRound, seasons, preview] = await Promise.all([
-    activeSplitId ? getCurrentRound(activeSplitId) : Promise.resolve(0),
-    getAllSeasonsWithSplits(),
-    activeSplitId
-      ? getDivisionPreview(activeSplitId)
-      : Promise.resolve<DivisionPreview>({ primera: [], segunda: [] }),
-  ]);
+The body of `AdminModal` (overlay z-50, frame, title row with close button)
+is identical for any modal in the admin surface. Duplicating that JSX in
+`AdminConfirmModal` doubles the maintenance cost (e.g. when FR15 retones the
+overlay colour). Composition keeps `AdminModal` as the single visual root for
+admin modals. The trade-off is one extra component on the render tree (≈
+zero perf cost).
 
-  return (
-    <PixelShell
-      activeSeasonName={seasonInfo?.name ?? null}
-      activeSplitName={seasonInfo?.activeSplit?.name ?? null}
-      seasons={seasons}
-      currentRound={currentRound}
-      preview={preview}
-    >
-      {children}
-    </PixelShell>
-  );
-}
+### Why `tone` mapping inside the primitive (not exposed)
 
-export default function HubLayout({ children }: { children: ReactNode }) {
-  return (
-    <Suspense fallback={<ShellSkeleton />}>
-      <HubShell>{children}</HubShell>
-    </Suspense>
-  );
-}
-```
+The 7 sites in F6a are ALL destructive (`delete`, `clear`, `remove`). Exposing
+a raw `tone` prop on the confirm button would let future callers pick any
+of the 6 tones from `AdminButton.tsx:4` (`primary | cyan | success | danger | ghost | default`), which is overkill for a confirm primitive. The
+`variant: 'danger' | 'neutral'` API encodes intent ("is this a destructive
+confirmation?") rather than presentation. Future neutral confirms (e.g.
+"Apply all pending lives changes?" in `ParticipantsManager`) get
+`variant: 'neutral'` and the primitive maps to `tone="primary"`.
 
-Key invariants:
-- Default export becomes a NON-async function returning `<Suspense>`.
-- The async body becomes a NEW server function declared in the SAME file.
-- `children` is forwarded by the wrapper so layouts still nest the way Next
-  expects.
-- Fallback is either an existing `SectionSkeleton` variant or a new
-  `ShellSkeleton` (see §A.3).
+### Verification
 
-**Hub PAGE shape (representative — all 7 hub pages).**
-
-Existing hub pages already wrap most of their data fetches in F5
-`<Suspense>` boundaries, but they STILL await one cheap leaf at the top
-(`getActiveSeasonWithSplit`, sometimes `getCurrentRound`) BEFORE the
-boundaries. Under `cacheComponents`, that top-level await must move into a
-streamed child. Shape:
-
-```tsx
-// BEFORE
-export default async function BracketPage() {
-  const seasonInfo = await getActiveSeasonWithSplit();
-  const split = seasonInfo?.activeSplit;
-  if (!split) return <EmptyState .../>;
-  const currentRound = await getCurrentRound(split.id);
-  const phase = getPhase(currentRound);
-  return (
-    <div className="flex flex-col gap-8">
-      <HubPageHeader eyebrow={phase.label} title="Bracket" />
-      <Suspense fallback={<SectionSkeleton variant="bracket" />}>
-        <BracketSection splitId={split.id} />
-      </Suspense>
-    </div>
-  );
-}
-
-// AFTER (REQ-44)
-async function BracketPageInner() {
-  const seasonInfo = await getActiveSeasonWithSplit();
-  const split = seasonInfo?.activeSplit;
-  if (!split) return <EmptyState .../>;
-  const currentRound = await getCurrentRound(split.id);
-  const phase = getPhase(currentRound);
-  return (
-    <div className="flex flex-col gap-8">
-      <HubPageHeader eyebrow={phase.label} title="Bracket" />
-      <Suspense fallback={<SectionSkeleton variant="bracket" />}>
-        <BracketSection splitId={split.id} />
-      </Suspense>
-    </div>
-  );
-}
-
-export default function BracketPage() {
-  return (
-    <Suspense fallback={<SectionSkeleton variant="bracket" />}>
-      <BracketPageInner />
-    </Suspense>
-  );
-}
-```
-
-The OUTER Suspense holds the page until the cheap leaves resolve; the
-INNER Suspense (F5) streams the heavy section.
-
-**Archive detail SSG shape.** `src/app/archivo/[season]/[split]/page.tsx`
-runs under `generateStaticParams`. The outer Suspense's fallback is rendered
-only if the body suspends at build (it won't, once REQ-34/35 cache the
-underlying queries). The boundary is still REQUIRED under `cacheComponents`.
-Same extraction pattern; fallback = `<SectionSkeleton variant="standings" />`
-(visually similar to the podium panels).
-
-**Landing shape (`src/app/page.tsx`).** Wrap the entire fetch block + VM
-build + final `<PixelLanding vm={vm} />` inside a Suspense-wrapped child
-function. Fallback can be the pixel-themed `<BackgroundDecoration />`
-(already in `src/components/shared/ui/BackgroundDecoration.tsx`,
-re-exported from `src/components/shared`).
-
-**Legacy redirect leaves.** The three files
-(`src/app/[season]/[split]/page.tsx`, `cruces/page.tsx`, `final/page.tsx`)
-end in `redirect(...)`. Shape:
-
-```tsx
-async function LegacyRedirectInner({ params }: { params: Promise<...> }) {
-  const { season, split } = await params;
-  const info = await getSplitByNames(season, split);
-  if (!info) notFound();
-  const active = await getActiveSeasonWithSplit();
-  if (active?.activeSplit?.id === info.split.id) redirect(ROUTES.hub);
-  redirect(ROUTES.archiveDetail(season, split));
-}
-
-export default function LegacyXPage(props: { params: Promise<...> }) {
-  return (
-    <Suspense fallback={null}>
-      <LegacyRedirectInner {...props} />
-    </Suspense>
-  );
-}
-```
-
-`fallback={null}` because the leaf never renders UI — it always redirects
-or 404s.
-
-### A.3 — REQ-44: `ShellSkeleton` (optional new fallback)
-
-For shell-level boundaries (hub layout, archivo layout) where no existing
-`SectionSkeleton` variant fits, create
-`src/components/shared/ui/ShellSkeleton.tsx`:
-
-```tsx
-/**
- * Full-shell skeleton used while `<PixelShell>`'s server fetch resolves.
- * Mirrors the dark px-bg backdrop so the page does not flash content.
- * Server Component, no client JS.
- */
-export function ShellSkeleton() {
-  return (
-    <div
-      className="min-h-screen bg-px-bg animate-pulse"
-      aria-hidden="true"
-    />
-  );
-}
-```
-
-Export from `src/components/shared/index.ts`. Alternative if the
-implementer prefers no new component: inline the same JSX as the fallback
-literal in both layouts.
+- `grep -nc "AdminModal\|AdminButton" src/components/admin/ui/AdminConfirmModal.tsx` >= 2.
+- Primitive renders correctly in the 7 adoption sites (manual smoke per
+  REQ-52..REQ-58).
 
 ---
 
-## §B — Wave B patterns
+## 2. Adoption pattern (REQ-52 → REQ-58)
 
-### B.1 — REQ-40: flag flip (single change)
+### 2.1 Single-modal sites (SeasonsManager, SplitsManager, DivisionsManager)
 
-`next.config.ts` (AFTER):
+One confirm site per Manager. Use the simplest controlled-state shape:
 
-```ts
-const nextConfig: NextConfig = {
-  reactCompiler: true,
-  cacheComponents: true,
-  poweredByHeader: false,
-  images: { ... },
+```tsx
+// Inside the Manager component:
+const [confirmDelete, setConfirmDelete] = useState<{
+  open: boolean;
+  id: string | null;
+}>({ open: false, id: null });
+
+// New handlers replacing the existing handleDelete body:
+const requestDelete = (id: string) => {
+  setConfirmDelete({ open: true, id });
 };
+
+const confirmDeleteAction = () => {
+  if (!confirmDelete.id) return;
+  const id = confirmDelete.id;
+  setConfirmDelete({ open: false, id: null });
+  // ... existing destructive body verbatim (Supabase call / Server Action) ...
+};
+
+const cancelDelete = () => setConfirmDelete({ open: false, id: null });
+
+// Hook up the row button:
+<AdminButton tone="danger" onClick={() => requestDelete(season.id)}>
+  Eliminar
+</AdminButton>
+
+// Render the modal alongside the existing create-form modal:
+<AdminConfirmModal
+  open={confirmDelete.open}
+  title="Eliminar temporada"
+  message="¿Estás seguro de eliminar esta temporada?"
+  variant="danger"
+  onConfirm={confirmDeleteAction}
+  onCancel={cancelDelete}
+/>
 ```
 
-One key added. Do NOT touch `images`, `reactCompiler`, or
-`poweredByHeader`. After this flip, `./init.sh` must stay green BEFORE
-moving to REQ-34. If RED, Wave A missed a boundary — STOP and report.
+**Critical: preserve the existing optimistic/`startTransition` wrapper.**
+`SeasonsManager.handleDelete` currently wraps `deleteSeasonAction(id)` in
+`startTransition(async () => { applyOptimistic({...}); const result = await deleteSeasonAction(id); ... })`. The `confirmDeleteAction` body MUST keep
+that wrapper byte-for-byte — moving the confirm gate outside `startTransition`
+is fine (the modal interaction is synchronous user input), but the
+destructive call itself stays inside `startTransition`.
 
-### B.2 — REQ-34/35/36: `'use cache'` triad
+### 2.2 Splits / Divisions adoption — handler body details
 
-Every cacheable reader in `lib/queries/` ends up shaped like this.
-`getDivisionPreview` shown — the same shape applies to all 21 readers.
+Both Managers currently use the pre-Server-Actions pattern: direct
+`supabase.from(...).delete()` + `await refresh()` + `router.refresh()`.
+F6a does NOT change that (F6b owns the Server Actions migration). The
+extracted `confirmDeleteAction` body simply contains the existing async
+function body minus the `if (!confirm(...)) return;` line.
 
-```ts
-// BEFORE (current main, post-REQ-33):
-import { cache } from 'react';
-import { createClient } from '@/lib/supabase/server';
+Verified current shapes:
+- `SplitsManager.tsx:84-100` — `handleDelete = async (id) => { if (!confirm(...)) return; const {error} = await supabase.from('splits').delete().eq('id', id); if (error) setError(...); else { await refresh(); router.refresh(); } }`
+- `DivisionsManager.tsx:91-102` — same shape, different table (`leagues`).
 
-export const getDivisionPreview = cache(
-  async (splitId: string): Promise<DivisionPreview> => {
-    const leagues = await getLeaguesBySplit(splitId);
-    // ...
-    if (error) {
-      console.error('[getDivisionPreview] Error:', error.message);
-      return { primera: [], segunda: [] };
-    }
-    return { primera, segunda };
-  },
-);
+The new `confirmDeleteAction` is `async` and captures `confirmDelete.id`
+into a local before clearing state (to avoid a race if the user double-clicks).
 
-// AFTER (F4 Wave B — REQ-36):
-import { cacheLife, cacheTag } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+### 2.3 ParticipantsManager — tagged-union state for two modals
 
-export async function getDivisionPreview(
-  splitId: string,
-): Promise<DivisionPreview> {
-  'use cache';
-  cacheLife('minutes');
-  cacheTag(`splits:${splitId}`, `matches:${splitId}`);
+This Manager has TWO destructive sites (`handleDeleteTrainer` at line 228,
+`handleRemoveFromLeague` at line 288). Two separate `useState` slots would
+work but the cleaner pattern (consistent with the tagged-union reducer in
+`SeasonsManager.tsx:24-48`) is one piece of state covering both:
 
-  const leagues = await getLeaguesBySplit(splitId);
-  // ...
-  if (error) {
-    console.error('[getDivisionPreview] Error:', error.message);
-    return { primera: [], segunda: [] };
+```tsx
+type PendingConfirm =
+  | { kind: 'delete-trainer'; trainerId: string }
+  | { kind: 'remove-from-league'; participantId: string }
+  | null;
+
+const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
+
+const requestDeleteTrainer = (trainerId: string) =>
+  setPendingConfirm({ kind: 'delete-trainer', trainerId });
+
+const requestRemoveFromLeague = (participantId: string) =>
+  setPendingConfirm({ kind: 'remove-from-league', participantId });
+
+const cancelConfirm = () => setPendingConfirm(null);
+
+const confirmPending = async () => {
+  if (!pendingConfirm) return;
+  const current = pendingConfirm;
+  setPendingConfirm(null);
+
+  if (current.kind === 'delete-trainer') {
+    // existing handleDeleteTrainer body (lines 236-243) verbatim, using
+    // current.trainerId in place of `id`.
+  } else {
+    // existing handleRemoveFromLeague body (lines 291-303) verbatim, using
+    // current.participantId in place of `participantId`.
   }
-  return { primera, segunda };
-}
+};
+
+// Single modal instance whose props are derived from the current kind:
+const confirmProps = pendingConfirm
+  ? pendingConfirm.kind === 'delete-trainer'
+    ? {
+        title: 'Eliminar entrenador',
+        message:
+          '¿Estas seguro de eliminar este entrenador? Se eliminara de todas las divisiones.',
+      }
+    : {
+        title: 'Quitar de la división',
+        message: '¿Quitar este entrenador de la division?',
+      }
+  : { title: '', message: '' };
+
+<AdminConfirmModal
+  open={pendingConfirm !== null}
+  title={confirmProps.title}
+  message={confirmProps.message}
+  variant="danger"
+  onConfirm={confirmPending}
+  onCancel={cancelConfirm}
+/>
 ```
 
-**Why drop the React `cache()` wrapper.** `'use cache'` covers both
-per-request dedup AND cross-request persistence. Double-wrapping is
-wasteful; SWC transforms the directive more cleanly on a top-level function
-declaration than on a `const x = cache(async () => …)` arrow.
+This keeps the JSX tree with **one** `<AdminConfirmModal>` regardless of
+which destructive flow is in flight, and the `pendingConfirm` discriminant
+guarantees you can never accidentally fire the wrong handler.
 
-**`cacheTag` argument expansion.** Template literals for parameterized
-tags (`splits:${splitId}`). Bare string literals for static tags
-(`'seasons'`, `'archive'`, `'trainers'`).
+### 2.4 MatchesManager — same tagged-union, two kinds
 
-**`cacheLife` profile.** Single string from Next built-ins
-(`'minutes' | 'hours' | 'days'`). No custom profiles in F4.
-
-**Error-handling contract preserved.** Queries continue to return
-`[]` / `null` / empty `Map` on error and log `[fnName] Error:`. The
-`'use cache'` directive caches whatever the function returns, including
-empty fallbacks — that's intentional: a transient Supabase error caches
-the fallback for `cacheLife`'s revalidate interval; the next revalidation
-re-fetches; `updateTag` from any subsequent mutation busts the cache
-anyway.
-
-**Nested cached calls.** `getDivisionPreview` calls `getLeaguesBySplit`,
-`getRankingsByLeague`, and `getMatchesByRound`. All four become
-`'use cache'` in REQ-36. Next 16 composes cache keys correctly across
-nested cached calls — no special handling, BUT order matters during
-iteration: leaves first
-(`getLeaguesBySplit` → `getRankingsByLeague` → `getMatchesByRound` →
-`getLeagueByTier` → `getParticipantsBySplit`), then `getDivisionPreview`,
-then jump to other files (`getCurrentRound`, `getTrainerById`,
-`getBracketData`).
-
----
-
-## §C — Tag taxonomy + per-query assignment (LOCKED — user-confirmed)
-
-Lift this section literally into `docs/conventions.md` /
-`docs/ARCHITECTURE.md` per REQ-41.
-
-| Tag | Owner table(s) | Mutated by (F4) | Mutated by (F6 deferred) | Read by |
-|---|---|---|---|---|
-| `seasons` | `seasons`, `splits`, `leagues` | `seasons/_actions.ts` (REQ-38) | F6 SplitsManager + DivisionsManager Server Actions | All season/split/league readers |
-| `splits:${id}` | per-split slice of multiple tables | — | F6 SplitsManager Server Actions | `getLeaguesBySplit`, `getDivisionPreview`, `getLeagueByTier`, `getArchiveDivisionPreview` |
-| `matches:${splitId}` | `matches` | — | F6 MatchesManager Server Actions | `getMatchesByRound`, `getDivisionPreview`, `getBracketData`, `getCurrentRound`, `getPublicCurrentRound` |
-| `rankings:${leagueId}` | `league_rankings` view | — | F6 MatchesManager Server Actions (rankings derive from match writes) | `getRankingsByLeague` |
-| `participants:${splitId}` | `league_participants`, `trainers` (via join) | — | F6 ParticipantsManager Server Actions | `getParticipantsBySplit` |
-| `bracket:${splitId}` | `matches` rounds 15/16 | — | F6 MatchesManager Server Actions | `getBracketData` |
-| `trainers` | `trainers` | — | F6 ParticipantsManager Server Actions | `getTrainerById` |
-| `archive` | union of seasons/splits/matches for closed splits | `seasons/_actions.ts` delete/activate/deactivate (REQ-38) | F6 retroactive admin edits | `getArchiveChampions`, `getArchiveDivisionPreview`, `getPublicActiveSeasonWithSplit`, `getPublicAllSeasonsWithSplits`, `getPublicCurrentRound` |
-
-The "F4 ↔ F6" split in the "Mutated by" column IS the REQ-39 staleness
-contract. F4 wires only what F3 already exposes; F6 closes the loop.
-
-### Per-query profile + tag assignment
-
-| Query | File | Tags | `cacheLife` |
-|---|---|---|---|
-| `getArchiveChampions` | `archive.queries.ts` | `archive` | `days` |
-| `getArchiveDivisionPreview(splitId)` | `archive.queries.ts` | `archive`, `splits:${splitId}` | `days` |
-| `getPublicActiveSeasonWithSplit` | `archive.queries.ts` | `seasons`, `archive` | `hours` |
-| `getPublicAllSeasonsWithSplits` | `archive.queries.ts` | `seasons`, `archive` | `hours` |
-| `getPublicCurrentRound(splitId)` | `archive.queries.ts` | `archive`, `matches:${splitId}` | `hours` |
-| `getActiveSeasonWithSplit` | `seasons.queries.ts` | `seasons` | `hours` |
-| `getAllSeasons` | `seasons.queries.ts` | `seasons` | `hours` |
-| `getAllSeasonsWithSplits` | `seasons.queries.ts` | `seasons` | `hours` |
-| `getSeasonWithSplits(id)` | `seasons.queries.ts` | `seasons` | `hours` |
-| `getSeasonByName(name)` | `seasons.queries.ts` | `seasons` | `hours` |
-| `getArchiveSplitParams` | `seasons.queries.ts` | `seasons` | `days` |
-| `getSplitByNames(s, sp)` | `seasons.queries.ts` | `seasons` | `hours` |
-| `getLeaguesBySplit(splitId)` | `leagues.queries.ts` | `seasons`, `splits:${splitId}` | `hours` |
-| `getRankingsByLeague(leagueId)` | `leagues.queries.ts` | `rankings:${leagueId}` | `minutes` |
-| `getDivisionPreview(splitId)` | `leagues.queries.ts` | `splits:${splitId}`, `matches:${splitId}` | `minutes` |
-| `getLeagueByTier(splitId, _)` | `leagues.queries.ts` | `seasons`, `splits:${splitId}` | `hours` |
-| `getParticipantsBySplit(splitId)` | `leagues.queries.ts` | `participants:${splitId}` | `hours` |
-| `getMatchesByRound(splitId)` | `leagues.queries.ts` | `matches:${splitId}` | `minutes` |
-| `getCurrentRound(splitId)` | `tournament.queries.ts` | `matches:${splitId}` | `minutes` |
-| `getTrainerById(id)` | `trainers.queries.ts` | `trainers` | `hours` |
-| `getBracketData(splitId)` | `bracket.queries.ts` | `bracket:${splitId}`, `matches:${splitId}` | `minutes` |
-
-### `cacheLife` bands (Next 16 built-ins)
-
-`node_modules/next/cache.d.ts:17-153`.
-
-| Profile | `stale` | `revalidate` | `expire` | Used by |
-|---|---|---|---|---|
-| `minutes` | 300s | 60s | 3600s | Hot path: matches, rankings, division preview, bracket, current round |
-| `hours` | 300s | 3600s | 86400s | Warm: seasons metadata, leagues, participants, trainers, public-active-season |
-| `days` | 300s | 86400s | 604800s | Archive: champions, archive-division-preview, archive-params |
-
-No custom profiles in `next.config.ts` for F4. F6 may add a sub-minute
-`rt` profile if FR10 realtime needs it.
-
----
-
-## §D — Framework gotchas (verify against `vercel:nextjs` /
-`vercel:next-cache-components` if any surprise surfaces)
-
-1. **`'use cache'` cannot read request data.** `cookies()`, `headers()`,
-   `searchParams`, `formData()`. REQ-33 addressed cookies for the queries.
-   Verified `grep -rn "cookies\|headers\|searchParams\|formData" src/lib/queries/`
-   returns nothing across cacheable readers.
-
-2. **`updateTag` is Server-Action-only.** `node_modules/next/dist/server/web/spec-extension/revalidate.js:47-62`.
-   Calling it from a Route Handler or page render throws. We call it ONLY
-   from `seasons/_actions.ts` (`'use server'` at line 1) — safe.
-
-3. **`cacheLife` requires `cacheComponents`.** Verified at
-   `node_modules/next/dist/server/use-cache/cache-life.js:70-75`. This is
-   the SWC-level rejection that drove the Wave-B ordering (REQ-40 first).
-
-4. **`'use cache'` with `generateStaticParams`.** Compatible per Next 16
-   docs. The cached body runs at build time; returned params drive SSG.
-   Build manifest is the truth — if `/archivo/[season]/[split]` regresses
-   below 3 prerendered URLs after REQ-35, STOP. Verify against
-   `vercel:next-cache-components` if surprises surface.
-
-5. **Nested cached calls** compose transparently. Order matters during
-   iteration (leaves first), but post-completion there is no special
-   wiring.
-
-6. **`cacheComponents: true` PROHIBITS top-level `await` in RSC pages
-   outside `<Suspense>` or `'use cache'`.** This is the binding constraint
-   that drives Wave A REQ-44. The error is build-time, message is along
-   the lines of "this page cannot prerender because it awaits dynamic data
-   without a Suspense boundary". The fix is the extraction pattern in §A.2.
-
-7. **`cacheComponents: true` PROHIBITS non-deterministic calls
-   (`new Date()`, `Math.random()`, `Date.now()`, `crypto.randomUUID()`) in
-   non-cached server tree.** Drives Wave A REQ-43 (Footer year). Audit:
-   `grep -rn "new Date\|Math.random\|Date.now\|crypto.randomUUID" src/components src/app --include="*.tsx"`.
-   Hits today: `Footer.tsx:5` (fixed by REQ-43),
-   `SeasonsManager.tsx:61/85/94` (admin tree stays `ƒ Dynamic` per REQ-39,
-   not affected). If a NEW hit appears in a `/hub/*` or `/archivo/*` leaf
-   during Wave B, treat as residual risk R2 — STOP and report.
-
-8. **`useRouter().refresh()` does NOT bust `'use cache'`.** Root reason
-   for REQ-39's Option A. Server Action + `updateTag` is the only
-   invalidation path.
-
-9. **`cacheComponents: true` does NOT auto-cache everything.** Without
-   `'use cache'`, a function still runs per-request. The flag enables the
-   directive + Suspense/streaming contract. Between REQ-40 and
-   REQ-34/35/36, hub routes will still be dynamic; they flip at REQ-36.
-
-10. **`<Suspense fallback={null}>` on a redirect leaf** is unusual but
-    legal — Next 16 unwinds the suspense once the leaf throws/redirects.
-    If the build complains (residual risk R5), fall back to making those
-    three legacy files `'use cache'` after Wave B — but document the
-    deferral.
-
-11. **`revalidateTag(tag)` (1-arg) is deprecated in 16.x.** If you ever
-    need `revalidateTag` outside a Server Action context, pass a profile
-    (`'minutes'|'hours'|'days'|'max'` or `{expire:number}`). F4 prefers
-    `updateTag` everywhere.
-
----
-
-## §E — REQ-38 exact patch shape for `seasons/_actions.ts`
-
-Current import (line 3 — verified):
-```ts
-import { revalidatePath } from 'next/cache';
-```
-
-After:
-```ts
-import { revalidatePath, updateTag } from 'next/cache';
-```
-
-For each action, ADD the `updateTag` call(s) AFTER the existing
-`revalidatePath(SEASONS_PATH)` (lines 38, 59, 95, 118 — verified) and
-BEFORE `return { ok: true }`. Pattern:
+`handleClearResult` (line 369) and `handleDeleteMatch` (line 480) both take
+a `matchId: string`. Tagged-union shape:
 
 ```ts
-// createSeasonAction (line 20-40)
-  revalidatePath(SEASONS_PATH);
-  updateTag('seasons');
-  return { ok: true };
-
-// deleteSeasonAction (line 42-61)
-  revalidatePath(SEASONS_PATH);
-  updateTag('seasons');
-  updateTag('archive');
-  return { ok: true };
-
-// activateSeasonAction (line 63-97)
-  revalidatePath(SEASONS_PATH);
-  updateTag('seasons');
-  updateTag('archive');
-  return { ok: true };
-
-// deactivateSeasonAction (line 99-120)
-  revalidatePath(SEASONS_PATH);
-  updateTag('seasons');
-  updateTag('archive');
-  return { ok: true };
+type PendingMatchConfirm =
+  | { kind: 'clear-result'; matchId: string }
+  | { kind: 'delete-match'; matchId: string }
+  | null;
 ```
 
-Total `updateTag` calls in the file after REQ-38: **7** (1 + 2 + 2 + 2).
+`confirmProps` derivation mirrors §2.3 with the two MatchesManager messages
+("¿Limpiar el resultado de este partido?" and "¿Eliminar este partido?").
+Handler bodies (Supabase update vs delete) extracted verbatim — `saving`
+state, `refreshMatches()`, `router.refresh()` all preserved.
+
+### 2.5 Pattern guarantees (cross-cutting)
+
+- **No double-trigger.** Cancelling clears state to `null` (or
+  `{ open: false, id: null }`). The destructive handler always reads from
+  state at the moment of invocation and clears state before awaiting the
+  network call.
+- **Existing buttons rename their onClick.** The row's "Eliminar" button
+  changes from `onClick={() => handleDelete(season.id)}` to
+  `onClick={() => requestDelete(season.id)}`. The text/styling of the row
+  button does not change.
+- **No `revalidateTag` / `revalidatePath` changes.** F4 wired
+  `updateTag(...)` into `seasons/_actions.ts`; F6a does not touch any
+  action. The other 4 Managers still call `router.refresh()` — that's the
+  documented F4 staleness window (60s cap on minutes-tier cache) that F6b
+  will close by migrating those Managers to Server Actions + `updateTag`.
 
 ---
 
-## §F — Verification stack (what implementer/reviewer run)
+## 3. Dead code sweep — execution detail (REQ-45 → REQ-49)
 
-After every Wave-A REQ:
+### 3.1 Pre-flight grep (run before deleting anything)
+
 ```bash
-./init.sh
+# REQ-45 prerequisite — Navbar callers minus the source + barrel:
+grep -rn "Navbar" src/ --include="*.tsx" --include="*.ts" \
+  | grep -v "components/shared/layout/Navbar.tsx" \
+  | grep -v "components/shared/index.ts"
+# Expected: 2 hits (cruces/loading.tsx, final/loading.tsx). Confirms REQ-45 unlocks REQ-46.
+
+# REQ-47 prerequisite — components/home/ external callers:
+grep -rn "components/home" src/ --include="*.tsx" --include="*.ts" \
+  | grep -v "components/home/"
+# Expected: 0 hits. Confirms the whole subtree is orphan.
+
+# REQ-48 prerequisite — LinkButton callers minus the source + barrel:
+grep -rn "LinkButton" src/ --include="*.tsx" --include="*.ts" \
+  | grep -v "components/shared/ui/Button/LinkButton.tsx" \
+  | grep -v "components/shared/index.ts"
+# Expected: 4 hits — all inside components/home/ (CurrentSeason + Hero) AND
+# components/shared/layout/Navbar.tsx. After REQ-46 + REQ-47 land, this drops to 0.
 ```
 
-After Wave A is complete (one commit):
-```bash
-grep -rn "dynamicParams" src/app/                 # Expected: empty (REQ-32)
-grep -n "new Date" src/components/shared/layout/Footer.tsx  # Expected: empty (REQ-43)
-grep -l "'use client'" src/components/shared/layout/FooterYear.tsx  # Expected: path
-grep -rnE "^\s*await get" src/app/**/*.tsx        # Expected: only inside *Inner / *Shell helper functions, never at top of default export
-./init.sh                                          # Expected: GREEN (cacheComponents STILL OFF)
-```
+### 3.2 Delete order
 
-After REQ-40 (Wave B step 1, intermediate):
-```bash
-grep "cacheComponents" next.config.ts             # Expected: cacheComponents: true,
-./init.sh                                          # Expected: GREEN. If RED, STOP (Wave A missed a boundary).
-```
+The deletes are interdependent because of the barrel. The safe sequence:
 
-After each Wave-B REQ (intermediate, no commit):
-```bash
-grep -c "'use cache'" src/lib/queries/<file>.ts   # Expected: per-file counts in requirements.md
-grep -c "cacheTag(" src/lib/queries/<file>.ts
-grep -c "cacheLife(" src/lib/queries/<file>.ts
-grep "from 'react'" src/lib/queries/<file>.ts     # Expected: empty (React cache import dropped)
-./init.sh                                          # Expected: GREEN per REQ
-```
+1. **REQ-45** — delete the 2 loading.tsx files. They are leaves; nothing
+   imports them. `./init.sh` would still pass after this step alone.
+2. **REQ-47** — delete the entire `src/components/home/` subtree. Nothing
+   imports it externally; the internal imports go away with the directory.
+   `./init.sh` still green.
+3. **REQ-49** — strip the 3 dead barrel entries from
+   `src/components/shared/index.ts`. After steps 1+2, no live file imports
+   `Navbar` or `LinkButton` via the barrel.
+4. **REQ-46 + REQ-48** — delete `Navbar.tsx` and `LinkButton.tsx` source
+   files. Their `Button/` parent dir is also empty → delete it. Their
+   barrel entries are already gone from step 3, so no import resolution
+   breaks.
+5. **Final `./init.sh` of Wave A** — must be green. Typecheck verifies no
+   dangling import; build verifies no dynamic import grabs a now-missing
+   file.
 
-After Wave B is complete (one atomic commit):
-```bash
-pnpm build 2>&1 | sed -n '/Route (app)/,/Middleware/p'
-# Inspect for REQ-37 matrix:
-#   /hub, /hub/clasificacion, /hub/calendario, /hub/bracket, /hub/olimpo,
-#   /hub/entrenadores, /hub/entrenador/[id]  → ○ or ⚡ (NOT ƒ Dynamic)
-#   /archivo/[season]/[split]                → ● with ≥3 prerendered URLs
-#   /admin/dashboard/**                      → ƒ Dynamic (regression guard)
-```
+### 3.3 If you want fewer rms
 
-After REQ-38:
-```bash
-grep -c "updateTag(" src/app/admin/dashboard/seasons/_actions.ts   # Expected: 7
-grep -c "revalidatePath(" src/app/admin/dashboard/seasons/_actions.ts  # Expected: 4
-```
-
-Manual smoke (after REQ-38): admin activates a different season →
-navigates to `/hub` → `TopBar` active-season chip updates without hard
-reload. Capture in `progress/history.md`.
+The user named only `CurrentSeason` and `Hero`. If the implementer judges
+that `AboutCalmind` and `TournamentFormat` should stay (e.g. for a future
+re-use under `/about` or similar), narrow REQ-47 to just those two files
++ their dirs. The grep gate still passes because those two have zero
+external callers regardless. **Recommended:** delete all four (single
+`rm -rf src/components/home`) — keeping orphan code under a domain
+directory is the exact anti-pattern this sweep exists to fix.
 
 ---
 
-## §G — Decisions log (handoff source-of-truth)
+## 4. `docs/conventions.md` — exact diff target (REQ-59)
 
-- **D1** — `updateTag` over `revalidateTag` in `seasons/_actions.ts`.
-  Reason: read-your-own-writes semantics, no second `profile` arg, only
-  legal context (Server Action).
-- **D2** — Stay on Next 16 built-in `cacheLife` profiles
-  (`minutes`/`hours`/`days`). F4 should not introduce custom
-  `next.config.ts` profiles unless required.
-- **D3** — Option A on the mutation-coherence gap (REQ-39). F6 owns
-  closing the 5 non-pilot Managers.
-- **D4** — Hub queries cookie-free (REQ-33 — already shipped).
-- **D5** — `cacheComponents: true` ships in WAVE B (REQ-40), after
-  Wave A pre-flights, before Wave B caches.
-- **D6** — Drop React `cache()` from migrated readers. `'use cache'`
-  supersedes; double-wrap is wasteful.
-- **D7** — Lowercase tag values, `${type}:${id}` shape. Next 16 caps tags
-  at 256 chars; UUID-suffixed tags are well under.
-- **D8** — Accept `/hub/*` as static after REQ-36. Realtime per FR10
-  lives in CLIENT components hydrated inside the static shell; the static
-  server shell is safe provided `updateTag` is called from Server Actions
-  on mutation.
-- **D9** — Drop `dynamicParams = true` from `/archivo/[season]/[split]`
-  (REQ-32; already applied in WT).
-- **D10** — REQ-40 ships BEFORE REQ-34/35/36 inside Wave B (SWC rejects
-  `'use cache'` without the flag).
-- **D11 (NEW, third respec)** — REQ-43 + REQ-44 are PRE-FLIGHTS (Wave A).
-  Resolves second-round drift: `cacheComponents` cannot land on a tree
-  with `new Date()` in Footer or top-level page-awaits without Suspense.
-- **D12 (NEW)** — Wave B is **atomic**: one commit. REQ-40 + REQ-34 +
-  REQ-35 + REQ-36 ship together because the intermediate states are
-  either red (REQ-40 alone if Wave A missed something) or partially red
-  (REQ-40 + half the queries). The IMPLEMENTER iterates internally; the
-  COMMIT is one.
-- **D13 (NEW)** — Wave A is committed BEFORE Wave B. This separates "make
-  the tree safe for the flag" (auditable, revertable) from "actually
-  apply the cache" (irreversible mass migration).
+### 4.1 Lines 24-27 (the primary stale callout)
+
+**Remove entirely.** The preceding line 22 ends the "Two Supabase clients"
+bullet; line 28 is "## Types — single source of truth". Removing 24-27
+leaves a single blank line between bullets and the next H2 (Markdown-clean).
+
+Verified current content at lines 24-27:
+
+```
+> ⚠️ The dual-cache layer in `src/lib/data/fetchData.ts` (`unstable_cache` +
+> `react.cache`, tag `['matches']` that is never revalidated) is **legacy** and slated
+> for removal in F4. Do not copy it. New caching should use `'use cache'` + `cacheTag`
+> + `revalidateTag` (see `vercel:next-cache-components`).
+```
+
+**Why delete vs rewrite?** F4 added a "Cache tag taxonomy" section to the
+same document (REQ-41 in F4) that covers the modern pattern (`'use cache'`
++ `cacheTag` + `updateTag`) authoritatively. Keeping a residual warning
+pointing to a deleted file is pure noise.
+
+### 4.2 Lines 37-40 (queries.types.ts cleanup)
+
+Verified current content:
+
+```
+- **Do not redefine a query's return shape locally.** `src/lib/types/queries.types.ts`
+  is a divergent duplicate (`tierName` vs `tier_name`) and is slated for deletion (F2).
+  Import shared types from `@/lib/types/schemas`; for query-specific rows, import the
+  query's own exported return type.
+```
+
+The file no longer exists (F2 deleted it 2026-05-28). Rewrite to drop the
+forecast and the divergent-duplicate example, keeping the principle:
+
+```
+- **Do not redefine a query's return shape locally.** Import shared types from
+  `@/lib/types/schemas`; for query-specific rows, import the query's own
+  exported return type. (F2 removed the legacy `queries.types.ts` divergent
+  duplicate that originally motivated this rule.)
+```
+
+### 4.3 Lines 57-58 (lib/services misnomer)
+
+Verified current content:
+
+```
+- Pure transformation helpers belong in `src/lib/utils/` (note: `lib/services/` currently
+  holds pure functions — that is a misnomer being corrected in F4).
+```
+
+F4 moved `matchService.ts` to `lib/utils/matches.ts`; `lib/services/bracketService.ts` remains. Rewrite the parenthetical:
+
+```
+- Pure transformation helpers belong in `src/lib/utils/`. `lib/services/`
+  retains `bracketService.ts` (pure functions historically grouped under the
+  service label — kept for migration cost, not because the name is right).
+```
+
+Or, if the implementer prefers to land `bracketService.ts` → `lib/utils/`
+in a follow-up micro-batch, just drop the "being corrected in F4" forecast
+and keep the misnomer note as-is. **Either is acceptable** — the audit
+purpose is "no stale forecast references".
+
+### 4.4 Verification
+
+- `grep -n "fetchData" docs/conventions.md` → 0 matches.
+- `grep -n "queries.types" docs/conventions.md` → 0 matches.
+- `grep -n "being corrected in F4\|slated for" docs/conventions.md` → 0 matches.
+- Markdown renders cleanly (no orphan blockquote / double blank lines —
+  visual sanity check).
+
+---
+
+## 5. Framework gotchas worth flagging
+
+1. **Next 16.1.1 + cacheComponents mode is LIVE (F4).** The Managers are
+   `'use client'` already, so the new modal does not interact with the
+   `cacheComponents` constraint on server `await`s. Verified by reading
+   `SeasonsManager.tsx:1` (`'use client'`). Modal additions are pure
+   client-side state — no Suspense gymnastics required.
+2. **`AdminModal` close affordance.** The existing `AdminModal` renders a
+   "✕" button bound to `onClose`. When composing inside `AdminConfirmModal`,
+   pass `onCancel` to `AdminModal`'s `onClose` so the ✕ click cancels the
+   confirmation. This matches user expectation (✕ == "abort").
+3. **No keyboard handling required for F6a.** The existing `AdminModal`
+   has no `Escape` handler or focus trap. Adding either is out of scope —
+   `window.confirm()` also had no `Escape`-like dismissal once the user
+   started interacting (browser-driven). Future accessibility batch can
+   layer focus management on `AdminModal` once (benefits all admin
+   modals — Create Season form, etc.).
+4. **`useTransition` interaction.** SeasonsManager uses `startTransition`
+   today. Confirm modal click handlers are NOT inside `startTransition` —
+   the synchronous user click flips state, the destructive action (already
+   inside `startTransition` for SeasonsManager) fires after the user
+   confirms. No interleaving issues. Verified the React 19.2.3 behavior
+   for nested `startTransition` calls is "the inner transition runs
+   normally" — but we don't nest; the modal toggles state outside any
+   transition.
+5. **Verify against `vercel:nextjs`** for any unexpected runtime
+   behavior with deleted `loading.tsx` files. The expectation is "no
+   loading fallback rendered during the redirect", which matches the
+   current `redirect()` path — but if the implementer hits a regression
+   where the legacy URL renders blank-and-stutters before the redirect,
+   the fix is to add `<Suspense fallback={null}>` to the page.tsx (the
+   page already wraps its async inner in `<Suspense fallback={null}>`
+   per `cruces/page.tsx:35-41` and `final/page.tsx:33-39`, so the
+   loading.tsx removal should be transparent).

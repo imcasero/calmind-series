@@ -6,6 +6,7 @@ import {
   AdminBadge,
   AdminButton,
   AdminCard,
+  AdminConfirmModal,
   AdminErrorBanner,
   AdminInput,
   AdminModal,
@@ -23,6 +24,11 @@ import { TrainerInputSchema } from '@/lib/types/schemas';
 import { cn } from '@/lib/utils';
 
 type ParticipantWithTrainer = LeagueParticipant & { trainer: Trainer };
+
+type PendingConfirm =
+  | { kind: 'delete-trainer'; trainerId: string }
+  | { kind: 'remove-from-league'; participantId: string }
+  | null;
 
 interface ParticipantsManagerProps {
   initialSeasons: Season[];
@@ -84,6 +90,7 @@ export default function ParticipantsManager({
   // Common state
   const [localError, setLocalError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
 
   const supabase = createClient();
 
@@ -225,14 +232,11 @@ export default function ParticipantsManager({
     setShowTrainerForm(true);
   };
 
-  const handleDeleteTrainer = async (id: string) => {
-    if (
-      !confirm(
-        '¿Estas seguro de eliminar este entrenador? Se eliminara de todas las divisiones.',
-      )
-    )
-      return;
+  const requestDeleteTrainer = (trainerId: string) => {
+    setPendingConfirm({ kind: 'delete-trainer', trainerId });
+  };
 
+  const runDeleteTrainer = async (id: string) => {
     const { error } = await supabase.from('trainers').delete().eq('id', id);
 
     if (error) {
@@ -285,9 +289,11 @@ export default function ParticipantsManager({
     setSaving(false);
   };
 
-  const handleRemoveFromLeague = async (participantId: string) => {
-    if (!confirm('¿Quitar este entrenador de la division?')) return;
+  const requestRemoveFromLeague = (participantId: string) => {
+    setPendingConfirm({ kind: 'remove-from-league', participantId });
+  };
 
+  const runRemoveFromLeague = async (participantId: string) => {
     const { error } = await supabase
       .from('league_participants')
       .delete()
@@ -303,6 +309,34 @@ export default function ParticipantsManager({
       router.refresh();
     }
   };
+
+  const cancelConfirm = () => setPendingConfirm(null);
+
+  const confirmPending = async () => {
+    if (!pendingConfirm) return;
+    const current = pendingConfirm;
+    setPendingConfirm(null);
+
+    if (current.kind === 'delete-trainer') {
+      await runDeleteTrainer(current.trainerId);
+    } else {
+      await runRemoveFromLeague(current.participantId);
+    }
+  };
+
+  const confirmProps =
+    pendingConfirm?.kind === 'delete-trainer'
+      ? {
+          title: 'Eliminar entrenador',
+          message:
+            '¿Estas seguro de eliminar este entrenador? Se eliminara de todas las divisiones.',
+        }
+      : pendingConfirm?.kind === 'remove-from-league'
+        ? {
+            title: 'Quitar de la división',
+            message: '¿Quitar este entrenador de la division?',
+          }
+        : { title: '', message: '' };
 
   // Pending lives changes (local only)
   const handleLocalLivesChange = (
@@ -528,7 +562,7 @@ export default function ParticipantsManager({
                             <AdminButton
                               tone="danger"
                               size="sm"
-                              onClick={() => handleDeleteTrainer(trainer.id)}
+                              onClick={() => requestDeleteTrainer(trainer.id)}
                             >
                               Eliminar
                             </AdminButton>
@@ -825,7 +859,7 @@ export default function ParticipantsManager({
                                 tone="danger"
                                 size="sm"
                                 onClick={() =>
-                                  handleRemoveFromLeague(participant.id)
+                                  requestRemoveFromLeague(participant.id)
                                 }
                               >
                                 Quitar
@@ -842,6 +876,15 @@ export default function ParticipantsManager({
           )}
         </div>
       )}
+
+      <AdminConfirmModal
+        open={pendingConfirm !== null}
+        title={confirmProps.title}
+        message={confirmProps.message}
+        variant="danger"
+        onConfirm={confirmPending}
+        onCancel={cancelConfirm}
+      />
     </div>
   );
 }

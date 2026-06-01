@@ -6,6 +6,7 @@ import {
   AdminBadge,
   AdminButton,
   AdminCard,
+  AdminConfirmModal,
   AdminErrorBanner,
   AdminInput,
   AdminModal,
@@ -32,6 +33,11 @@ type MatchWithTrainers = Match & {
   home_trainer: Trainer | null;
   away_trainer: Trainer | null;
 };
+
+type PendingMatchConfirm =
+  | { kind: 'clear-result'; matchId: string }
+  | { kind: 'delete-match'; matchId: string }
+  | null;
 
 interface MatchesManagerProps {
   initialSeasons: Season[];
@@ -104,6 +110,8 @@ export default function MatchesManager({
   // Common state
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pendingConfirm, setPendingConfirm] =
+    useState<PendingMatchConfirm>(null);
 
   const supabase = createClient();
 
@@ -366,9 +374,11 @@ export default function MatchesManager({
     setSaving(false);
   };
 
-  const handleClearResult = async (matchId: string) => {
-    if (!confirm('¿Limpiar el resultado de este partido?')) return;
+  const requestClearResult = (matchId: string) => {
+    setPendingConfirm({ kind: 'clear-result', matchId });
+  };
 
+  const runClearResult = async (matchId: string) => {
     setSaving(true);
     const { error } = await supabase
       .from('matches')
@@ -477,9 +487,11 @@ export default function MatchesManager({
     setSaving(false);
   };
 
-  const handleDeleteMatch = async (matchId: string) => {
-    if (!confirm('¿Eliminar este partido?')) return;
+  const requestDeleteMatch = (matchId: string) => {
+    setPendingConfirm({ kind: 'delete-match', matchId });
+  };
 
+  const runDeleteMatch = async (matchId: string) => {
     setSaving(true);
     const { error } = await supabase.from('matches').delete().eq('id', matchId);
 
@@ -491,6 +503,33 @@ export default function MatchesManager({
     }
     setSaving(false);
   };
+
+  const cancelConfirm = () => setPendingConfirm(null);
+
+  const confirmPending = async () => {
+    if (!pendingConfirm) return;
+    const current = pendingConfirm;
+    setPendingConfirm(null);
+
+    if (current.kind === 'clear-result') {
+      await runClearResult(current.matchId);
+    } else {
+      await runDeleteMatch(current.matchId);
+    }
+  };
+
+  const confirmProps =
+    pendingConfirm?.kind === 'clear-result'
+      ? {
+          title: 'Limpiar resultado',
+          message: '¿Limpiar el resultado de este partido?',
+        }
+      : pendingConfirm?.kind === 'delete-match'
+        ? {
+            title: 'Eliminar partido',
+            message: '¿Eliminar este partido?',
+          }
+        : { title: '', message: '' };
 
   // J15 Generation Handler
   const handleGenerateJ15Matches = async () => {
@@ -805,7 +844,7 @@ export default function MatchesManager({
                           onStartEdit={handleStartEditResult}
                           onCancelEdit={handleCancelEditResult}
                           onSave={handleSaveResult}
-                          onClear={handleClearResult}
+                          onClear={requestClearResult}
                         />
                       ))}
                     </div>
@@ -1082,7 +1121,7 @@ export default function MatchesManager({
                         title={groupTitle}
                         matches={groupMatches}
                         onEdit={handleOpenMatchForm}
-                        onDelete={handleDeleteMatch}
+                        onDelete={requestDeleteMatch}
                       />
                     );
                   })}
@@ -1126,13 +1165,22 @@ export default function MatchesManager({
                 <MatchesTable
                   matches={matchesByRound}
                   onEdit={handleOpenMatchForm}
-                  onDelete={handleDeleteMatch}
+                  onDelete={requestDeleteMatch}
                 />
               )}
             </div>
           )}
         </div>
       )}
+
+      <AdminConfirmModal
+        open={pendingConfirm !== null}
+        title={confirmProps.title}
+        message={confirmProps.message}
+        variant="danger"
+        onConfirm={confirmPending}
+        onCancel={cancelConfirm}
+      />
     </div>
   );
 }

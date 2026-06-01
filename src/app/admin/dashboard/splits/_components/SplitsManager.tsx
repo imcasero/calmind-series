@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   AdminBadge,
   AdminButton,
+  AdminConfirmModal,
   AdminErrorBanner,
   AdminInput,
   AdminModal,
@@ -33,6 +34,10 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSplit, setNewSplit] = useState({ name: '', split_order: 1 });
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    id: string | null;
+  }>({ open: false, id: null });
 
   const supabase = createClient();
 
@@ -81,13 +86,18 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
     setSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        '¿Estas seguro de eliminar este split? Se eliminaran tambien sus divisiones.',
-      )
-    )
-      return;
+  const requestDelete = (id: string) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const cancelDelete = () => {
+    setConfirmDelete({ open: false, id: null });
+  };
+
+  const confirmDeleteAction = async () => {
+    const id = confirmDelete.id;
+    if (!id) return;
+    setConfirmDelete({ open: false, id: null });
 
     const { error } = await supabase.from('splits').delete().eq('id', id);
 
@@ -230,6 +240,15 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
         </AdminModal>
       )}
 
+      <AdminConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar split"
+        message="¿Estas seguro de eliminar este split? Se eliminaran tambien sus divisiones."
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={cancelDelete}
+      />
+
       {/* Content */}
       {!selectedSeasonId ? (
         <EmptyPanel text="Selecciona una temporada para gestionar sus splits." />
@@ -291,7 +310,7 @@ export default function SplitsManager({ initialSeasons }: SplitsManagerProps) {
                         <AdminButton
                           tone="danger"
                           size="sm"
-                          onClick={() => handleDelete(split.id)}
+                          onClick={() => requestDelete(split.id)}
                         >
                           Eliminar
                         </AdminButton>

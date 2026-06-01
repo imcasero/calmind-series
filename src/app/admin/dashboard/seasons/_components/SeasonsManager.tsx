@@ -4,6 +4,7 @@ import { startTransition, useOptimistic, useState } from 'react';
 import {
   AdminBadge,
   AdminButton,
+  AdminConfirmModal,
   AdminErrorBanner,
   AdminInput,
   AdminModal,
@@ -61,6 +62,10 @@ export default function SeasonsManager({
     year: new Date().getFullYear(),
   });
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    id: string | null;
+  }>({ open: false, id: null });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,8 +103,18 @@ export default function SeasonsManager({
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta temporada?')) return;
+  const requestDelete = (id: string) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const cancelDelete = () => {
+    setConfirmDelete({ open: false, id: null });
+  };
+
+  const confirmDeleteAction = () => {
+    const id = confirmDelete.id;
+    if (!id) return;
+    setConfirmDelete({ open: false, id: null });
 
     startTransition(async () => {
       applyOptimistic({ type: 'delete', id });
@@ -199,6 +214,15 @@ export default function SeasonsManager({
         </AdminModal>
       )}
 
+      <AdminConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar temporada"
+        message="¿Estás seguro de eliminar esta temporada?"
+        variant="danger"
+        onConfirm={confirmDeleteAction}
+        onCancel={cancelDelete}
+      />
+
       {/* Table */}
       <div className="border-[3px] border-px-border bg-px-elev shadow-[4px_4px_0_0_var(--color-px-deep)]">
         {optimisticSeasons.length === 0 ? (
@@ -251,7 +275,7 @@ export default function SeasonsManager({
                       <AdminButton
                         tone="danger"
                         size="sm"
-                        onClick={() => handleDelete(season.id)}
+                        onClick={() => requestDelete(season.id)}
                       >
                         Eliminar
                       </AdminButton>

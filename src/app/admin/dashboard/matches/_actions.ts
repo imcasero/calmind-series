@@ -203,6 +203,180 @@ export async function deleteMatchAction(
   return { ok: true };
 }
 
+function buildRoundRobin(
+  trainerIds: string[],
+): Array<Array<{ home: string; away: string }>> {
+  const n = trainerIds.length;
+  const rounds: Array<Array<{ home: string; away: string }>> = [];
+  const positions = [...trainerIds];
+
+  for (let r = 0; r < n - 1; r++) {
+    const round: Array<{ home: string; away: string }> = [];
+    for (let i = 0; i < n / 2; i++) {
+      const a = positions[i];
+      const b = positions[n - 1 - i];
+      // Alternate home/away across rounds for the fixed seat to balance
+      // the number of home matches across trainers.
+      if (i === 0 && r % 2 === 1) {
+        round.push({ home: b, away: a });
+      } else {
+        round.push({ home: a, away: b });
+      }
+    }
+    rounds.push(round);
+
+    // Circle-method rotation: positions[0] stays fixed; the rest rotate
+    // clockwise (last element moves into slot 1).
+    const last = positions[n - 1];
+    for (let i = n - 1; i > 1; i--) {
+      positions[i] = positions[i - 1];
+    }
+    positions[1] = last;
+  }
+
+  return rounds;
+}
+
+export async function generateRegularSeasonMatchesAction(
+  leagueId: string,
+  splitId: string,
+): Promise<GenerateResult> {
+  const parsedLeague = IdSchema.safeParse(leagueId);
+  if (!parsedLeague.success) {
+    return { ok: false, error: formatZodIssues(parsedLeague.error) };
+  }
+  const parsedSplit = IdSchema.safeParse(splitId);
+  if (!parsedSplit.success) {
+    return { ok: false, error: formatZodIssues(parsedSplit.error) };
+  }
+
+  const supabase = await createClient();
+
+  const { data: playedRows, error: playedError } = await supabase
+    .from('matches')
+    .select('id')
+    .eq('league_id', parsedLeague.data)
+    .gte('round', 1)
+    .lte('round', 14)
+    .eq('played', true)
+    .limit(1);
+
+  if (playedError) {
+    console.error('[generateRegularSeasonMatchesAction] Error:', playedError);
+    return { ok: false, error: playedError.message };
+  }
+  if ((playedRows ?? []).length > 0) {
+    return {
+      ok: false,
+      error:
+        'No se puede regenerar el calendario: ya hay resultados registrados en J1-J14.',
+    };
+  }
+
+  const { data: participants, error: partError } = await supabase
+    .from('league_participants')
+    .select('trainer_id')
+    .eq('league_id', parsedLeague.data)
+    .not('trainer_id', 'is', null);
+
+  if (partError) {
+    console.error('[generateRegularSeasonMatchesAction] Error:', partError);
+    return { ok: false, error: partError.message };
+  }
+
+  const trainerIds = (participants ?? [])
+    .map((p) => p.trainer_id)
+    .filter((id): id is string => Boolean(id));
+
+  if (trainerIds.length < 2) {
+    return {
+      ok: false,
+      error: 'Se necesitan al menos 2 participantes en la división.',
+    };
+  }
+  if (trainerIds.length % 2 !== 0) {
+    return {
+      ok: false,
+      error:
+        'El número de participantes debe ser par para generar el calendario.',
+    };
+  }
+
+  const { error: deleteError } = await supabase
+    .from('matches')
+    .delete()
+    .eq('league_id', parsedLeague.data)
+    .gte('round', 1)
+    .lte('round', 14);
+
+  if (deleteError) {
+    console.error('[generateRegularSeasonMatchesAction] Error:', deleteError);
+    return { ok: false, error: deleteError.message };
+  }
+
+  const shuffled = [...trainerIds];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const firstHalf = buildRoundRobin(shuffled);
+  const matchesToCreate: Array<{
+    league_id: string;
+    split_id: string;
+    round: number;
+    match_group: string;
+    match_tag: string;
+    home_trainer_id: string;
+    away_trainer_id: string;
+    played: boolean;
+  }> = [];
+
+  firstHalf.forEach((round, idx) => {
+    const roundNum = idx + 1;
+    for (const { home, away } of round) {
+      matchesToCreate.push({
+        league_id: parsedLeague.data,
+        split_id: parsedSplit.data,
+        round: roundNum,
+        match_group: 'regular',
+        match_tag: `J${roundNum}`,
+        home_trainer_id: home,
+        away_trainer_id: away,
+        played: false,
+      });
+    }
+  });
+  firstHalf.forEach((round, idx) => {
+    const roundNum = idx + 1 + firstHalf.length;
+    for (const { home, away } of round) {
+      matchesToCreate.push({
+        league_id: parsedLeague.data,
+        split_id: parsedSplit.data,
+        round: roundNum,
+        match_group: 'regular',
+        match_tag: `J${roundNum}`,
+        home_trainer_id: away,
+        away_trainer_id: home,
+        played: false,
+      });
+    }
+  });
+
+  const { error: insertError } = await supabase
+    .from('matches')
+    .insert(matchesToCreate);
+
+  if (insertError) {
+    console.error('[generateRegularSeasonMatchesAction] Error:', insertError);
+    return { ok: false, error: insertError.message };
+  }
+
+  revalidatePath(DASHBOARD_PATH);
+  bustMatchTags(parsedSplit.data, parsedLeague.data);
+  return { ok: true, createdCount: matchesToCreate.length };
+}
+
 export async function generateJ15MatchesAction(
   leagueId: string,
   splitId: string,

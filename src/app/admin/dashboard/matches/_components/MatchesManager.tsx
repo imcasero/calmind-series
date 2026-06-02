@@ -38,6 +38,7 @@ import {
   deleteMatchAction,
   generateJ15MatchesAction,
   generateJ16MatchesAction,
+  generateRegularSeasonMatchesAction,
   saveMatchResultAction,
   updateMatchAction,
 } from '../_actions';
@@ -51,6 +52,7 @@ type MatchWithTrainers = Match & {
 type PendingMatchConfirm =
   | { kind: 'clear-result'; matchId: string }
   | { kind: 'delete-match'; matchId: string }
+  | { kind: 'regenerate-calendar' }
   | null;
 
 type MatchOptimistic =
@@ -165,6 +167,7 @@ export default function MatchesManager({
   // Special rounds (J15/J16)
   const [generatingSpecialMatches, setGeneratingSpecialMatches] =
     useState(false);
+  const [generatingRegularSeason, setGeneratingRegularSeason] = useState(false);
 
   // Common state
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +193,17 @@ export default function MatchesManager({
   const matchesByRound = useMemo(() => {
     return optimisticMatches.filter((m) => m.round === selectedRound);
   }, [optimisticMatches, selectedRound]);
+
+  // Regular-season (J1-J14) state derived from current matches.
+  const hasResultsInRegularSeason = useMemo(
+    () =>
+      optimisticMatches.some((m) => m.played && m.round >= 1 && m.round <= 14),
+    [optimisticMatches],
+  );
+  const hasRegularSeasonPlanning = useMemo(
+    () => optimisticMatches.some((m) => m.round >= 1 && m.round <= 14),
+    [optimisticMatches],
+  );
 
   // Fetch splits when season changes (for planning tab)
   useEffect(() => {
@@ -578,8 +592,10 @@ export default function MatchesManager({
 
     if (current.kind === 'clear-result') {
       runClearResult(current.matchId);
-    } else {
+    } else if (current.kind === 'delete-match') {
       runDeleteMatch(current.matchId);
+    } else if (current.kind === 'regenerate-calendar') {
+      runGenerateRegularSeason();
     }
   };
 
@@ -594,7 +610,46 @@ export default function MatchesManager({
             title: 'Eliminar partido',
             message: '¿Eliminar este partido?',
           }
-        : { title: '', message: '' };
+        : pendingConfirm?.kind === 'regenerate-calendar'
+          ? {
+              title: 'Regenerar calendario',
+              message:
+                'Esto eliminará la planificación actual de J1-J14 y creará una nueva aleatoria. ¿Continuar?',
+            }
+          : { title: '', message: '' };
+
+  // Regular-season generation (J1-J14): runs the action which wipes any
+  // existing planning for J1-J14 and inserts a fresh randomized double
+  // round-robin. Blocked when at least one regular-season match has a
+  // recorded result.
+  const runGenerateRegularSeason = () => {
+    if (!selectedLeagueId || !selectedSplitId) return;
+    setGeneratingRegularSeason(true);
+    setError(null);
+    const leagueId = selectedLeagueId;
+    const splitId = selectedSplitId;
+    startTransition(async () => {
+      const result = await generateRegularSeasonMatchesAction(
+        leagueId,
+        splitId,
+      );
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        await refreshMatches();
+      }
+      setGeneratingRegularSeason(false);
+    });
+  };
+
+  const requestGenerateRegularSeason = () => {
+    if (!selectedLeagueId || !selectedSplitId) return;
+    if (hasRegularSeasonPlanning) {
+      setPendingConfirm({ kind: 'regenerate-calendar' });
+    } else {
+      runGenerateRegularSeason();
+    }
+  };
 
   // J15 Generation Handler — ports the existing button-driven bulk insert
   // verbatim to a Server Action. F6c (auto-cascade on J14 completion) is
@@ -837,10 +892,6 @@ export default function MatchesManager({
               </SelectorField>
 
               <div className="flex flex-wrap items-center gap-2">
-                <AdminButton tone="default" disabled>
-                  Importar CSV
-                </AdminButton>
-
                 {selectedRound === 15 ? (
                   <AdminButton
                     tone="primary"
@@ -866,13 +917,30 @@ export default function MatchesManager({
                       : 'Generar Finales J16'}
                   </AdminButton>
                 ) : (
-                  <AdminButton
-                    tone="primary"
-                    onClick={() => handleOpenMatchForm()}
-                    disabled={participants.length < 2}
-                  >
-                    + Nuevo Partido
-                  </AdminButton>
+                  <>
+                    <AdminButton
+                      tone="primary"
+                      onClick={requestGenerateRegularSeason}
+                      disabled={
+                        participants.length < 2 ||
+                        generatingRegularSeason ||
+                        hasResultsInRegularSeason
+                      }
+                    >
+                      {generatingRegularSeason
+                        ? 'Generando...'
+                        : hasRegularSeasonPlanning
+                          ? 'Regenerar Calendario'
+                          : 'Generar Calendario J1-J14'}
+                    </AdminButton>
+                    <AdminButton
+                      tone="default"
+                      onClick={() => handleOpenMatchForm()}
+                      disabled={participants.length < 2}
+                    >
+                      + Nuevo Partido
+                    </AdminButton>
+                  </>
                 )}
               </div>
             </AdminCard>

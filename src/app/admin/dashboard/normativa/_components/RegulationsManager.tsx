@@ -6,8 +6,14 @@ import {
   AdminCard,
   AdminErrorBanner,
 } from '@/components/admin/ui';
+import { createClient } from '@/lib/supabase/client';
 import { RegulationsUploadSchema } from '@/lib/types/schemas';
-import { uploadRegulationsAction } from '../_actions';
+import {
+  createRegulationsUploadAction,
+  finalizeRegulationsUploadAction,
+} from '../_actions';
+
+const STORAGE_BUCKET = 'normativas';
 
 interface RegulationsManagerProps {
   currentPdfUrl: string | null;
@@ -52,15 +58,33 @@ export default function RegulationsManager({
     setError(null);
     setSuccess(false);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    const signed = await createRegulationsUploadAction();
+    if (!signed.ok) {
+      setError(signed.error);
+      setUploading(false);
+      return;
+    }
+
+    const supabase = createClient();
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .uploadToSignedUrl(signed.path, signed.token, file, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      setError(uploadError.message);
+      setUploading(false);
+      return;
+    }
 
     startTransition(async () => {
-      const result = await uploadRegulationsAction(formData);
+      const result = await finalizeRegulationsUploadAction();
       if (!result.ok) {
         setError(result.error);
       } else {
-        setCurrentUrl(result.url);
+        setCurrentUrl(`${result.url}?v=${Date.now()}`);
         setFile(null);
         setSuccess(true);
         const fileInput = document.getElementById(

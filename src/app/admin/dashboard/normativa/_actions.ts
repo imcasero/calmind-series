@@ -1,48 +1,38 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { RegulationsUploadSchema } from '@/lib/types/schemas';
 
-type UploadResult = { ok: true; url: string } | { ok: false; error: string };
+type SignedUploadResult =
+  | { ok: true; path: string; token: string }
+  | { ok: false; error: string };
+
+type FinalizeResult = { ok: true; url: string } | { ok: false; error: string };
 
 const DASHBOARD_PATH = '/admin/dashboard/normativa';
 const PUBLIC_PATH = '/normativa';
 const STORAGE_BUCKET = 'normativas';
 const STORAGE_KEY = 'public/normativa_pokemon_calmind_series.pdf';
 
-function formatZodIssues(error: z.ZodError): string {
-  return error.issues.map((i) => i.message).join(' · ');
+export async function createRegulationsUploadAction(): Promise<SignedUploadResult> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUploadUrl(STORAGE_KEY, { upsert: true });
+
+  if (error) {
+    console.error('[createRegulationsUploadAction] Error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, path: data.path, token: data.token };
 }
 
-export async function uploadRegulationsAction(
-  formData: FormData,
-): Promise<UploadResult> {
-  const raw = formData.get('file');
-  if (!(raw instanceof File)) {
-    return { ok: false, error: 'Archivo inválido' };
-  }
-
-  const parsed = RegulationsUploadSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { ok: false, error: formatZodIssues(parsed.error) };
-  }
-
+export async function finalizeRegulationsUploadAction(): Promise<FinalizeResult> {
   const supabase = await createClient();
-  const { error: uploadError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(STORAGE_KEY, parsed.data, {
-      cacheControl: '0',
-      upsert: true,
-    });
 
-  if (uploadError) {
-    console.error('[uploadRegulationsAction] Error:', uploadError);
-    return { ok: false, error: uploadError.message };
-  }
-
-  const { data: publicData } = supabase.storage
+  const { data } = supabase.storage
     .from(STORAGE_BUCKET)
     .getPublicUrl(STORAGE_KEY);
 
@@ -51,5 +41,6 @@ export async function uploadRegulationsAction(
   // forces the next request to re-run that probe.
   revalidatePath(DASHBOARD_PATH);
   revalidatePath(PUBLIC_PATH);
-  return { ok: true, url: publicData.publicUrl };
+
+  return { ok: true, url: data.publicUrl };
 }
